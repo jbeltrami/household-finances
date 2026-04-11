@@ -195,7 +195,7 @@ Create a `.env.local` file at the project root (never commit this file):
 
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<your-publishable-key>
 ```
 
 Both values are found in Supabase under **Project Settings → API**.
