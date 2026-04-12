@@ -19,6 +19,7 @@ type Props = {
   month: number;
   monthOptions: YearMonth[];
   daysWithBills: number[];
+  daysWithIncome: number[];
   highlightedDay: number | null;
   onSelectDay: (day: number) => void;
 };
@@ -28,6 +29,7 @@ export default function CalendarStrip({
   month,
   monthOptions,
   daysWithBills,
+  daysWithIncome,
   highlightedDay,
   onSelectDay,
 }: Props) {
@@ -36,8 +38,9 @@ export default function CalendarStrip({
   const next = nextMonth(year, month);
   const cells = buildCalendarGrid(year, month);
 
-  // Wrap the prop in a Set for O(1) lookups during the cell render loop.
+  // Wrap the props in Sets for O(1) lookups during the cell render loop.
   const daysWithBillsSet = new Set(daysWithBills);
+  const daysWithIncomeSet = new Set(daysWithIncome);
 
   // Today, in the user's local timezone. Used to draw the highlight on
   // whichever cell (if any) corresponds to today.
@@ -113,6 +116,8 @@ export default function CalendarStrip({
             const isToday = cellKey === todayKey;
             const hasBill =
               cell.inCurrentMonth && daysWithBillsSet.has(cell.day);
+            const hasIncome =
+              cell.inCurrentMonth && daysWithIncomeSet.has(cell.day);
             const isHighlighted =
               cell.inCurrentMonth && highlightedDay === cell.day;
 
@@ -157,11 +162,17 @@ export default function CalendarStrip({
                     {cell.day}
                   </span>
                 </div>
-                <div className="flex w-full flex-1 items-end justify-center">
+                <div className="flex w-full flex-1 items-end justify-center gap-1">
                   {hasBill && (
                     <span
                       className="h-1.5 w-1.5 rounded-full bg-blue-500 dark:bg-blue-400"
                       aria-label="Has bills due"
+                    />
+                  )}
+                  {hasIncome && (
+                    <span
+                      className="h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400"
+                      aria-label="Has income expected"
                     />
                   )}
                 </div>

@@ -7,6 +7,7 @@ import {
 } from "./_helpers";
 import MonthlyViewClient, {
   type BillRow,
+  type IncomeRow,
 } from "./_components/MonthlyViewClient/MonthlyViewClient";
 
 type BillInstanceWithTemplate = {
@@ -94,6 +95,22 @@ export default async function MonthlyViewPage({
     paid: i.paid,
   }));
 
+  // Income entries for this month. Free-form rows (no template), ordered
+  // by expected date with rows that have no date sinking to the bottom.
+  const { data: rawIncomeEntries } = await supabase
+    .from("income_entries")
+    .select("id, name, amount, expected_date, received")
+    .eq("month_id", monthRow.id)
+    .order("expected_date", { ascending: true, nullsFirst: false });
+
+  const incomeEntries: IncomeRow[] = (rawIncomeEntries ?? []).map((i) => ({
+    id: i.id,
+    name: i.name,
+    amount: i.amount,
+    expected_date: i.expected_date,
+    received: i.received,
+  }));
+
   // Build the deduped list of days in this month that have bills due.
   // due_date is a "YYYY-MM-DD" string; the third segment is the day. We
   // parse it directly without going through Date() to avoid timezone shifts.
@@ -105,6 +122,17 @@ export default async function MonthlyViewPage({
   }
   const daysWithBills = Array.from(daysWithBillsSet).sort((a, b) => a - b);
 
+  // Same pattern for income entries: dedupe days with expected dates in
+  // this month. Entries with no expected_date contribute nothing to
+  // calendar badges.
+  const daysWithIncomeSet = new Set<number>();
+  for (const i of incomeEntries) {
+    if (!i.expected_date) continue;
+    const day = parseInt(i.expected_date.split("-")[2], 10);
+    if (Number.isInteger(day)) daysWithIncomeSet.add(day);
+  }
+  const daysWithIncome = Array.from(daysWithIncomeSet).sort((a, b) => a - b);
+
   const totalBills = instances.reduce(
     (sum, i) => sum + Number(i.amount),
     0
@@ -113,6 +141,20 @@ export default async function MonthlyViewPage({
     .filter((i) => i.paid)
     .reduce((sum, i) => sum + Number(i.amount), 0);
   const remainingBills = totalBills - paidBills;
+
+  const totalIncome = incomeEntries.reduce(
+    (sum, e) => sum + Number(e.amount),
+    0
+  );
+  const receivedIncome = incomeEntries
+    .filter((e) => e.received)
+    .reduce((sum, e) => sum + Number(e.amount), 0);
+  const stillToReceive = totalIncome - receivedIncome;
+
+  // Expected net: how much is left at the end of the month if every
+  // expected income arrives and every scheduled bill is paid. Piece 6
+  // will add one-off expenses and a "net so far" line using actuals.
+  const netExpected = totalIncome - totalBills;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -124,13 +166,19 @@ export default async function MonthlyViewPage({
         month={month}
         monthOptions={monthOptions}
         daysWithBills={daysWithBills}
+        daysWithIncome={daysWithIncome}
         locked={locked}
         monthId={monthRow.id}
         unlockReason={monthRow.unlock_reason}
         instances={instances}
+        incomeEntries={incomeEntries}
         totalBills={totalBills}
         paidBills={paidBills}
         remainingBills={remainingBills}
+        totalIncome={totalIncome}
+        receivedIncome={receivedIncome}
+        stillToReceive={stillToReceive}
+        netExpected={netExpected}
       />
     </div>
   );

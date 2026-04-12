@@ -269,6 +269,17 @@ A calendar strip displayed **above the monthly view content**, only on `/months/
 - Year-at-a-glance heatmap
 - Mobile drawer for the calendar (hidden on mobile entirely for now)
 
+### Deferred — two-column layout polish (after Piece 5)
+
+Once Piece 5 lands, the monthly view becomes denser (income + bills + totals). The current single-column layout will start to feel cramped on desktop. Plan to refactor the desktop layout to a two-column grid:
+
+- **Left column — 1/4 width**: calendar strip (controls + grid)
+- **Right column — 3/4 width**: income section, bills section, totals strip
+
+Mobile stays single-column (the calendar grid is already hidden on mobile). The change is purely a Tailwind grid wrapper around the existing components in `MonthlyViewClient` — no data flow or component changes needed.
+
+Schedule: **after Piece 5 is fully complete** (5-1 through 5-7), before starting Piece 6.
+
 ---
 
 ## Piece 9 plan — Recurring income templates (deferred)

@@ -108,6 +108,33 @@ export async function checkBillInstanceEditable(
   return null;
 }
 
+// Same shape as checkBillInstanceEditable, but for income entries.
+// Kept as a parallel function rather than generalized so each table's
+// lookup is explicit and grep-able. If a third table needs this we
+// can extract a shared helper.
+export async function checkIncomeEntryEditable(
+  supabase: SupabaseClient,
+  entryId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("income_entries")
+    .select("months!inner(year, month, unlock_reason)")
+    .eq("id", entryId)
+    .single();
+
+  if (!data) return "Income entry not found";
+
+  const m = (data as unknown as {
+    months: { year: number; month: number; unlock_reason: string | null };
+  }).months;
+
+  if (isMonthLocked(m)) {
+    return "This month is locked. Unlock it before editing.";
+  }
+
+  return null;
+}
+
 // Format a year/month as a zero-padded URL segment: "/months/2026/04".
 export function monthUrl(year: number, month: number): string {
   return `/months/${year}/${String(month).padStart(2, "0")}`;

@@ -8,3 +8,7 @@
 export { toggleBillPaid } from "./actions/toggle-bill-paid";
 export { updateBillInstanceAmount } from "./actions/update-bill-instance-amount";
 export { unlockMonth } from "./actions/unlock-month";
+export { createIncomeEntry } from "./actions/create-income-entry";
+export { toggleIncomeReceived } from "./actions/toggle-income-received";
+export { updateIncomeAmount } from "./actions/update-income-amount";
+export { deleteIncomeEntry } from "./actions/delete-income-entry";
