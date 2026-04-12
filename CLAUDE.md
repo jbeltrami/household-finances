@@ -170,8 +170,8 @@ Net so far (received - paid)   R$18.530
 | ----- | -------------------------------------------------------------------------------- | ------- |
 | 1     | Supabase schema + auth + personal space auto-creation trigger                    | ✅ Done |
 | 2     | Next.js scaffold + Supabase client setup + Google OAuth login flow               | ✅ Done |
-| 3     | Recurring bill templates — create, edit, deactivate                              | ⬜ Next |
-| 4     | Monthly view — navigate months, auto-generate bill instances, paid/unpaid toggle | ⬜      |
+| 3     | Recurring bill templates — create, edit, deactivate                              | ✅ Done |
+| 4     | Monthly view — navigate months, auto-generate bill instances, paid/unpaid toggle | ⬜ Next |
 | 5     | Income entries — add/edit/mark received within a month                           | ⬜      |
 | 6     | One-off expenses + monthly balance calculation                                   | ⬜      |
 | 7     | Savings funds — create fund, log contributions, running total                    | ⬜      |
@@ -187,7 +187,10 @@ Net so far (received - paid)   R$18.530
 - Auth provider: Google OAuth only
 - Site URL: `http://localhost:3000` (update to Vercel URL after first deploy)
 - Redirect URLs: `http://localhost:3000/**` (add Vercel URL after first deploy)
-- Schema file: `supabase/migrations/0001_initial_schema.sql`
+- Schema files in `supabase/migrations/`:
+  - `0001_initial_schema.sql` — initial tables and trigger
+  - `0002_rls_policies.sql` — RLS enabled on all tables; SELECT/INSERT/UPDATE/DELETE policies for `spaces`, `space_members`, and `recurring_bill_templates`
+  - `0003_bill_templates_unique_active_name.sql` — partial unique index preventing two active templates with the same name in a space
 
 ### Environment variables needed
 
@@ -210,18 +213,35 @@ home-finances-app/
 ├── .env.local                             ← never commit (in .gitignore)
 ├── supabase/
 │   └── migrations/
-│       └── 0001_initial_schema.sql        ← full schema
+│       ├── 0001_initial_schema.sql        ← initial tables + trigger
+│       ├── 0002_rls_policies.sql          ← RLS + policies (Piece 3)
+│       └── 0003_bill_templates_unique_active_name.sql  ← partial unique index
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx                     ← root layout (HTML shell, fonts, global CSS)
+│   │   ├── layout.tsx                     ← root layout (HTML shell, fonts, navbar)
 │   │   ├── page.tsx                       ← home page (protected)
 │   │   ├── globals.css                    ← Tailwind imports
 │   │   ├── login/
 │   │   │   └── page.tsx                   ← Google OAuth login page
-│   │   └── auth/
-│   │       └── callback/
-│   │           └── route.ts               ← OAuth callback handler
-│   ├── components/                        ← shared UI components
+│   │   ├── auth/
+│   │   │   └── callback/
+│   │   │       └── route.ts               ← OAuth callback handler
+│   │   └── bills/                         ← recurring bill templates (Piece 3)
+│   │       ├── page.tsx                   ← list + create form
+│   │       ├── actions.ts                 ← barrel re-export of server actions
+│   │       ├── actions/
+│   │       │   ├── _helpers.ts            ← shared helpers (no "use server")
+│   │       │   ├── create-bill-template.ts
+│   │       │   ├── update-bill-template.ts
+│   │       │   └── deactivate-bill-template.ts
+│   │       ├── form-state.ts              ← FormState type + initial state
+│   │       ├── CreateBillTemplateForm.tsx ← client component, useActionState
+│   │       └── [id]/edit/
+│   │           ├── page.tsx               ← edit page
+│   │           └── EditBillTemplateForm.tsx
+│   ├── components/
+│   │   ├── Navbar.tsx                     ← server component, reads user
+│   │   └── SignOutButton.tsx              ← client component
 │   ├── lib/
 │   │   └── supabase/
 │   │       ├── client.ts                  ← browser Supabase client
@@ -249,3 +269,7 @@ home-finances-app/
 - **Supabase client split** — use `@/lib/supabase/client` in Client Components (browser) and `@/lib/supabase/server` in Server Components / Route Handlers; never mix them
 - **Proxy runs on every request** — `src/proxy.ts` (formerly `middleware.ts`, renamed in Next.js 16+) refreshes the auth session and protects routes; `/login` and `/auth/callback` are public, everything else requires authentication
 - **Publishable key (not anon key)** — Supabase deprecated legacy anon/service_role keys; use `sb_publishable_...` for the client and `sb_secret_...` for server-only operations
+- **Server actions return state, don't throw** — actions called via `useActionState` return `{ error: string | null }` so the form can render the error inline. Throwing causes Next.js to show the error boundary, which is wrong for predictable failures like validation errors. Reserve throws for true crashes
+- **`"use server"` files only export async functions** — types and constants must live in sibling files (e.g., `form-state.ts`). Internal sync helpers go in a non-`"use server"` file like `_helpers.ts`. The barrel `actions.ts` is also non-`"use server"` so it can re-export anything
+- **Active template names are unique per space** — partial unique index `(space_id, lower(trim(name))) WHERE active = true`. To handle duplicate-violation errors gracefully, action code checks for Postgres error code `23505` and returns a friendly message
+- **`redirect()` must live outside try/catch** — `redirect()` works by throwing a Next.js sentinel error; if you catch it inside try/catch, you'll mistake the success case for a failure
