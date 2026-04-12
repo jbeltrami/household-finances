@@ -206,7 +206,8 @@ src/app/months/[year]/[month]/
 | 3     | Recurring bill templates — create, edit, deactivate            | Done   |
 | 4a    | Monthly view core — routes, on-demand creation, paid toggle    | Done   |
 | 4b    | Monthly view top calendar — calendar strip, badges, picker     | Done   |
-| 5     | Income entries — add/edit/mark received within a month         | Next   |
+| 5     | Income entries — add/edit/mark received (one-off only)         | Next   |
 | 6     | One-off expenses + monthly balance calculation                 | —      |
 | 7     | Savings funds — create fund, log contributions, running total  | —      |
 | 8     | Shared spaces — household creation, invite flow, aggregate     | —      |
+| 9     | Recurring income templates — biweekly / monthly cadence        | —      |

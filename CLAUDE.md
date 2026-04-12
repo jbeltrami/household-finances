@@ -173,10 +173,11 @@ Net so far (received - paid)   R$18.530
 | 3     | Recurring bill templates — create, edit, deactivate                              | ✅ Done |
 | 4a    | Monthly view core — routes, on-demand creation, paid toggle, navigation          | ✅ Done |
 | 4b    | Monthly view top calendar — calendar strip, badges, month picker dropdown        | ✅ Done |
-| 5     | Income entries — add/edit/mark received within a month                           | ⬜ Next |
+| 5     | Income entries — add/edit/mark received within a month (one-off only)            | ⬜ Next |
 | 6     | One-off expenses + monthly balance calculation                                   | ⬜      |
 | 7     | Savings funds — create fund, log contributions, running total                    | ⬜      |
 | 8     | Shared spaces — household creation, invite flow, aggregate view                  | ⬜      |
+| 9     | Recurring income templates — biweekly / monthly cadence, instance generation     | ⬜      |
 
 ---
 
@@ -267,6 +268,43 @@ A calendar strip displayed **above the monthly view content**, only on `/months/
 - Drag-and-drop to reschedule bills
 - Year-at-a-glance heatmap
 - Mobile drawer for the calendar (hidden on mobile entirely for now)
+
+---
+
+## Piece 9 plan — Recurring income templates (deferred)
+
+Income recurrence was originally considered alongside Piece 5 but split out so Piece 5 can ship simple one-off entries first. Income recurrence is harder than bill recurrence for one reason: real-world paychecks often follow a **biweekly cycle** (every other Thursday) that doesn't align with month boundaries. A given calendar month can contain 0, 1, 2, or 3 paychecks depending on alignment.
+
+**Data model sketch:**
+
+```sql
+recurring_income_templates
+  id, space_id
+  name, default_amount, currency
+  cadence              -- 'biweekly' | 'monthly'
+  biweekly_anchor      -- date, only set when cadence='biweekly' (e.g. the first paycheck date)
+  monthly_day          -- int 1-31, only set when cadence='monthly'
+  active, created_at
+  CHECK (
+    (cadence = 'biweekly' AND biweekly_anchor IS NOT NULL AND monthly_day IS NULL) OR
+    (cadence = 'monthly'  AND monthly_day IS NOT NULL AND biweekly_anchor IS NULL)
+  )
+```
+
+`income_entries` will gain a nullable `template_id` so generated entries link back to their template. One-off entries (the only kind in Piece 5) leave it null.
+
+**Instance generation logic:**
+
+- **Monthly cadence**: same as bills — one entry per month on `monthly_day`
+- **Biweekly cadence**: starting from `biweekly_anchor`, walk forward in 14-day steps; create an entry for every date that lands in the month being generated (0, 1, 2, or 3 per month)
+
+**UI surface:**
+
+- New `/income` page mirroring `/bills` (list active templates, create, edit, deactivate)
+- Cadence picker in the create/edit form (Quinzenal / Mensal)
+- Monthly view continues to support both template-generated entries (Piece 9) and free-form one-offs (Piece 5)
+
+This piece is strictly additive to Piece 5: existing one-off entries stay valid, the `template_id` column is nullable.
 
 ---
 
