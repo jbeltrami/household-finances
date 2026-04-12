@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { deactivateBillTemplate } from "./actions";
-import CreateBillTemplateForm from "./CreateBillTemplateForm";
+import CreateBillTemplateForm from "./_components/CreateBillTemplateForm/CreateBillTemplateForm";
 
 const brlFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",

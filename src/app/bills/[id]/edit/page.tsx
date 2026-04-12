@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import EditBillTemplateForm from "./EditBillTemplateForm";
+import EditBillTemplateForm from "./_components/EditBillTemplateForm/EditBillTemplateForm";
 
 export default async function EditBillTemplatePage({
   params,

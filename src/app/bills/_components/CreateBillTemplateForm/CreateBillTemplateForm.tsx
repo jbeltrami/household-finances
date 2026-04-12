@@ -1,27 +1,12 @@
 "use client";
 
 import { useActionState } from "react";
-import Link from "next/link";
-import { updateBillTemplate } from "../../actions";
+import { createBillTemplate } from "../../actions";
 import { initialFormState } from "../../form-state";
 
-type Template = {
-  id: string;
-  name: string;
-  default_amount: number | string;
-  due_day: number | null;
-};
-
-export default function EditBillTemplateForm({
-  template,
-}: {
-  template: Template;
-}) {
-  // Bind the template id so the server action's signature matches what
-  // useActionState expects: (prevState, formData) => newState.
-  const boundAction = updateBillTemplate.bind(null, template.id);
+export default function CreateBillTemplateForm() {
   const [state, formAction, isPending] = useActionState(
-    boundAction,
+    createBillTemplate,
     initialFormState
   );
 
@@ -30,7 +15,10 @@ export default function EditBillTemplateForm({
       action={formAction}
       className="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
     >
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
+        Add a template
+      </h2>
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="sm:col-span-2">
           <label
             htmlFor="name"
@@ -43,7 +31,7 @@ export default function EditBillTemplateForm({
             name="name"
             type="text"
             required
-            defaultValue={template.name}
+            placeholder="e.g. Claro"
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
@@ -61,7 +49,7 @@ export default function EditBillTemplateForm({
             min="0"
             step="0.01"
             required
-            defaultValue={template.default_amount}
+            placeholder="0.00"
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
@@ -78,24 +66,11 @@ export default function EditBillTemplateForm({
             type="number"
             min="1"
             max="31"
-            defaultValue={template.due_day ?? ""}
+            placeholder="1–31"
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
       </div>
-
-      <label className="mt-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input
-          type="checkbox"
-          name="cascade"
-          defaultChecked
-          className="mt-0.5"
-        />
-        <span>
-          Apply amount change to unpaid bill instances in the current and
-          future months. Past months are left untouched.
-        </span>
-      </label>
 
       {state.error && (
         <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
@@ -103,19 +78,13 @@ export default function EditBillTemplateForm({
         </p>
       )}
 
-      <div className="mt-4 flex justify-end gap-2">
-        <Link
-          href="/bills"
-          className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-        >
-          Cancel
-        </Link>
+      <div className="mt-4 flex justify-end">
         <button
           type="submit"
           disabled={isPending}
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
         >
-          {isPending ? "Saving…" : "Save changes"}
+          {isPending ? "Adding…" : "Add template"}
         </button>
       </div>
     </form>

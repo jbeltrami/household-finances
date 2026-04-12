@@ -1,12 +1,27 @@
 "use client";
 
 import { useActionState } from "react";
-import { createBillTemplate } from "./actions";
-import { initialFormState } from "./form-state";
+import Link from "next/link";
+import { updateBillTemplate } from "../../../../actions";
+import { initialFormState } from "../../../../form-state";
 
-export default function CreateBillTemplateForm() {
+type Template = {
+  id: string;
+  name: string;
+  default_amount: number | string;
+  due_day: number | null;
+};
+
+export default function EditBillTemplateForm({
+  template,
+}: {
+  template: Template;
+}) {
+  // Bind the template id so the server action's signature matches what
+  // useActionState expects: (prevState, formData) => newState.
+  const boundAction = updateBillTemplate.bind(null, template.id);
   const [state, formAction, isPending] = useActionState(
-    createBillTemplate,
+    boundAction,
     initialFormState
   );
 
@@ -15,10 +30,7 @@ export default function CreateBillTemplateForm() {
       action={formAction}
       className="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
     >
-      <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-        Add a template
-      </h2>
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="sm:col-span-2">
           <label
             htmlFor="name"
@@ -31,7 +43,7 @@ export default function CreateBillTemplateForm() {
             name="name"
             type="text"
             required
-            placeholder="e.g. Claro"
+            defaultValue={template.name}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
@@ -49,7 +61,7 @@ export default function CreateBillTemplateForm() {
             min="0"
             step="0.01"
             required
-            placeholder="0.00"
+            defaultValue={template.default_amount}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
@@ -66,11 +78,24 @@ export default function CreateBillTemplateForm() {
             type="number"
             min="1"
             max="31"
-            placeholder="1–31"
+            defaultValue={template.due_day ?? ""}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
       </div>
+
+      <label className="mt-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+        <input
+          type="checkbox"
+          name="cascade"
+          defaultChecked
+          className="mt-0.5"
+        />
+        <span>
+          Apply amount change to unpaid bill instances in the current and
+          future months. Past months are left untouched.
+        </span>
+      </label>
 
       {state.error && (
         <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
@@ -78,13 +103,19 @@ export default function CreateBillTemplateForm() {
         </p>
       )}
 
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex justify-end gap-2">
+        <Link
+          href="/bills"
+          className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+        >
+          Cancel
+        </Link>
         <button
           type="submit"
           disabled={isPending}
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
         >
-          {isPending ? "Adding…" : "Add template"}
+          {isPending ? "Saving…" : "Save changes"}
         </button>
       </div>
     </form>
