@@ -226,7 +226,7 @@ home-finances-app/
 │   │   └── supabase/
 │   │       ├── client.ts                  ← browser Supabase client
 │   │       └── server.ts                  ← server Supabase client
-│   ├── middleware.ts                      ← auth session refresh + route protection
+│   ├── proxy.ts                           ← auth session refresh + route protection (Next.js 16+)
 │   └── types/
 │       └── database.ts                    ← generated or manual DB types
 └── public/
@@ -247,5 +247,5 @@ home-finances-app/
 - **Trigger naming** — the personal space trigger is `on_auth_user_created` on `auth.users`; do not drop or rename it
 - **Never commit .env.local** — Supabase URL and publishable key must stay out of the repository
 - **Supabase client split** — use `@/lib/supabase/client` in Client Components (browser) and `@/lib/supabase/server` in Server Components / Route Handlers; never mix them
-- **Middleware runs on every request** — refreshes the auth session and protects routes; `/login` and `/auth/callback` are public, everything else requires authentication
+- **Proxy runs on every request** — `src/proxy.ts` (formerly `middleware.ts`, renamed in Next.js 16+) refreshes the auth session and protects routes; `/login` and `/auth/callback` are public, everything else requires authentication
 - **Publishable key (not anon key)** — Supabase deprecated legacy anon/service_role keys; use `sb_publishable_...` for the client and `sb_secret_...` for server-only operations

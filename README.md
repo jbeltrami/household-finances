@@ -74,7 +74,7 @@ Two client factories in `src/lib/supabase/`:
 
 Both read from the same env vars and produce functionally identical clients — the split exists because the browser and server access cookies differently.
 
-### Middleware (`src/middleware.ts`)
+### Proxy (`src/proxy.ts`)
 
 Runs on every request (except static assets). Does two things:
 
@@ -84,9 +84,11 @@ Runs on every request (except static assets). Does two things:
 
 Public routes (not protected): `/login`, `/auth/callback`.
 
+> **Note**: In Next.js 16+, the `middleware` file convention was renamed to `proxy`. Same functionality, clearer name.
+
 ### Login flow
 
-1. User visits any page → middleware redirects to `/login`
+1. User visits any page → proxy redirects to `/login`
 2. User clicks "Sign in with Google" → `signInWithOAuth` redirects to Google
 3. User authenticates with Google → Google redirects back to `/auth/callback?code=...`
 4. Callback route exchanges the code for a session → redirects to `/`
