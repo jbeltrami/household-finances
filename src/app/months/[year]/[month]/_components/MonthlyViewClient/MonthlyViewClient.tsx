@@ -83,26 +83,34 @@ export default function MonthlyViewClient({
   };
 
   return (
-    <>
-      <CalendarStrip
-        year={year}
-        month={month}
-        monthOptions={monthOptions}
-        daysWithBills={daysWithBills}
-        daysWithIncome={daysWithIncome}
-        highlightedDay={highlightedDay}
-        onSelectDay={handleSelectDay}
-      />
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+      {/* Left column on desktop (1/4 width) — calendar controls + grid.
+          On mobile this is the first stacked row; only the controls are
+          visible there because the grid inside CalendarStrip is hidden
+          below the md breakpoint. */}
+      <aside className="md:col-span-1">
+        <CalendarStrip
+          year={year}
+          month={month}
+          monthOptions={monthOptions}
+          daysWithBills={daysWithBills}
+          daysWithIncome={daysWithIncome}
+          highlightedDay={highlightedDay}
+          onSelectDay={handleSelectDay}
+        />
+      </aside>
 
-      {locked && <UnlockBanner monthId={monthId} year={year} month={month} />}
+      {/* Right column on desktop (3/4 width) — everything else. */}
+      <div className="md:col-span-3">
+        {locked && <UnlockBanner monthId={monthId} year={year} month={month} />}
 
-      {!locked && unlockReason && (
-        <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-          Unlocked: {unlockReason}
-        </p>
-      )}
+        {!locked && unlockReason && (
+          <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+            Unlocked: {unlockReason}
+          </p>
+        )}
 
-      <section className="mt-6">
+        <section className="mt-6">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
             Income
@@ -235,31 +243,32 @@ export default function MonthlyViewClient({
             </dl>
           </>
         )}
-      </section>
-
-      {hasAnyData && (
-        <section className="mt-8 border-t border-gray-200 pt-6 dark:border-gray-700">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-              Net (expected)
-            </h2>
-            <p
-              className={`text-2xl font-semibold ${
-                netExpected > 0
-                  ? "text-green-600 dark:text-green-400"
-                  : netExpected < 0
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-gray-900 dark:text-gray-100"
-              }`}
-            >
-              {brlFormatter.format(netExpected)}
-            </p>
-          </div>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Total income minus total bills.
-          </p>
         </section>
-      )}
-    </>
+
+        {hasAnyData && (
+          <section className="mt-8 border-t border-gray-200 pt-6 dark:border-gray-700">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
+                Net (expected)
+              </h2>
+              <p
+                className={`text-2xl font-semibold ${
+                  netExpected > 0
+                    ? "text-green-600 dark:text-green-400"
+                    : netExpected < 0
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-gray-900 dark:text-gray-100"
+                }`}
+              >
+                {brlFormatter.format(netExpected)}
+              </p>
+            </div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Total income minus total bills.
+            </p>
+          </section>
+        )}
+      </div>
+    </div>
   );
 }

@@ -173,8 +173,8 @@ Net so far (received - paid)   R$18.530
 | 3     | Recurring bill templates — create, edit, deactivate                              | ✅ Done |
 | 4a    | Monthly view core — routes, on-demand creation, paid toggle, navigation          | ✅ Done |
 | 4b    | Monthly view top calendar — calendar strip, badges, month picker dropdown        | ✅ Done |
-| 5     | Income entries — add/edit/mark received within a month (one-off only)            | ⬜ Next |
-| 6     | One-off expenses + monthly balance calculation                                   | ⬜      |
+| 5     | Income entries — add/edit/mark received within a month (one-off only)            | ✅ Done |
+| 6     | One-off expenses + monthly balance calculation                                   | ⬜ Next |
 | 7     | Savings funds — create fund, log contributions, running total                    | ⬜      |
 | 8     | Shared spaces — household creation, invite flow, aggregate view                  | ⬜      |
 | 9     | Recurring income templates — biweekly / monthly cadence, instance generation     | ⬜      |
@@ -269,16 +269,14 @@ A calendar strip displayed **above the monthly view content**, only on `/months/
 - Year-at-a-glance heatmap
 - Mobile drawer for the calendar (hidden on mobile entirely for now)
 
-### Deferred — two-column layout polish (after Piece 5)
+### Two-column layout (shipped alongside Piece 5)
 
-Once Piece 5 lands, the monthly view becomes denser (income + bills + totals). The current single-column layout will start to feel cramped on desktop. Plan to refactor the desktop layout to a two-column grid:
+The monthly view uses a two-column grid on desktop (`md:` and up), single column on mobile:
 
-- **Left column — 1/4 width**: calendar strip (controls + grid)
-- **Right column — 3/4 width**: income section, bills section, totals strip
+- **Left column — `md:col-span-1` of `md:grid-cols-4`**: calendar strip (controls + grid)
+- **Right column — `md:col-span-3`**: income section, bills section, net (expected) section
 
-Mobile stays single-column (the calendar grid is already hidden on mobile). The change is purely a Tailwind grid wrapper around the existing components in `MonthlyViewClient` — no data flow or component changes needed.
-
-Schedule: **after Piece 5 is fully complete** (5-1 through 5-7), before starting Piece 6.
+Mobile stays single-column with the calendar grid hidden via the existing `hidden md:block` class on the grid. The page wrapper uses `max-w-6xl` so the desktop layout has room to breathe. CalendarStrip's controls are stacked (prev/dropdown/next on row 1, Today on row 2, full width) so they fit in a narrow desktop column.
 
 ---
 
@@ -332,6 +330,7 @@ This piece is strictly additive to Piece 5: existing one-off entries stay valid,
   - `0002_rls_policies.sql` — RLS enabled on all tables; SELECT/INSERT/UPDATE/DELETE policies for `spaces`, `space_members`, and `recurring_bill_templates`
   - `0003_bill_templates_unique_active_name.sql` — partial unique index preventing two active templates with the same name in a space
   - `0004_months_locking_and_rls.sql` — dropped `locked` / `locked_at` columns from `months` (check-on-read locking); added SELECT/INSERT/UPDATE policies for `months` and `bill_instances`
+  - `0005_income_entries_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `income_entries` (Piece 5)
 
 ### Environment variables needed
 
@@ -385,24 +384,32 @@ home-finances-app/
 │   │   │       └── _components/
 │   │   │           └── EditBillTemplateForm/
 │   │   │               └── EditBillTemplateForm.tsx
-│   │   └── months/                        ← monthly view (Piece 4a + 4b)
+│   │   └── months/                        ← monthly view (Pieces 4a, 4b, 5)
 │   │       └── [year]/[month]/
-│   │           ├── page.tsx               ← server component, fetches data
+│   │           ├── page.tsx               ← server component, fetches data, two-column wrapper
 │   │           ├── _helpers.ts            ← shared route helpers (sync + async)
 │   │           ├── actions.ts             ← barrel re-export of server actions
 │   │           ├── actions/
 │   │           │   ├── toggle-bill-paid.ts
 │   │           │   ├── update-bill-instance-amount.ts
-│   │           │   └── unlock-month.ts
+│   │           │   ├── unlock-month.ts
+│   │           │   ├── create-income-entry.ts          ← lazy-creates target month
+│   │           │   ├── toggle-income-received.ts
+│   │           │   ├── update-income-amount.ts
+│   │           │   └── delete-income-entry.ts
 │   │           ├── form-state.ts          ← FormState type + initial state
 │   │           └── _components/
 │   │               ├── MonthlyViewClient/
-│   │               │   └── MonthlyViewClient.tsx   ← client wrapper, owns highlight state
+│   │               │   └── MonthlyViewClient.tsx   ← client wrapper, owns highlight state, two-column grid
 │   │               ├── CalendarStrip/
-│   │               │   ├── CalendarStrip.tsx       ← client, controls + grid + badges
+│   │               │   ├── CalendarStrip.tsx       ← client, controls + grid + bill/income badges
 │   │               │   └── _helpers.ts             ← buildCalendarGrid (private)
 │   │               ├── BillInstanceRow/
 │   │               │   └── BillInstanceRow.tsx     ← client, paid toggle + edit + highlight
+│   │               ├── IncomeEntryRow/
+│   │               │   └── IncomeEntryRow.tsx      ← client, received toggle + edit + delete + highlight
+│   │               ├── CreateIncomeEntryForm/
+│   │               │   └── CreateIncomeEntryForm.tsx  ← client, accordion form
 │   │               └── UnlockBanner/
 │   │                   └── UnlockBanner.tsx        ← client, unlock-with-reason flow
 │   ├── components/
@@ -444,3 +451,5 @@ home-finances-app/
 - **Sub-routes get their own `_components/`** — the edit page at `bills/[id]/edit/` has its own `_components/` next to it. Component locality matches route locality
 - **Lifted client state for cross-component communication** — when two child client components need to share state (e.g., calendar selects a day → bills list highlights), wrap them in a single client parent that owns the state via `useState`. Use the `key={...}` prop on the wrapper to reset the state when an upstream identity changes (e.g., year/month)
 - **Calendar grid is always 6×7 = 42 cells** — `buildCalendarGrid` pads with leading days from the previous month and trailing days from the next month so the grid height stays stable across navigation
+- **Income entries are routed by their `expected_date`, not the viewed month** — when the user adds income on April's page with a date in June, `createIncomeEntry` parses the date, calls `getOrCreateMonth` for the target month, and stores the entry under that month's `month_id`. The lock check runs against the **target** month, not the viewed month, so adding income to a past locked month is blocked even when the page you're on is unlocked
+- **Don't `setState` inside `useEffect` to react to action state** — the React 19 lint rule `react-hooks/set-state-in-effect` flags this. Use `useTransition` + a manual `handleX(formData)` function that calls the server action and handles success/error in the same callback. `useActionState` is still fine when you don't need to react to its state changes (e.g. server-side `redirect()` after success)

@@ -58,48 +58,49 @@ export default function CalendarStrip({
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Link
-            href={monthUrl(prev.year, prev.month)}
-            aria-label="Previous month"
-            className="flex h-9 w-9 items-center justify-center rounded-md text-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-          >
-            ←
-          </Link>
+      {/* Controls: prev / dropdown / next on top, Today on its own row.
+          This stacked layout works for both a full-width mobile column
+          and a narrow desktop sidebar without reflowing. */}
+      <div className="flex items-center gap-2">
+        <Link
+          href={monthUrl(prev.year, prev.month)}
+          aria-label="Previous month"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+        >
+          ←
+        </Link>
 
-          <select
-            value={currentValue}
-            onChange={handleChange}
-            aria-label="Jump to month"
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 hover:bg-gray-50 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
-          >
-            {monthOptions.map((opt) => {
-              const value = `${opt.year}-${String(opt.month).padStart(2, "0")}`;
-              return (
-                <option key={value} value={value}>
-                  {capitalize(formatMonthLabel(opt.year, opt.month))}
-                </option>
-              );
-            })}
-          </select>
-
-          <Link
-            href={monthUrl(next.year, next.month)}
-            aria-label="Next month"
-            className="flex h-9 w-9 items-center justify-center rounded-md text-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-          >
-            →
-          </Link>
-        </div>
+        <select
+          value={currentValue}
+          onChange={handleChange}
+          aria-label="Jump to month"
+          className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 hover:bg-gray-50 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+        >
+          {monthOptions.map((opt) => {
+            const value = `${opt.year}-${String(opt.month).padStart(2, "0")}`;
+            return (
+              <option key={value} value={value}>
+                {capitalize(formatMonthLabel(opt.year, opt.month))}
+              </option>
+            );
+          })}
+        </select>
 
         <Link
-          href="/"
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+          href={monthUrl(next.year, next.month)}
+          aria-label="Next month"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
         >
-          Today
+          →
         </Link>
       </div>
+
+      <Link
+        href="/"
+        className="mt-2 block rounded-md py-1.5 text-center text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+      >
+        Today
+      </Link>
 
       {/* Calendar grid — desktop only */}
       <div className="mt-4 hidden md:block">

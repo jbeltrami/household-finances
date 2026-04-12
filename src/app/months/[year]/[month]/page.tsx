@@ -157,7 +157,7 @@ export default async function MonthlyViewPage({
   const netExpected = totalIncome - totalBills;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-8">
       <MonthlyViewClient
         // Remount (and reset highlighted-day state) whenever the URL
         // points at a different month.
