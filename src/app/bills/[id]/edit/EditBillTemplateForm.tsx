@@ -28,13 +28,13 @@ export default function EditBillTemplateForm({
   return (
     <form
       action={formAction}
-      className="mt-6 rounded-lg border border-gray-200 bg-white p-4"
+      className="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="sm:col-span-2">
           <label
             htmlFor="name"
-            className="block text-xs font-medium text-gray-700"
+            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
             Name
           </label>
@@ -44,13 +44,13 @@ export default function EditBillTemplateForm({
             type="text"
             required
             defaultValue={template.name}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
         <div>
           <label
             htmlFor="default_amount"
-            className="block text-xs font-medium text-gray-700"
+            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
             Default amount (BRL)
           </label>
@@ -62,13 +62,13 @@ export default function EditBillTemplateForm({
             step="0.01"
             required
             defaultValue={template.default_amount}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
         <div>
           <label
             htmlFor="due_day"
-            className="block text-xs font-medium text-gray-700"
+            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
             Due day (optional)
           </label>
@@ -79,12 +79,12 @@ export default function EditBillTemplateForm({
             min="1"
             max="31"
             defaultValue={template.due_day ?? ""}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
       </div>
 
-      <label className="mt-4 flex items-start gap-2 text-sm text-gray-700">
+      <label className="mt-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
         <input
           type="checkbox"
           name="cascade"
@@ -98,7 +98,7 @@ export default function EditBillTemplateForm({
       </label>
 
       {state.error && (
-        <p className="mt-3 text-sm text-red-600" role="alert">
+        <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
           {state.error}
         </p>
       )}
@@ -106,14 +106,14 @@ export default function EditBillTemplateForm({
       <div className="mt-4 flex justify-end gap-2">
         <Link
           href="/bills"
-          className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+          className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
         >
           Cancel
         </Link>
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
         >
           {isPending ? "Saving…" : "Save changes"}
         </button>

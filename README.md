@@ -54,6 +54,7 @@ The schema lives in `supabase/migrations/`:
 | `0001_initial_schema.sql` | All tables and the `on_auth_user_created` trigger that auto-creates a personal space on first login |
 | `0002_rls_policies.sql` | Row Level Security enabled on all tables. Policies for `spaces`, `space_members`, and `recurring_bill_templates` (more added per piece) |
 | `0003_bill_templates_unique_active_name.sql` | Partial unique index preventing two active templates with the same name in a space |
+| `0004_months_locking_and_rls.sql` | Drops `locked` / `locked_at` from `months` (check-on-read locking). Adds SELECT/INSERT/UPDATE policies for `months` and `bill_instances` |
 
 Apply migrations by pasting their contents into the Supabase dashboard SQL editor in order. The `is_active_member(space_id)` helper function (defined in `0002`) is `SECURITY DEFINER` to avoid recursion when policies need to check membership against `space_members` itself.
 
@@ -139,6 +140,47 @@ src/app/bills/
 - **Actions return `{ error: string | null }`** for predictable failures (validation, duplicate name) so forms can render the error inline via `useActionState`. Reserve throws for unexpected crashes
 - **`redirect()` lives outside try/catch** — it works by throwing a Next.js sentinel error; catching it would misclassify the success case as a failure
 
+## Monthly view (Piece 4a)
+
+The monthly view at `/months/[year]/[month]` is the heart of the app. After sign-in, `/` redirects to the current month (e.g. `/months/2026/04`). Every month has its own bookmarkable URL.
+
+### Capabilities
+
+- **On-demand month + bill instance creation** — visiting a month that doesn't yet exist creates a `months` row and one `bill_instance` per active bill template, in one page render. Revisiting the same month reuses the existing data
+- **Paid / pending toggle** — clicking the status pill on any bill flips `bill_instances.paid` via a server action
+- **Per-instance amount override** — "Edit" opens an inline input. Saving updates only that one `bill_instance.amount`, leaving the template untouched (this is how "Unimed was R$1.200 just this month" is modeled)
+- **Month navigation** — prev, next, and "Today" controls on the header
+- **Past-month locking (check-on-read)** — a past month is locked unless it has an `unlock_reason`. The UI hides edit affordances and the paid toggle, and every mutation server action re-checks before writing
+- **Unlock flow** — an amber banner on locked months opens an inline form requiring a written reason (min 5 chars). On success the reason is stored in `months.unlock_reason`, the banner vanishes, and the bills become editable
+
+### File layout
+
+```
+src/app/months/[year]/[month]/
+├── page.tsx                               ← server component, main view
+├── _helpers.ts                            ← getOrCreateMonth, isMonthLocked,
+│                                             checkBillInstanceEditable, monthUrl,
+│                                             prevMonth, nextMonth, dueDateFor,
+│                                             formatMonthLabel
+├── actions.ts                             ← barrel re-export
+├── actions/
+│   ├── toggle-bill-paid.ts                ← "use server"
+│   ├── update-bill-instance-amount.ts     ← "use server"
+│   └── unlock-month.ts                    ← "use server"
+├── form-state.ts                          ← FormState type + initial state
+├── MonthNavigation.tsx                    ← server, prev/next/today header
+├── UnlockBanner.tsx                       ← client, useActionState
+└── BillInstanceRow.tsx                    ← client, useActionState
+```
+
+### Design notes
+
+- **Lazy month creation handles races** — two concurrent visits to a brand-new month would both try to INSERT. The helper catches the unique-violation error (`23505`) and re-fetches, so the loser still gets the row without double-generating instances
+- **Check-on-read locking is a pure function** — `isMonthLocked({ year, month, unlock_reason })` compares against today's date. Current and future months are always editable; past months are editable only if `unlock_reason` is set. No scheduled jobs, no drift
+- **Defense in depth on mutations** — every mutation action (`toggleBillPaid`, `updateBillInstanceAmount`) fetches the bill's month via a nested select and runs `isMonthLocked` before writing. If the UI somehow lets a click through, the server still rejects it
+- **UTC timezone for due date display** — `date` columns in Postgres come back as `YYYY-MM-DD` strings. Parsing them with `new Date(...)` treats them as UTC midnight, which shifts to the previous day in Brazilian time (UTC-3). The row component formats with `Intl.DateTimeFormat(..., { timeZone: "UTC" })`
+- **Today button points to `/`** — not a hardcoded current-month URL. If the page sits open past midnight, clicking Today still resolves to the real current month via the redirect
+
 ## Build order
 
 | Piece | Scope                                                          | Status |
@@ -146,7 +188,8 @@ src/app/bills/
 | 1     | Supabase schema + auth + personal space auto-creation trigger  | Done   |
 | 2     | Next.js scaffold + Supabase client setup + Google OAuth login  | Done   |
 | 3     | Recurring bill templates — create, edit, deactivate            | Done   |
-| 4     | Monthly view — navigate months, auto-generate bill instances   | Next   |
+| 4a    | Monthly view core — routes, on-demand creation, paid toggle    | Done   |
+| 4b    | Monthly view top calendar — calendar strip, badges, picker     | Next   |
 | 5     | Income entries — add/edit/mark received within a month         | —      |
 | 6     | One-off expenses + monthly balance calculation                 | —      |
 | 7     | Savings funds — create fund, log contributions, running total  | —      |

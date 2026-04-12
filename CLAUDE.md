@@ -171,11 +171,102 @@ Net so far (received - paid)   R$18.530
 | 1     | Supabase schema + auth + personal space auto-creation trigger                    | ✅ Done |
 | 2     | Next.js scaffold + Supabase client setup + Google OAuth login flow               | ✅ Done |
 | 3     | Recurring bill templates — create, edit, deactivate                              | ✅ Done |
-| 4     | Monthly view — navigate months, auto-generate bill instances, paid/unpaid toggle | ⬜ Next |
+| 4a    | Monthly view core — routes, on-demand creation, paid toggle, navigation          | ✅ Done |
+| 4b    | Monthly view top calendar — calendar strip, badges, month picker dropdown        | ⬜ Next |
 | 5     | Income entries — add/edit/mark received within a month                           | ⬜      |
 | 6     | One-off expenses + monthly balance calculation                                   | ⬜      |
 | 7     | Savings funds — create fund, log contributions, running total                    | ⬜      |
 | 8     | Shared spaces — household creation, invite flow, aggregate view                  | ⬜      |
+
+---
+
+## Piece 4 plan — Monthly view
+
+The monthly view is the heart of the app. It's split into two sub-pieces so the basics ship before the calendar UI.
+
+### Piece 4a — core monthly view
+
+**Routing**
+
+- `/months/[year]/[month]` is the canonical monthly URL (e.g. `/months/2026/04`). Year is 4-digit, month is 2-digit zero-padded
+- `/` (the home page) **redirects to the current month** so users land directly on it after sign-in. Bookmarkable URLs for every month
+- Navbar gets a "This month" link that always points to the current YYYY/MM
+
+**On-demand month + instance creation**
+
+- A `months` row is created **lazily** the first time a user navigates to that year/month for their personal space
+- At creation time, the server enumerates all `active = true` recurring bill templates for that space and inserts a `bill_instances` row for each one, copying `default_amount` and computing `due_date` from `due_day` (or leaving it null if `due_day` is null)
+- This is wrapped in a single transaction (or a database function) so the month and its instances appear atomically
+
+**RLS policies (deferred from Piece 3)**
+
+- Add policies for `months` and `bill_instances` so users can read/write rows in spaces they belong to
+- This is what unblocks the cascade-amount feature from Piece 3
+
+**Bills section of the page**
+
+- Lists all `bill_instances` for the month, joined to their template for the name
+- Each row: name, amount, due day (if set), paid checkbox
+- Toggling paid is a server action that flips `bill_instances.paid`
+- An "Edit amount" affordance per row that opens an inline edit (or a small modal) — sets `bill_instances.amount` for that month only, never touches the template. This is the per-instance override
+
+**Month navigation**
+
+- Prev / Next buttons that navigate to the adjacent `/months/[year]/[month]`. Always available, even for months that don't exist yet (the destination route will create the row on demand)
+
+**Past-month locking — check-on-read**
+
+- A month is **effectively locked** if `(year, month) < (currentYear, currentMonth)` AND `unlock_reason IS NULL`
+- A month is **effectively unlocked** if it's the current month, a future month, OR a past month where `unlock_reason` is set
+- No scheduled job or DB trigger needed — the lock state is computed from the current date and the `unlock_reason` column on every read
+- Schema change: drop the `locked` and `locked_at` columns from `months`. Keep only `unlock_reason`. With check-on-read, the boolean becomes redundant (and confusing — "what if locked=false but unlock_reason is set?"). Migration `0004` handles this
+- The check-on-read helper lives server-side (e.g. `isMonthLocked({year, month, unlockReason})`) and is used in two places:
+  1. The page render — to show read-only UI vs editable affordances
+  2. Inside every mutation server action — defense in depth, so direct POST attempts also get rejected
+- Unlocking a past month: "Unlock" button opens a small form requiring a written reason. Submitting it stores the reason in `unlock_reason` and re-renders the page with the edit affordances enabled
+- Re-locking is not exposed in the UI for now. Once unlocked, a past month stays unlocked
+
+**Out of scope for 4a**
+
+- Income entries (Piece 5)
+- One-off expenses + balance calculation (Piece 6)
+- Calendar UI (Piece 4b)
+
+### Piece 4b — top calendar strip
+
+A calendar strip displayed **above the monthly view content**, only on `/months/*` routes (not on `/bills` or other pages). Hidden on small screens (`md:` breakpoint and up only).
+
+**Layout**
+
+- Sits at the top of the monthly view, above the bills/income/expense sections
+- Contains the calendar grid plus a row of controls
+
+**Controls (left-to-right)**
+
+- Prev month button
+- Month dropdown — shows past months that have a `months` row in the DB, plus the next 6 months from today (even if they don't exist yet — selecting one navigates and triggers on-demand creation)
+- Year dropdown — same logic
+- Next month button
+- "Today" button — jumps to the current month
+
+**Calendar grid**
+
+- Standard month grid (Sun–Sat or Mon–Sun, decide later) for the **currently viewed** month, not always today's month
+- Each day cell shows the day number
+- Days with `bill_instances` due that day get a **badge** — a small dot or count indicator
+- Clicking a day **highlights** the bills due that day in the main bills list (e.g. scrolls to them and adds a temporary highlight class)
+
+**State**
+
+- The calendar follows the URL — `/months/2026/04` → calendar shows April 2026
+- The "Today" button is just a link to `/months/<current YYYY/MM>`
+- Highlighted day is local UI state (client component, no URL state)
+
+**Out of scope for 4b**
+
+- Drag-and-drop to reschedule bills
+- Year-at-a-glance heatmap
+- Mobile drawer for the calendar (hidden on mobile entirely for now)
 
 ---
 
@@ -191,6 +282,7 @@ Net so far (received - paid)   R$18.530
   - `0001_initial_schema.sql` — initial tables and trigger
   - `0002_rls_policies.sql` — RLS enabled on all tables; SELECT/INSERT/UPDATE/DELETE policies for `spaces`, `space_members`, and `recurring_bill_templates`
   - `0003_bill_templates_unique_active_name.sql` — partial unique index preventing two active templates with the same name in a space
+  - `0004_months_locking_and_rls.sql` — dropped `locked` / `locked_at` columns from `months` (check-on-read locking); added SELECT/INSERT/UPDATE policies for `months` and `bill_instances`
 
 ### Environment variables needed
 
@@ -215,30 +307,44 @@ home-finances-app/
 │   └── migrations/
 │       ├── 0001_initial_schema.sql        ← initial tables + trigger
 │       ├── 0002_rls_policies.sql          ← RLS + policies (Piece 3)
-│       └── 0003_bill_templates_unique_active_name.sql  ← partial unique index
+│       ├── 0003_bill_templates_unique_active_name.sql  ← partial unique index
+│       └── 0004_months_locking_and_rls.sql   ← drop locked cols, RLS for months + bill_instances (Piece 4a)
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx                     ← root layout (HTML shell, fonts, navbar)
-│   │   ├── page.tsx                       ← home page (protected)
-│   │   ├── globals.css                    ← Tailwind imports
+│   │   ├── page.tsx                       ← redirect to current month
+│   │   ├── globals.css                    ← Tailwind imports + dark mode media query
 │   │   ├── login/
 │   │   │   └── page.tsx                   ← Google OAuth login page
 │   │   ├── auth/
 │   │   │   └── callback/
 │   │   │       └── route.ts               ← OAuth callback handler
-│   │   └── bills/                         ← recurring bill templates (Piece 3)
-│   │       ├── page.tsx                   ← list + create form
-│   │       ├── actions.ts                 ← barrel re-export of server actions
-│   │       ├── actions/
-│   │       │   ├── _helpers.ts            ← shared helpers (no "use server")
-│   │       │   ├── create-bill-template.ts
-│   │       │   ├── update-bill-template.ts
-│   │       │   └── deactivate-bill-template.ts
-│   │       ├── form-state.ts              ← FormState type + initial state
-│   │       ├── CreateBillTemplateForm.tsx ← client component, useActionState
-│   │       └── [id]/edit/
-│   │           ├── page.tsx               ← edit page
-│   │           └── EditBillTemplateForm.tsx
+│   │   ├── bills/                         ← recurring bill templates (Piece 3)
+│   │   │   ├── page.tsx                   ← list + create form
+│   │   │   ├── actions.ts                 ← barrel re-export of server actions
+│   │   │   ├── actions/
+│   │   │   │   ├── _helpers.ts            ← shared helpers (no "use server")
+│   │   │   │   ├── create-bill-template.ts
+│   │   │   │   ├── update-bill-template.ts
+│   │   │   │   └── deactivate-bill-template.ts
+│   │   │   ├── form-state.ts              ← FormState type + initial state
+│   │   │   ├── CreateBillTemplateForm.tsx ← client component, useActionState
+│   │   │   └── [id]/edit/
+│   │   │       ├── page.tsx               ← edit page
+│   │   │       └── EditBillTemplateForm.tsx
+│   │   └── months/                        ← monthly view (Piece 4a)
+│   │       └── [year]/[month]/
+│   │           ├── page.tsx               ← monthly view server component
+│   │           ├── _helpers.ts            ← getOrCreateMonth, isMonthLocked, prev/next/url
+│   │           ├── actions.ts             ← barrel re-export of server actions
+│   │           ├── actions/
+│   │           │   ├── toggle-bill-paid.ts
+│   │           │   ├── update-bill-instance-amount.ts
+│   │           │   └── unlock-month.ts
+│   │           ├── form-state.ts          ← FormState type + initial state
+│   │           ├── MonthNavigation.tsx    ← prev/next/today header (server)
+│   │           ├── UnlockBanner.tsx       ← client, unlock-with-reason flow
+│   │           └── BillInstanceRow.tsx    ← client, paid toggle + amount edit
 │   ├── components/
 │   │   ├── Navbar.tsx                     ← server component, reads user
 │   │   └── SignOutButton.tsx              ← client component
@@ -259,8 +365,9 @@ home-finances-app/
 - **RLS blocks everything by default** — tables need explicit policies before the app can read/write them; queries in the Supabase SQL editor run as superuser and bypass RLS
 - **Data direction** — entries always belong to the space they were created in; the household view is a read-only aggregation, never a write target; never move or copy entries between spaces
 - **Bill instance amounts** — always read from `bill_instances.amount`, never from the template, so per-month overrides are respected automatically
-- **Month creation** — a `months` row must exist before inserting any income entries, bill instances, or one-off expenses for that month
-- **Locked months** — check `months.locked` before any insert/update on child tables; the app should block edits and prompt for an unlock reason
+- **Month creation is lazy** — a `months` row is created on demand the first time a user navigates to a `/months/[year]/[month]` route; bill instances are auto-generated at that point from the space's active templates. Races are handled by catching the unique-violation error and re-fetching
+- **Locked months — check-on-read** — a month is effectively locked when `(year, month)` is strictly in the past AND `unlock_reason IS NULL`. The `months.locked` / `locked_at` columns were dropped in `0004`. Use `isMonthLocked({ year, month, unlock_reason })` in both the page render and every mutation server action (defense in depth)
+- **Date-only columns + timezone trap** — Postgres `date` values come back as `"YYYY-MM-DD"` strings. `new Date("2026-04-01")` parses as UTC midnight, which in negative-offset timezones formats as the previous day. Always format with `Intl.DateTimeFormat(..., { timeZone: "UTC" })` for calendar-date fields
 - **Member departure** — never hard delete `space_members` rows; set `left_at` instead so historical months retain attribution; label departed members in the household view using `left_at`
 - **Household aggregate queries** — always query by `space_id IN (household_id, ...linked_personal_space_ids)`, not by current membership, to correctly include historical entries from departed members
 - **Invitations** — match pending invites by email on every login; a dashboard banner surfaces them; unique constraint on (space_id, invited_email) prevents duplicate invites

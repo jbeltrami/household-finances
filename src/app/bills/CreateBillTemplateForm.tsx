@@ -13,14 +13,16 @@ export default function CreateBillTemplateForm() {
   return (
     <form
       action={formAction}
-      className="mt-6 rounded-lg border border-gray-200 bg-white p-4"
+      className="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
     >
-      <h2 className="text-base font-medium text-gray-900">Add a template</h2>
+      <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
+        Add a template
+      </h2>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="sm:col-span-2">
           <label
             htmlFor="name"
-            className="block text-xs font-medium text-gray-700"
+            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
             Name
           </label>
@@ -30,13 +32,13 @@ export default function CreateBillTemplateForm() {
             type="text"
             required
             placeholder="e.g. Claro"
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
         <div>
           <label
             htmlFor="default_amount"
-            className="block text-xs font-medium text-gray-700"
+            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
             Default amount (BRL)
           </label>
@@ -48,13 +50,13 @@ export default function CreateBillTemplateForm() {
             step="0.01"
             required
             placeholder="0.00"
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
         <div>
           <label
             htmlFor="due_day"
-            className="block text-xs font-medium text-gray-700"
+            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
             Due day (optional)
           </label>
@@ -65,13 +67,13 @@ export default function CreateBillTemplateForm() {
             min="1"
             max="31"
             placeholder="1–31"
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
       </div>
 
       {state.error && (
-        <p className="mt-3 text-sm text-red-600" role="alert">
+        <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
           {state.error}
         </p>
       )}
@@ -80,7 +82,7 @@ export default function CreateBillTemplateForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
         >
           {isPending ? "Adding…" : "Add template"}
         </button>

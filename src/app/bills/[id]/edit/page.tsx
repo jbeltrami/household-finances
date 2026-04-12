@@ -22,11 +22,14 @@ export default async function EditBillTemplatePage({
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="flex items-center gap-3">
-        <Link href="/bills" className="text-sm text-gray-500 hover:text-gray-700">
+        <Link
+          href="/bills"
+          className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
           ← Back
         </Link>
       </div>
-      <h1 className="mt-4 text-2xl font-semibold text-gray-900">
+      <h1 className="mt-4 text-2xl font-semibold text-gray-900 dark:text-gray-100">
         Edit template
       </h1>
 

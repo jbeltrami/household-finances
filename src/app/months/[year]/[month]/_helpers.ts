@@ -1,0 +1,199 @@
+// Helpers for the monthly view route. Synchronous utilities and the
+// on-demand month/instance creation logic. NOT a "use server" file —
+// this module exports plain functions that the page imports directly.
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+const UNIQUE_VIOLATION = "23505";
+
+export type MonthRow = {
+  id: string;
+  space_id: string;
+  year: number;
+  month: number;
+  unlock_reason: string | null;
+};
+
+// Check-on-read locking. A month is effectively locked if:
+//   - (year, month) is strictly before the current year/month, AND
+//   - unlock_reason is null (nobody has unlocked it for editing)
+// Current and future months are always editable.
+export function isMonthLocked(args: {
+  year: number;
+  month: number;
+  unlock_reason: string | null;
+}): boolean {
+  if (args.unlock_reason) return false;
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  if (args.year < currentYear) return true;
+  if (args.year === currentYear && args.month < currentMonth) return true;
+  return false;
+}
+
+// Given a bill_instance id, look up its month and check whether that
+// month is locked. Returns null if editable, or an error message if
+// locked / not found. Used by mutation server actions as the server-side
+// defence against edits to locked months. Non-throwing so each caller
+// can decide whether to throw (for use without useActionState) or
+// return the error as form state.
+export async function checkBillInstanceEditable(
+  supabase: SupabaseClient,
+  instanceId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("bill_instances")
+    .select("months!inner(year, month, unlock_reason)")
+    .eq("id", instanceId)
+    .single();
+
+  if (!data) return "Bill not found";
+
+  const m = (data as unknown as {
+    months: { year: number; month: number; unlock_reason: string | null };
+  }).months;
+
+  if (isMonthLocked(m)) {
+    return "This month is locked. Unlock it before editing.";
+  }
+
+  return null;
+}
+
+// Format a year/month as a zero-padded URL segment: "/months/2026/04".
+export function monthUrl(year: number, month: number): string {
+  return `/months/${year}/${String(month).padStart(2, "0")}`;
+}
+
+// Compute the previous calendar month. January rolls back to December
+// of the prior year.
+export function prevMonth(
+  year: number,
+  month: number
+): { year: number; month: number } {
+  if (month === 1) return { year: year - 1, month: 12 };
+  return { year, month: month - 1 };
+}
+
+// Compute the next calendar month. December rolls forward to January
+// of the next year.
+export function nextMonth(
+  year: number,
+  month: number
+): { year: number; month: number } {
+  if (month === 12) return { year: year + 1, month: 1 };
+  return { year, month: month + 1 };
+}
+
+// Format a year/month into a "YYYY-MM-DD" string, clamping the day to
+// the last day of the month if it's larger (e.g. dueDay 31 in February
+// becomes the 28th or 29th).
+export function dueDateFor(
+  year: number,
+  month: number,
+  dueDay: number | null
+): string | null {
+  if (dueDay == null) return null;
+
+  // `new Date(year, month, 0)` returns the last day of the previous month
+  // because the day argument is 1-based. Since JS months are 0-indexed,
+  // passing our 1-indexed month directly with day=0 gives us the last day
+  // of OUR month. Example: dueDateFor(2026, 2, 31) → daysInMonth = 28.
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const day = Math.min(dueDay, daysInMonth);
+
+  const yyyy = String(year).padStart(4, "0");
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Format a year/month as a human-readable Brazilian Portuguese label,
+// e.g. (2026, 4) → "abril de 2026".
+export function formatMonthLabel(year: number, month: number): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(year, month - 1, 1));
+}
+
+async function fetchMonth(
+  supabase: SupabaseClient,
+  spaceId: string,
+  year: number,
+  month: number
+): Promise<MonthRow | null> {
+  const { data } = await supabase
+    .from("months")
+    .select("id, space_id, year, month, unlock_reason")
+    .eq("space_id", spaceId)
+    .eq("year", year)
+    .eq("month", month)
+    .maybeSingle();
+  return data ?? null;
+}
+
+async function generateBillInstances(
+  supabase: SupabaseClient,
+  monthId: string,
+  spaceId: string,
+  year: number,
+  month: number
+) {
+  const { data: templates } = await supabase
+    .from("recurring_bill_templates")
+    .select("id, default_amount, due_day")
+    .eq("space_id", spaceId)
+    .eq("active", true);
+
+  if (!templates || templates.length === 0) return;
+
+  const instances = templates.map((t) => ({
+    month_id: monthId,
+    template_id: t.id as string,
+    space_id: spaceId,
+    amount: t.default_amount,
+    due_date: dueDateFor(year, month, t.due_day as number | null),
+    paid: false,
+  }));
+
+  await supabase.from("bill_instances").insert(instances);
+}
+
+// Idempotent: returns the existing month if there is one, otherwise
+// creates the month + a bill_instance per active template.
+//
+// Race handling: two concurrent requests for the same brand-new month
+// will both pass the SELECT and try to INSERT. The unique constraint
+// on (space_id, year, month) makes one of them fail with code 23505;
+// the loser re-fetches and returns the row that the winner created.
+// The loser does NOT regenerate instances (the winner already did).
+export async function getOrCreateMonth(
+  supabase: SupabaseClient,
+  spaceId: string,
+  year: number,
+  month: number
+): Promise<MonthRow> {
+  const existing = await fetchMonth(supabase, spaceId, year, month);
+  if (existing) return existing;
+
+  const { data: created, error } = await supabase
+    .from("months")
+    .insert({ space_id: spaceId, year, month })
+    .select("id, space_id, year, month, unlock_reason")
+    .single();
+
+  if (error) {
+    if (error.code === UNIQUE_VIOLATION) {
+      const retry = await fetchMonth(supabase, spaceId, year, month);
+      if (retry) return retry;
+    }
+    throw new Error(`Failed to create month: ${error.message}`);
+  }
+
+  await generateBillInstances(supabase, created.id, spaceId, year, month);
+  return created;
+}
