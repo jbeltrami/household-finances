@@ -1,14 +1,13 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getOrCreateMonth, isMonthLocked } from "./_helpers";
-import BillInstanceRow from "./BillInstanceRow";
-import MonthNavigation from "./MonthNavigation";
-import UnlockBanner from "./UnlockBanner";
-
-const brlFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
+import {
+  buildMonthOptions,
+  getOrCreateMonth,
+  isMonthLocked,
+} from "./_helpers";
+import MonthlyViewClient, {
+  type BillRow,
+} from "./_components/MonthlyViewClient/MonthlyViewClient";
 
 type BillInstanceWithTemplate = {
   id: string;
@@ -61,6 +60,18 @@ export default async function MonthlyViewPage({
     unlock_reason: monthRow.unlock_reason,
   });
 
+  // Fetch all existing months in this space for the dropdown. RLS ensures
+  // we only see the user's own months.
+  const { data: existingMonths } = await supabase
+    .from("months")
+    .select("year, month")
+    .eq("space_id", personalSpace.id);
+
+  const monthOptions = buildMonthOptions(existingMonths ?? [], {
+    year,
+    month,
+  });
+
   // Nested select: pulls each instance plus its template name.
   const { data: rawInstances } = await supabase
     .from("bill_instances")
@@ -70,7 +81,29 @@ export default async function MonthlyViewPage({
     .eq("month_id", monthRow.id)
     .order("due_date", { ascending: true, nullsFirst: false });
 
-  const instances = (rawInstances ?? []) as unknown as BillInstanceWithTemplate[];
+  const rawWithTemplate = (rawInstances ??
+    []) as unknown as BillInstanceWithTemplate[];
+
+  // Flatten the nested template name into a simpler row shape that the
+  // client wrapper can pass straight to BillInstanceRow.
+  const instances: BillRow[] = rawWithTemplate.map((i) => ({
+    id: i.id,
+    name: i.recurring_bill_templates?.name ?? "(unnamed)",
+    amount: i.amount,
+    due_date: i.due_date,
+    paid: i.paid,
+  }));
+
+  // Build the deduped list of days in this month that have bills due.
+  // due_date is a "YYYY-MM-DD" string; the third segment is the day. We
+  // parse it directly without going through Date() to avoid timezone shifts.
+  const daysWithBillsSet = new Set<number>();
+  for (const i of instances) {
+    if (!i.due_date) continue;
+    const day = parseInt(i.due_date.split("-")[2], 10);
+    if (Number.isInteger(day)) daysWithBillsSet.add(day);
+  }
+  const daysWithBills = Array.from(daysWithBillsSet).sort((a, b) => a - b);
 
   const totalBills = instances.reduce(
     (sum, i) => sum + Number(i.amount),
@@ -83,79 +116,22 @@ export default async function MonthlyViewPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <MonthNavigation year={year} month={month} />
-
-      {locked && (
-        <UnlockBanner monthId={monthRow.id} year={year} month={month} />
-      )}
-
-      {!locked && monthRow.unlock_reason && (
-        <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-          Unlocked: {monthRow.unlock_reason}
-        </p>
-      )}
-
-      <section className="mt-6">
-        <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-          Bills
-        </h2>
-        {instances.length === 0 ? (
-          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-            No bills this month. Add a recurring template under{" "}
-            <a href="/bills" className="underline">
-              Bills
-            </a>{" "}
-            and revisit this page to generate instances.
-          </p>
-        ) : (
-          <>
-            <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
-              {instances.map((i) => (
-                <BillInstanceRow
-                  key={i.id}
-                  instance={{
-                    id: i.id,
-                    name: i.recurring_bill_templates?.name ?? "(unnamed)",
-                    amount: i.amount,
-                    due_date: i.due_date,
-                    paid: i.paid,
-                  }}
-                  year={year}
-                  month={month}
-                  locked={locked}
-                />
-              ))}
-            </ul>
-
-            <dl className="mt-4 grid grid-cols-3 gap-4 rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
-              <div>
-                <dt className="text-xs text-gray-500 dark:text-gray-400">
-                  Total bills
-                </dt>
-                <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
-                  {brlFormatter.format(totalBills)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500 dark:text-gray-400">
-                  Paid so far
-                </dt>
-                <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
-                  {brlFormatter.format(paidBills)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500 dark:text-gray-400">
-                  Still to pay
-                </dt>
-                <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
-                  {brlFormatter.format(remainingBills)}
-                </dd>
-              </div>
-            </dl>
-          </>
-        )}
-      </section>
+      <MonthlyViewClient
+        // Remount (and reset highlighted-day state) whenever the URL
+        // points at a different month.
+        key={`${year}-${month}`}
+        year={year}
+        month={month}
+        monthOptions={monthOptions}
+        daysWithBills={daysWithBills}
+        locked={locked}
+        monthId={monthRow.id}
+        unlockReason={monthRow.unlock_reason}
+        instances={instances}
+        totalBills={totalBills}
+        paidBills={paidBills}
+        remainingBills={remainingBills}
+      />
     </div>
   );
 }

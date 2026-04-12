@@ -4,8 +4,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import {
   toggleBillPaid,
   updateBillInstanceAmount,
-} from "./actions";
-import { initialFormState } from "./form-state";
+} from "../../actions";
+import { initialFormState } from "../../form-state";
 
 const brlFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -35,6 +35,7 @@ type Props = {
   year: number;
   month: number;
   locked: boolean;
+  highlightedDay: number | null;
 };
 
 export default function BillInstanceRow({
@@ -42,8 +43,17 @@ export default function BillInstanceRow({
   year,
   month,
   locked,
+  highlightedDay,
 }: Props) {
   const [editing, setEditing] = useState(false);
+
+  // Parse the due day directly from the YYYY-MM-DD string so we don't
+  // hit the UTC timezone trap that plagues new Date("YYYY-MM-DD").
+  const dueDay = instance.due_date
+    ? parseInt(instance.due_date.split("-")[2], 10)
+    : null;
+  const isHighlighted =
+    highlightedDay !== null && dueDay !== null && dueDay === highlightedDay;
 
   // Bind id + year + month into the actions so the form only needs to pass
   // FormData (or no args at all for the toggle).
@@ -78,7 +88,11 @@ export default function BillInstanceRow({
   }, [isUpdating, updateState.error]);
 
   return (
-    <li className="flex items-center justify-between px-4 py-3">
+    <li
+      className={`flex items-center justify-between px-4 py-3 transition-colors ${
+        isHighlighted ? "bg-blue-50 dark:bg-blue-900/20" : ""
+      }`}
+    >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
           {instance.name}

@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { unlockMonth } from "./actions";
-import { initialFormState } from "./form-state";
+import { unlockMonth } from "../../actions";
+import { initialFormState } from "../../form-state";
 
 type Props = {
   monthId: string;

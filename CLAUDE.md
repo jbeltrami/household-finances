@@ -172,8 +172,8 @@ Net so far (received - paid)   R$18.530
 | 2     | Next.js scaffold + Supabase client setup + Google OAuth login flow               | ✅ Done |
 | 3     | Recurring bill templates — create, edit, deactivate                              | ✅ Done |
 | 4a    | Monthly view core — routes, on-demand creation, paid toggle, navigation          | ✅ Done |
-| 4b    | Monthly view top calendar — calendar strip, badges, month picker dropdown        | ⬜ Next |
-| 5     | Income entries — add/edit/mark received within a month                           | ⬜      |
+| 4b    | Monthly view top calendar — calendar strip, badges, month picker dropdown        | ✅ Done |
+| 5     | Income entries — add/edit/mark received within a month                           | ⬜ Next |
 | 6     | One-off expenses + monthly balance calculation                                   | ⬜      |
 | 7     | Savings funds — create fund, log contributions, running total                    | ⬜      |
 | 8     | Shared spaces — household creation, invite flow, aggregate view                  | ⬜      |
@@ -328,23 +328,34 @@ home-finances-app/
 │   │   │   │   ├── update-bill-template.ts
 │   │   │   │   └── deactivate-bill-template.ts
 │   │   │   ├── form-state.ts              ← FormState type + initial state
-│   │   │   ├── CreateBillTemplateForm.tsx ← client component, useActionState
+│   │   │   ├── _components/
+│   │   │   │   └── CreateBillTemplateForm/
+│   │   │   │       └── CreateBillTemplateForm.tsx
 │   │   │   └── [id]/edit/
-│   │   │       ├── page.tsx               ← edit page
-│   │   │       └── EditBillTemplateForm.tsx
-│   │   └── months/                        ← monthly view (Piece 4a)
+│   │   │       ├── page.tsx
+│   │   │       └── _components/
+│   │   │           └── EditBillTemplateForm/
+│   │   │               └── EditBillTemplateForm.tsx
+│   │   └── months/                        ← monthly view (Piece 4a + 4b)
 │   │       └── [year]/[month]/
-│   │           ├── page.tsx               ← monthly view server component
-│   │           ├── _helpers.ts            ← getOrCreateMonth, isMonthLocked, prev/next/url
+│   │           ├── page.tsx               ← server component, fetches data
+│   │           ├── _helpers.ts            ← shared route helpers (sync + async)
 │   │           ├── actions.ts             ← barrel re-export of server actions
 │   │           ├── actions/
 │   │           │   ├── toggle-bill-paid.ts
 │   │           │   ├── update-bill-instance-amount.ts
 │   │           │   └── unlock-month.ts
 │   │           ├── form-state.ts          ← FormState type + initial state
-│   │           ├── MonthNavigation.tsx    ← prev/next/today header (server)
-│   │           ├── UnlockBanner.tsx       ← client, unlock-with-reason flow
-│   │           └── BillInstanceRow.tsx    ← client, paid toggle + amount edit
+│   │           └── _components/
+│   │               ├── MonthlyViewClient/
+│   │               │   └── MonthlyViewClient.tsx   ← client wrapper, owns highlight state
+│   │               ├── CalendarStrip/
+│   │               │   ├── CalendarStrip.tsx       ← client, controls + grid + badges
+│   │               │   └── _helpers.ts             ← buildCalendarGrid (private)
+│   │               ├── BillInstanceRow/
+│   │               │   └── BillInstanceRow.tsx     ← client, paid toggle + edit + highlight
+│   │               └── UnlockBanner/
+│   │                   └── UnlockBanner.tsx        ← client, unlock-with-reason flow
 │   ├── components/
 │   │   ├── Navbar.tsx                     ← server component, reads user
 │   │   └── SignOutButton.tsx              ← client component
@@ -380,3 +391,7 @@ home-finances-app/
 - **`"use server"` files only export async functions** — types and constants must live in sibling files (e.g., `form-state.ts`). Internal sync helpers go in a non-`"use server"` file like `_helpers.ts`. The barrel `actions.ts` is also non-`"use server"` so it can re-export anything
 - **Active template names are unique per space** — partial unique index `(space_id, lower(trim(name))) WHERE active = true`. To handle duplicate-violation errors gracefully, action code checks for Postgres error code `23505` and returns a friendly message
 - **`redirect()` must live outside try/catch** — `redirect()` works by throwing a Next.js sentinel error; if you catch it inside try/catch, you'll mistake the success case for a failure
+- **Route-private components live in `_components/`** — every client component used by a route is in `routeFolder/_components/<ComponentName>/<ComponentName>.tsx`. The `_` prefix marks the folder as private to Next.js's router (no accidental routing). Each component gets its own subfolder, even if it has no helpers yet, so it's ready to grow
+- **Sub-routes get their own `_components/`** — the edit page at `bills/[id]/edit/` has its own `_components/` next to it. Component locality matches route locality
+- **Lifted client state for cross-component communication** — when two child client components need to share state (e.g., calendar selects a day → bills list highlights), wrap them in a single client parent that owns the state via `useState`. Use the `key={...}` prop on the wrapper to reset the state when an upstream identity changes (e.g., year/month)
+- **Calendar grid is always 6×7 = 42 cells** — `buildCalendarGrid` pads with leading days from the previous month and trailing days from the next month so the grid height stays stable across navigation

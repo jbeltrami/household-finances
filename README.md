@@ -126,10 +126,14 @@ src/app/bills/
 │   ├── update-bill-template.ts             ← "use server"
 │   └── deactivate-bill-template.ts         ← "use server"
 ├── form-state.ts                           ← FormState type + initial state
-├── CreateBillTemplateForm.tsx              ← client component, useActionState
+├── _components/
+│   └── CreateBillTemplateForm/
+│       └── CreateBillTemplateForm.tsx      ← client component, useActionState
 └── [id]/edit/
     ├── page.tsx                            ← edit page
-    └── EditBillTemplateForm.tsx            ← client component, useActionState
+    └── _components/
+        └── EditBillTemplateForm/
+            └── EditBillTemplateForm.tsx    ← client component, useActionState
 ```
 
 ### Server action conventions used here
@@ -140,7 +144,7 @@ src/app/bills/
 - **Actions return `{ error: string | null }`** for predictable failures (validation, duplicate name) so forms can render the error inline via `useActionState`. Reserve throws for unexpected crashes
 - **`redirect()` lives outside try/catch** — it works by throwing a Next.js sentinel error; catching it would misclassify the success case as a failure
 
-## Monthly view (Piece 4a)
+## Monthly view (Piece 4a + 4b)
 
 The monthly view at `/months/[year]/[month]` is the heart of the app. After sign-in, `/` redirects to the current month (e.g. `/months/2026/04`). Every month has its own bookmarkable URL.
 
@@ -149,28 +153,38 @@ The monthly view at `/months/[year]/[month]` is the heart of the app. After sign
 - **On-demand month + bill instance creation** — visiting a month that doesn't yet exist creates a `months` row and one `bill_instance` per active bill template, in one page render. Revisiting the same month reuses the existing data
 - **Paid / pending toggle** — clicking the status pill on any bill flips `bill_instances.paid` via a server action
 - **Per-instance amount override** — "Edit" opens an inline input. Saving updates only that one `bill_instance.amount`, leaving the template untouched (this is how "Unimed was R$1.200 just this month" is modeled)
-- **Month navigation** — prev, next, and "Today" controls on the header
 - **Past-month locking (check-on-read)** — a past month is locked unless it has an `unlock_reason`. The UI hides edit affordances and the paid toggle, and every mutation server action re-checks before writing
 - **Unlock flow** — an amber banner on locked months opens an inline form requiring a written reason (min 5 chars). On success the reason is stored in `months.unlock_reason`, the banner vanishes, and the bills become editable
+- **Calendar strip header (4b)** — at the top of the page, a controls row with prev/next arrows, a single combined month dropdown (chronological list of all months that exist in DB plus the next 6 months), and a Today button that resolves through `/` so it stays fresh
+- **Calendar grid (4b, desktop only)** — Sun-first 6×7 = 42-cell grid below the controls. Each cell shows its day number; days with bills due get a small blue dot below; today is highlighted with a filled blue circle; days from adjacent months are faded
+- **Click a day to highlight bills (4b)** — clicking a current-month cell highlights it with a blue ring and applies a subtle blue background to bill rows whose due date falls on that day. Clicking the same cell toggles off; navigating to a different month resets
 
 ### File layout
 
 ```
 src/app/months/[year]/[month]/
-├── page.tsx                               ← server component, main view
-├── _helpers.ts                            ← getOrCreateMonth, isMonthLocked,
-│                                             checkBillInstanceEditable, monthUrl,
-│                                             prevMonth, nextMonth, dueDateFor,
-│                                             formatMonthLabel
-├── actions.ts                             ← barrel re-export
+├── page.tsx                                       ← server component, fetches data
+├── _helpers.ts                                    ← getOrCreateMonth, isMonthLocked,
+│                                                     checkBillInstanceEditable, monthUrl,
+│                                                     prevMonth, nextMonth, dueDateFor,
+│                                                     formatMonthLabel, capitalize,
+│                                                     buildMonthOptions, YearMonth, MonthRow
+├── actions.ts                                     ← barrel re-export
 ├── actions/
-│   ├── toggle-bill-paid.ts                ← "use server"
-│   ├── update-bill-instance-amount.ts     ← "use server"
-│   └── unlock-month.ts                    ← "use server"
-├── form-state.ts                          ← FormState type + initial state
-├── MonthNavigation.tsx                    ← server, prev/next/today header
-├── UnlockBanner.tsx                       ← client, useActionState
-└── BillInstanceRow.tsx                    ← client, useActionState
+│   ├── toggle-bill-paid.ts                        ← "use server"
+│   ├── update-bill-instance-amount.ts             ← "use server"
+│   └── unlock-month.ts                            ← "use server"
+├── form-state.ts                                  ← FormState type + initial state
+└── _components/
+    ├── MonthlyViewClient/
+    │   └── MonthlyViewClient.tsx                  ← client wrapper, owns highlight state
+    ├── CalendarStrip/
+    │   ├── CalendarStrip.tsx                      ← client, controls + grid + badges
+    │   └── _helpers.ts                            ← buildCalendarGrid (private to component)
+    ├── BillInstanceRow/
+    │   └── BillInstanceRow.tsx                    ← client, paid toggle + edit + highlight
+    └── UnlockBanner/
+        └── UnlockBanner.tsx                       ← client, useActionState
 ```
 
 ### Design notes
@@ -178,8 +192,10 @@ src/app/months/[year]/[month]/
 - **Lazy month creation handles races** — two concurrent visits to a brand-new month would both try to INSERT. The helper catches the unique-violation error (`23505`) and re-fetches, so the loser still gets the row without double-generating instances
 - **Check-on-read locking is a pure function** — `isMonthLocked({ year, month, unlock_reason })` compares against today's date. Current and future months are always editable; past months are editable only if `unlock_reason` is set. No scheduled jobs, no drift
 - **Defense in depth on mutations** — every mutation action (`toggleBillPaid`, `updateBillInstanceAmount`) fetches the bill's month via a nested select and runs `isMonthLocked` before writing. If the UI somehow lets a click through, the server still rejects it
-- **UTC timezone for due date display** — `date` columns in Postgres come back as `YYYY-MM-DD` strings. Parsing them with `new Date(...)` treats them as UTC midnight, which shifts to the previous day in Brazilian time (UTC-3). The row component formats with `Intl.DateTimeFormat(..., { timeZone: "UTC" })`
+- **UTC timezone for due date display** — `date` columns in Postgres come back as `YYYY-MM-DD` strings. Parsing them with `new Date(...)` treats them as UTC midnight, which shifts to the previous day in Brazilian time (UTC-3). The row component formats with `Intl.DateTimeFormat(..., { timeZone: "UTC" })`. For pure-day comparisons (calendar highlight, badge dots) we parse the day directly from the string instead of going through `Date`
 - **Today button points to `/`** — not a hardcoded current-month URL. If the page sits open past midnight, clicking Today still resolves to the real current month via the redirect
+- **Lifted client state for cross-component highlight** — `MonthlyViewClient` is a thin client wrapper that owns `useState<number | null>(null)` for the highlighted day. `CalendarStrip` writes via `onSelectDay`; `BillInstanceRow` reads `highlightedDay` and applies a background style. The wrapper has a `key={` `${year}-${month}` `}` so navigating to a different month remounts and resets the state automatically
+- **Calendar grid is always 42 cells** — `buildCalendarGrid(year, month)` pads with leading days from the previous month and trailing days from the next month so the grid height stays stable across navigation. Padding cells are non-interactive; current-month cells are buttons
 
 ## Build order
 
@@ -189,8 +205,8 @@ src/app/months/[year]/[month]/
 | 2     | Next.js scaffold + Supabase client setup + Google OAuth login  | Done   |
 | 3     | Recurring bill templates — create, edit, deactivate            | Done   |
 | 4a    | Monthly view core — routes, on-demand creation, paid toggle    | Done   |
-| 4b    | Monthly view top calendar — calendar strip, badges, picker     | Next   |
-| 5     | Income entries — add/edit/mark received within a month         | —      |
+| 4b    | Monthly view top calendar — calendar strip, badges, picker     | Done   |
+| 5     | Income entries — add/edit/mark received within a month         | Next   |
 | 6     | One-off expenses + monthly balance calculation                 | —      |
 | 7     | Savings funds — create fund, log contributions, running total  | —      |
 | 8     | Shared spaces — household creation, invite flow, aggregate     | —      |
