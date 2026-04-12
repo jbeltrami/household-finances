@@ -25,7 +25,26 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isLoginPage = request.nextUrl.pathname === "/login";
+  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/callback");
+
+  // If user is not logged in and trying to access a protected page, redirect to login
+  if (!user && !isLoginPage && !isAuthCallback) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // If user is logged in and on the login page, redirect to home
+  if (user && isLoginPage) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
 
   return response;
 }

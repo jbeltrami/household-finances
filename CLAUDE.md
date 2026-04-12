@@ -169,8 +169,8 @@ Net so far (received - paid)   R$18.530
 | Piece | Scope                                                                            | Status  |
 | ----- | -------------------------------------------------------------------------------- | ------- |
 | 1     | Supabase schema + auth + personal space auto-creation trigger                    | ✅ Done |
-| 2     | Next.js scaffold + Supabase client setup + Google OAuth login flow               | ⬜ Next |
-| 3     | Recurring bill templates — create, edit, deactivate                              | ⬜      |
+| 2     | Next.js scaffold + Supabase client setup + Google OAuth login flow               | ✅ Done |
+| 3     | Recurring bill templates — create, edit, deactivate                              | ⬜ Next |
 | 4     | Monthly view — navigate months, auto-generate bill instances, paid/unpaid toggle | ⬜      |
 | 5     | Income entries — add/edit/mark received within a month                           | ⬜      |
 | 6     | One-off expenses + monthly balance calculation                                   | ⬜      |
@@ -202,22 +202,33 @@ Both values are found in Supabase under **Project Settings → API**.
 
 ---
 
-## Repo structure (target)
+## Repo structure
 
 ```
 home-finances-app/
-├── CLAUDE.md                        ← this file
-├── .env.local                       ← never commit (in .gitignore)
+├── CLAUDE.md                              ← this file
+├── .env.local                             ← never commit (in .gitignore)
 ├── supabase/
 │   └── migrations/
-│       └── 0001_initial_schema.sql  ← full schema
+│       └── 0001_initial_schema.sql        ← full schema
 ├── src/
-│   ├── app/                         ← Next.js app router pages
-│   ├── components/                  ← shared UI components
+│   ├── app/
+│   │   ├── layout.tsx                     ← root layout (HTML shell, fonts, global CSS)
+│   │   ├── page.tsx                       ← home page (protected)
+│   │   ├── globals.css                    ← Tailwind imports
+│   │   ├── login/
+│   │   │   └── page.tsx                   ← Google OAuth login page
+│   │   └── auth/
+│   │       └── callback/
+│   │           └── route.ts               ← OAuth callback handler
+│   ├── components/                        ← shared UI components
 │   ├── lib/
-│   │   └── supabase.ts              ← Supabase client setup
+│   │   └── supabase/
+│   │       ├── client.ts                  ← browser Supabase client
+│   │       └── server.ts                  ← server Supabase client
+│   ├── middleware.ts                      ← auth session refresh + route protection
 │   └── types/
-│       └── database.ts              ← generated or manual DB types
+│       └── database.ts                    ← generated or manual DB types
 └── public/
 ```
 
@@ -234,4 +245,7 @@ home-finances-app/
 - **Household aggregate queries** — always query by `space_id IN (household_id, ...linked_personal_space_ids)`, not by current membership, to correctly include historical entries from departed members
 - **Invitations** — match pending invites by email on every login; a dashboard banner surfaces them; unique constraint on (space_id, invited_email) prevents duplicate invites
 - **Trigger naming** — the personal space trigger is `on_auth_user_created` on `auth.users`; do not drop or rename it
-- **Never commit .env.local** — Supabase URL and anon key must stay out of the repository
+- **Never commit .env.local** — Supabase URL and publishable key must stay out of the repository
+- **Supabase client split** — use `@/lib/supabase/client` in Client Components (browser) and `@/lib/supabase/server` in Server Components / Route Handlers; never mix them
+- **Middleware runs on every request** — refreshes the auth session and protects routes; `/login` and `/auth/callback` are public, everything else requires authentication
+- **Publishable key (not anon key)** — Supabase deprecated legacy anon/service_role keys; use `sb_publishable_...` for the client and `sb_secret_...` for server-only operations
