@@ -135,6 +135,32 @@ export async function checkIncomeEntryEditable(
   return null;
 }
 
+// Same shape again for one-off expenses. Three almost-identical helpers
+// is mildly repetitive but each one is straightforward to read on its
+// own and the table name is explicit at the call site.
+export async function checkOneOffExpenseEditable(
+  supabase: SupabaseClient,
+  expenseId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("one_off_expenses")
+    .select("months!inner(year, month, unlock_reason)")
+    .eq("id", expenseId)
+    .single();
+
+  if (!data) return "Expense not found";
+
+  const m = (data as unknown as {
+    months: { year: number; month: number; unlock_reason: string | null };
+  }).months;
+
+  if (isMonthLocked(m)) {
+    return "This month is locked. Unlock it before editing.";
+  }
+
+  return null;
+}
+
 // Format a year/month as a zero-padded URL segment: "/months/2026/04".
 export function monthUrl(year: number, month: number): string {
   return `/months/${year}/${String(month).padStart(2, "0")}`;

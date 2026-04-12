@@ -7,6 +7,7 @@ import {
 } from "./_helpers";
 import MonthlyViewClient, {
   type BillRow,
+  type ExpenseRow,
   type IncomeRow,
 } from "./_components/MonthlyViewClient/MonthlyViewClient";
 
@@ -111,6 +112,24 @@ export default async function MonthlyViewPage({
     received: i.received,
   }));
 
+  // One-off expenses for this month. Free-form rows with optional date,
+  // category, and notes. Ordered by date with rows that have no date
+  // sinking to the bottom.
+  const { data: rawExpenses } = await supabase
+    .from("one_off_expenses")
+    .select("id, name, amount, date, category, notes")
+    .eq("month_id", monthRow.id)
+    .order("date", { ascending: true, nullsFirst: false });
+
+  const expenses: ExpenseRow[] = (rawExpenses ?? []).map((e) => ({
+    id: e.id,
+    name: e.name,
+    amount: e.amount,
+    date: e.date,
+    category: e.category,
+    notes: e.notes,
+  }));
+
   // Build the deduped list of days in this month that have bills due.
   // due_date is a "YYYY-MM-DD" string; the third segment is the day. We
   // parse it directly without going through Date() to avoid timezone shifts.
@@ -132,6 +151,19 @@ export default async function MonthlyViewPage({
     if (Number.isInteger(day)) daysWithIncomeSet.add(day);
   }
   const daysWithIncome = Array.from(daysWithIncomeSet).sort((a, b) => a - b);
+
+  // One-off expenses use `date` instead of `due_date`/`expected_date`.
+  // Same dedupe/sort pattern. The calendar renders these with the same
+  // blue dot as bills (the user wanted bills and expenses to share color).
+  const daysWithExpensesSet = new Set<number>();
+  for (const e of expenses) {
+    if (!e.date) continue;
+    const day = parseInt(e.date.split("-")[2], 10);
+    if (Number.isInteger(day)) daysWithExpensesSet.add(day);
+  }
+  const daysWithExpenses = Array.from(daysWithExpensesSet).sort(
+    (a, b) => a - b
+  );
 
   const totalBills = instances.reduce(
     (sum, i) => sum + Number(i.amount),
@@ -167,11 +199,13 @@ export default async function MonthlyViewPage({
         monthOptions={monthOptions}
         daysWithBills={daysWithBills}
         daysWithIncome={daysWithIncome}
+        daysWithExpenses={daysWithExpenses}
         locked={locked}
         monthId={monthRow.id}
         unlockReason={monthRow.unlock_reason}
         instances={instances}
         incomeEntries={incomeEntries}
+        expenses={expenses}
         totalBills={totalBills}
         paidBills={paidBills}
         remainingBills={remainingBills}

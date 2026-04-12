@@ -20,6 +20,7 @@ type Props = {
   monthOptions: YearMonth[];
   daysWithBills: number[];
   daysWithIncome: number[];
+  daysWithExpenses: number[];
   highlightedDay: number | null;
   onSelectDay: (day: number) => void;
 };
@@ -30,6 +31,7 @@ export default function CalendarStrip({
   monthOptions,
   daysWithBills,
   daysWithIncome,
+  daysWithExpenses,
   highlightedDay,
   onSelectDay,
 }: Props) {
@@ -41,6 +43,7 @@ export default function CalendarStrip({
   // Wrap the props in Sets for O(1) lookups during the cell render loop.
   const daysWithBillsSet = new Set(daysWithBills);
   const daysWithIncomeSet = new Set(daysWithIncome);
+  const daysWithExpensesSet = new Set(daysWithExpenses);
 
   // Today, in the user's local timezone. Used to draw the highlight on
   // whichever cell (if any) corresponds to today.
@@ -115,8 +118,13 @@ export default function CalendarStrip({
           {cells.map((cell, i) => {
             const cellKey = `${cell.year}-${cell.month}-${cell.day}`;
             const isToday = cellKey === todayKey;
-            const hasBill =
-              cell.inCurrentMonth && daysWithBillsSet.has(cell.day);
+            // Bills and expenses share the blue dot (user's choice).
+            // Union them so we render a single blue dot when either has
+            // activity on that day.
+            const hasOutflow =
+              cell.inCurrentMonth &&
+              (daysWithBillsSet.has(cell.day) ||
+                daysWithExpensesSet.has(cell.day));
             const hasIncome =
               cell.inCurrentMonth && daysWithIncomeSet.has(cell.day);
             const isHighlighted =
@@ -164,10 +172,10 @@ export default function CalendarStrip({
                   </span>
                 </div>
                 <div className="flex w-full flex-1 items-end justify-center gap-1">
-                  {hasBill && (
+                  {hasOutflow && (
                     <span
                       className="h-1.5 w-1.5 rounded-full bg-blue-500 dark:bg-blue-400"
-                      aria-label="Has bills due"
+                      aria-label="Has bills or expenses"
                     />
                   )}
                   {hasIncome && (

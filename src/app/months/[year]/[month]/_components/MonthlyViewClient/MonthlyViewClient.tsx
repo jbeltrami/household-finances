@@ -4,6 +4,8 @@ import { useState } from "react";
 import BillInstanceRow from "../BillInstanceRow/BillInstanceRow";
 import CalendarStrip from "../CalendarStrip/CalendarStrip";
 import CreateIncomeEntryForm from "../CreateIncomeEntryForm/CreateIncomeEntryForm";
+import CreateOneOffExpenseForm from "../CreateOneOffExpenseForm/CreateOneOffExpenseForm";
+import ExpenseEntryRow from "../ExpenseEntryRow/ExpenseEntryRow";
 import IncomeEntryRow from "../IncomeEntryRow/IncomeEntryRow";
 import UnlockBanner from "../UnlockBanner/UnlockBanner";
 import { type YearMonth } from "../../_helpers";
@@ -29,17 +31,28 @@ export type IncomeRow = {
   received: boolean;
 };
 
+export type ExpenseRow = {
+  id: string;
+  name: string;
+  amount: number | string;
+  date: string | null;
+  category: string | null;
+  notes: string | null;
+};
+
 type Props = {
   year: number;
   month: number;
   monthOptions: YearMonth[];
   daysWithBills: number[];
   daysWithIncome: number[];
+  daysWithExpenses: number[];
   locked: boolean;
   monthId: string;
   unlockReason: string | null;
   instances: BillRow[];
   incomeEntries: IncomeRow[];
+  expenses: ExpenseRow[];
   totalBills: number;
   paidBills: number;
   remainingBills: number;
@@ -59,11 +72,13 @@ export default function MonthlyViewClient({
   monthOptions,
   daysWithBills,
   daysWithIncome,
+  daysWithExpenses,
   locked,
   monthId,
   unlockReason,
   instances,
   incomeEntries,
+  expenses,
   totalBills,
   paidBills,
   remainingBills,
@@ -72,9 +87,13 @@ export default function MonthlyViewClient({
   stillToReceive,
   netExpected,
 }: Props) {
-  const hasAnyData = instances.length > 0 || incomeEntries.length > 0;
+  const hasAnyData =
+    instances.length > 0 ||
+    incomeEntries.length > 0 ||
+    expenses.length > 0;
   const [highlightedDay, setHighlightedDay] = useState<number | null>(null);
   const [showAddIncomeForm, setShowAddIncomeForm] = useState(false);
+  const [showAddExpenseForm, setShowAddExpenseForm] = useState(false);
 
   // Clicking the same day again toggles the highlight off. Clicking a
   // different day replaces the highlight.
@@ -95,6 +114,7 @@ export default function MonthlyViewClient({
           monthOptions={monthOptions}
           daysWithBills={daysWithBills}
           daysWithIncome={daysWithIncome}
+          daysWithExpenses={daysWithExpenses}
           highlightedDay={highlightedDay}
           onSelectDay={handleSelectDay}
         />
@@ -243,6 +263,55 @@ export default function MonthlyViewClient({
             </dl>
           </>
         )}
+        </section>
+
+        <section className="mt-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
+              Expenses
+            </h2>
+            {!locked && (
+              <button
+                type="button"
+                onClick={() => setShowAddExpenseForm((s) => !s)}
+                aria-label={
+                  showAddExpenseForm ? "Cancel adding expense" : "Add expense"
+                }
+                aria-expanded={showAddExpenseForm}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+              >
+                {showAddExpenseForm ? "×" : "+"}
+              </button>
+            )}
+          </div>
+
+          {!locked && showAddExpenseForm && (
+            <CreateOneOffExpenseForm
+              monthId={monthId}
+              year={year}
+              month={month}
+              onSuccess={() => setShowAddExpenseForm(false)}
+            />
+          )}
+
+          {expenses.length === 0 ? (
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              No one-off expenses recorded for this month.
+            </p>
+          ) : (
+            <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
+              {expenses.map((expense) => (
+                <ExpenseEntryRow
+                  key={expense.id}
+                  expense={expense}
+                  year={year}
+                  month={month}
+                  locked={locked}
+                  highlightedDay={highlightedDay}
+                />
+              ))}
+            </ul>
+          )}
         </section>
 
         {hasAnyData && (

@@ -12,3 +12,6 @@ export { createIncomeEntry } from "./actions/create-income-entry";
 export { toggleIncomeReceived } from "./actions/toggle-income-received";
 export { updateIncomeAmount } from "./actions/update-income-amount";
 export { deleteIncomeEntry } from "./actions/delete-income-entry";
+export { createOneOffExpense } from "./actions/create-one-off-expense";
+export { updateOneOffExpense } from "./actions/update-one-off-expense";
+export { deleteOneOffExpense } from "./actions/delete-one-off-expense";
