@@ -368,7 +368,8 @@ home-finances-app/
 │   │   │   └── callback/
 │   │   │       └── route.ts               ← OAuth callback handler
 │   │   ├── bills/                         ← recurring bill templates (Piece 3)
-│   │   │   ├── page.tsx                   ← list + create form
+│   │   │   ├── page.tsx                   ← server component, fetches data, delegates to sections
+│   │   │   ├── _types.ts                  ← BillTemplate type
 │   │   │   ├── actions.ts                 ← barrel re-export of server actions
 │   │   │   ├── actions/
 │   │   │   │   ├── _helpers.ts            ← shared helpers (no "use server")
@@ -377,8 +378,10 @@ home-finances-app/
 │   │   │   │   └── deactivate-bill-template.ts
 │   │   │   ├── form-state.ts              ← FormState type + initial state
 │   │   │   ├── _components/
-│   │   │   │   └── CreateBillTemplateForm/
-│   │   │   │       └── CreateBillTemplateForm.tsx
+│   │   │   │   ├── CreateBillTemplateForm/
+│   │   │   │   │   └── CreateBillTemplateForm.tsx
+│   │   │   │   └── ActiveTemplatesSection/
+│   │   │   │       └── ActiveTemplatesSection.tsx
 │   │   │   └── [id]/edit/
 │   │   │       ├── page.tsx
 │   │   │       └── _components/
@@ -396,27 +399,45 @@ home-finances-app/
 │   │           │   ├── create-income-entry.ts          ← lazy-creates target month
 │   │           │   ├── toggle-income-received.ts
 │   │           │   ├── update-income-amount.ts
-│   │           │   └── delete-income-entry.ts
+│   │           │   ├── delete-income-entry.ts
+│   │           │   ├── create-one-off-expense.ts
+│   │           │   ├── update-one-off-expense.ts
+│   │           │   └── delete-one-off-expense.ts
 │   │           ├── form-state.ts          ← FormState type + initial state
+│   │           ├── _types.ts               ← row types + grouped props (BillRow, IncomeGroup, etc.)
 │   │           └── _components/
 │   │               ├── MonthlyViewClient/
 │   │               │   └── MonthlyViewClient.tsx   ← client wrapper, owns highlight state, two-column grid
 │   │               ├── CalendarStrip/
 │   │               │   ├── CalendarStrip.tsx       ← client, controls + grid + bill/income badges
 │   │               │   └── _helpers.ts             ← buildCalendarGrid (private)
+│   │               ├── IncomeSection/
+│   │               │   └── IncomeSection.tsx       ← section: heading, list, summary, add-form toggle
+│   │               ├── BillsSection/
+│   │               │   └── BillsSection.tsx        ← section: heading, list, summary
+│   │               ├── ExpensesSection/
+│   │               │   └── ExpensesSection.tsx     ← section: heading, list, summary, add-form toggle
+│   │               ├── BalanceSection/
+│   │               │   └── BalanceSection.tsx      ← section: net expected + net so far
 │   │               ├── BillInstanceRow/
 │   │               │   └── BillInstanceRow.tsx     ← client, paid toggle + edit + highlight
 │   │               ├── IncomeEntryRow/
 │   │               │   └── IncomeEntryRow.tsx      ← client, received toggle + edit + delete + highlight
+│   │               ├── ExpenseEntryRow/
+│   │               │   └── ExpenseEntryRow.tsx     ← client, edit + delete + highlight
 │   │               ├── CreateIncomeEntryForm/
 │   │               │   └── CreateIncomeEntryForm.tsx  ← client, accordion form
+│   │               ├── CreateOneOffExpenseForm/
+│   │               │   └── CreateOneOffExpenseForm.tsx ← client, accordion form
 │   │               └── UnlockBanner/
 │   │                   └── UnlockBanner.tsx        ← client, unlock-with-reason flow
 │   ├── components/
 │   │   ├── Navbar.tsx                     ← server component, reads user
 │   │   └── SignOutButton.tsx              ← client component
+│   ├── helpers/
+│   │   └── format.ts                      ← shared formatters (brlFormatter, dateFormatter)
 │   ├── lib/
-│   │   └── supabase/
+│   │   └── supabase/                      ← third-party integrations only
 │   │       ├── client.ts                  ← browser Supabase client
 │   │       └── server.ts                  ← server Supabase client
 │   ├── proxy.ts                           ← auth session refresh + route protection (Next.js 16+)
@@ -424,6 +445,26 @@ home-finances-app/
 │       └── database.ts                    ← generated or manual DB types
 └── public/
 ```
+
+---
+
+## Code organization pattern
+
+Every route follows the same structure. Apply this pattern when adding new routes or components.
+
+**Types** — each route has a `_types.ts` at its root. Domain row types (`BillRow`, `IncomeRow`) and grouped props (`BillsGroup`, `IncomeGroup`) live here. Components import from this file instead of defining local duplicates.
+
+**Props** — each component defines a local (non-exported) `Props` type that accepts only the slice of data it needs. Parent components fan out the right slice to each child.
+
+**Actions** — one server action per file under `actions/`, each with its own `"use server"` directive. A barrel `actions.ts` re-exports them (no `"use server"` on the barrel). `FormState` and sync helpers live in sibling files (`form-state.ts`, `_helpers.ts`).
+
+**Section components** — each domain section (income, bills, expenses, balance, templates) is its own component under `_components/SectionName/SectionName.tsx`. Sections own their heading, empty state, list rendering, summary stats, and add-form toggle. The page server component fetches data and delegates rendering to sections.
+
+**Row components** — each list item is its own component. Rows own their edit/delete state, transitions, and highlight logic. State stays local to the row.
+
+**Create forms** — each create form is its own component. Forms own their submission state and call `onSuccess` to notify the parent.
+
+**Shared utilities** — cross-route helpers (formatters, etc.) live in `src/helpers/`. Route-specific helpers live in the route's `_helpers.ts`. Third-party integrations (Supabase clients, etc.) live in `src/lib/`.
 
 ---
 

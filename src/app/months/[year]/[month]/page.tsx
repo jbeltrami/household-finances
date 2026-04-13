@@ -5,11 +5,8 @@ import {
   getOrCreateMonth,
   isMonthLocked,
 } from "./_helpers";
-import MonthlyViewClient, {
-  type BillRow,
-  type ExpenseRow,
-  type IncomeRow,
-} from "./_components/MonthlyViewClient/MonthlyViewClient";
+import MonthlyViewClient from "./_components/MonthlyViewClient/MonthlyViewClient";
+import type { BillRow, ExpenseRow, IncomeRow } from "./_types";
 
 type BillInstanceWithTemplate = {
   id: string;
@@ -200,24 +197,24 @@ export default async function MonthlyViewPage({
         year={year}
         month={month}
         monthOptions={monthOptions}
-        daysWithBills={daysWithBills}
-        daysWithIncome={daysWithIncome}
-        daysWithExpenses={daysWithExpenses}
         locked={locked}
         monthId={monthRow.id}
         unlockReason={monthRow.unlock_reason}
-        instances={instances}
-        incomeEntries={incomeEntries}
-        expenses={expenses}
-        totalBills={totalBills}
-        paidBills={paidBills}
-        remainingBills={remainingBills}
-        totalIncome={totalIncome}
-        receivedIncome={receivedIncome}
-        stillToReceive={stillToReceive}
-        totalExpenses={totalExpenses}
-        netExpected={netExpected}
-        netSoFar={netSoFar}
+        calendar={{ daysWithBills, daysWithIncome, daysWithExpenses }}
+        bills={{
+          instances,
+          total: totalBills,
+          paid: paidBills,
+          remaining: remainingBills,
+        }}
+        income={{
+          entries: incomeEntries,
+          total: totalIncome,
+          received: receivedIncome,
+          stillExpected: stillToReceive,
+        }}
+        expenses={{ entries: expenses, total: totalExpenses }}
+        balance={{ netExpected, netSoFar }}
       />
     </div>
   );

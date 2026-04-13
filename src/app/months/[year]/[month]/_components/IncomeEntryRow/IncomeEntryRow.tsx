@@ -1,35 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { brlFormatter, dateFormatter } from "@/helpers/format";
 import {
   deleteIncomeEntry,
   toggleIncomeReceived,
   updateIncomeAmount,
 } from "../../actions";
-
-const brlFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
-
-// Format the YYYY-MM-DD expected_date in UTC so the displayed day matches
-// the stored calendar date even in negative-offset timezones.
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  timeZone: "UTC",
-});
-
-type IncomeEntry = {
-  id: string;
-  name: string;
-  amount: number | string;
-  expected_date: string | null;
-  received: boolean;
-};
+import type { IncomeRow } from "../../_types";
 
 type Props = {
-  entry: IncomeEntry;
+  entry: IncomeRow;
   year: number;
   month: number;
   locked: boolean;

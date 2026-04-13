@@ -1,35 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { brlFormatter, dateFormatter } from "@/helpers/format";
 import {
   deleteOneOffExpense,
   updateOneOffExpense,
 } from "../../actions";
-
-const brlFormatter = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
-
-// Format the YYYY-MM-DD date in UTC so the displayed day matches the
-// stored calendar date even in negative-offset timezones.
-const dateFormatter = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  timeZone: "UTC",
-});
-
-type Expense = {
-  id: string;
-  name: string;
-  amount: number | string;
-  date: string | null;
-  category: string | null;
-  notes: string | null;
-};
+import type { ExpenseRow } from "../../_types";
 
 type Props = {
-  expense: Expense;
+  expense: ExpenseRow;
   year: number;
   month: number;
   locked: boolean;
