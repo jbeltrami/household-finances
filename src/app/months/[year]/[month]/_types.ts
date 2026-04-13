@@ -27,6 +27,7 @@ export type ExpenseRow = {
 
 export type CalendarGroup = {
   daysWithBills: number[];
+  daysWithOverdueBills: number[];
   daysWithIncome: number[];
   daysWithExpenses: number[];
 };

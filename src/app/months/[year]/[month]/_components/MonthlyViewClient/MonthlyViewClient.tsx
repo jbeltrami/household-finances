@@ -40,6 +40,7 @@ export default function MonthlyViewClient({
           month={month}
           monthOptions={monthOptions}
           daysWithBills={calendar.daysWithBills}
+          daysWithOverdueBills={calendar.daysWithOverdueBills}
           daysWithIncome={calendar.daysWithIncome}
           daysWithExpenses={calendar.daysWithExpenses}
           highlightedDay={highlightedDay}

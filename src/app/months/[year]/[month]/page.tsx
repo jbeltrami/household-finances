@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { todayYmd } from "@/helpers/date";
 import {
   buildMonthOptions,
   getOrCreateMonth,
@@ -127,16 +128,28 @@ export default async function MonthlyViewPage({
     notes: e.notes,
   }));
 
+  const today = todayYmd();
+
   // Build the deduped list of days in this month that have bills due.
   // due_date is a "YYYY-MM-DD" string; the third segment is the day. We
   // parse it directly without going through Date() to avoid timezone shifts.
+  // At the same time, collect days that have at least one *overdue* unpaid
+  // bill so the calendar can flag them in red.
   const daysWithBillsSet = new Set<number>();
+  const daysWithOverdueBillsSet = new Set<number>();
   for (const i of instances) {
     if (!i.due_date) continue;
     const day = parseInt(i.due_date.split("-")[2], 10);
-    if (Number.isInteger(day)) daysWithBillsSet.add(day);
+    if (!Number.isInteger(day)) continue;
+    daysWithBillsSet.add(day);
+    if (!i.paid && i.due_date <= today) {
+      daysWithOverdueBillsSet.add(day);
+    }
   }
   const daysWithBills = Array.from(daysWithBillsSet).sort((a, b) => a - b);
+  const daysWithOverdueBills = Array.from(daysWithOverdueBillsSet).sort(
+    (a, b) => a - b
+  );
 
   // Same pattern for income entries: dedupe days with expected dates in
   // this month. Entries with no expected_date contribute nothing to
@@ -171,6 +184,13 @@ export default async function MonthlyViewPage({
     .reduce((sum, i) => sum + Number(i.amount), 0);
   const remainingBills = totalBills - paidBills;
 
+  // Unpaid bills whose due_date is on or before today. "Net so far" treats
+  // these as money that should already be gone from the account, even
+  // though the user hasn't ticked them as paid yet.
+  const overdueUnpaidBills = instances
+    .filter((i) => !i.paid && i.due_date && i.due_date <= today)
+    .reduce((sum, i) => sum + Number(i.amount), 0);
+
   const totalIncome = incomeEntries.reduce(
     (sum, e) => sum + Number(e.amount),
     0
@@ -186,7 +206,8 @@ export default async function MonthlyViewPage({
   );
 
   const netExpected = totalIncome - totalBills - totalExpenses;
-  const netSoFar = receivedIncome - paidBills - totalExpenses;
+  const netSoFar =
+    receivedIncome - paidBills - overdueUnpaidBills - totalExpenses;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -200,7 +221,12 @@ export default async function MonthlyViewPage({
         locked={locked}
         monthId={monthRow.id}
         unlockReason={monthRow.unlock_reason}
-        calendar={{ daysWithBills, daysWithIncome, daysWithExpenses }}
+        calendar={{
+          daysWithBills,
+          daysWithOverdueBills,
+          daysWithIncome,
+          daysWithExpenses,
+        }}
         bills={{
           instances,
           total: totalBills,
