@@ -59,7 +59,9 @@ type Props = {
   totalIncome: number;
   receivedIncome: number;
   stillToReceive: number;
+  totalExpenses: number;
   netExpected: number;
+  netSoFar: number;
 };
 
 // Thin client wrapper that owns the highlighted-day state shared between
@@ -85,7 +87,9 @@ export default function MonthlyViewClient({
   totalIncome,
   receivedIncome,
   stillToReceive,
+  totalExpenses,
   netExpected,
+  netSoFar,
 }: Props) {
   const hasAnyData =
     instances.length > 0 ||
@@ -299,42 +303,73 @@ export default function MonthlyViewClient({
               No one-off expenses recorded for this month.
             </p>
           ) : (
-            <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
-              {expenses.map((expense) => (
-                <ExpenseEntryRow
-                  key={expense.id}
-                  expense={expense}
-                  year={year}
-                  month={month}
-                  locked={locked}
-                  highlightedDay={highlightedDay}
-                />
-              ))}
-            </ul>
+            <>
+              <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
+                {expenses.map((expense) => (
+                  <ExpenseEntryRow
+                    key={expense.id}
+                    expense={expense}
+                    year={year}
+                    month={month}
+                    locked={locked}
+                    highlightedDay={highlightedDay}
+                  />
+                ))}
+              </ul>
+
+              <dl className="mt-4 rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
+                <div className="flex items-baseline justify-between">
+                  <dt className="text-xs text-gray-500 dark:text-gray-400">
+                    Total expenses
+                  </dt>
+                  <dd className="font-medium text-gray-900 dark:text-gray-100">
+                    {brlFormatter.format(totalExpenses)}
+                  </dd>
+                </div>
+              </dl>
+            </>
           )}
         </section>
 
         {hasAnyData && (
           <section className="mt-8 border-t border-gray-200 pt-6 dark:border-gray-700">
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-                Net (expected)
-              </h2>
-              <p
-                className={`text-2xl font-semibold ${
-                  netExpected > 0
-                    ? "text-green-600 dark:text-green-400"
-                    : netExpected < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : "text-gray-900 dark:text-gray-100"
-                }`}
-              >
-                {brlFormatter.format(netExpected)}
-              </p>
-            </div>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Total income minus total bills.
-            </p>
+            <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
+              Balance
+            </h2>
+            <dl className="mt-4 space-y-2 rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-baseline justify-between">
+                <dt className="text-gray-600 dark:text-gray-400">
+                  Expected net
+                </dt>
+                <dd
+                  className={`text-lg font-semibold ${
+                    netExpected > 0
+                      ? "text-green-600 dark:text-green-400"
+                      : netExpected < 0
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-gray-900 dark:text-gray-100"
+                  }`}
+                >
+                  {brlFormatter.format(netExpected)}
+                </dd>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <dt className="text-gray-600 dark:text-gray-400">
+                  Net so far
+                </dt>
+                <dd
+                  className={`text-lg font-semibold ${
+                    netSoFar > 0
+                      ? "text-green-600 dark:text-green-400"
+                      : netSoFar < 0
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-gray-900 dark:text-gray-100"
+                  }`}
+                >
+                  {brlFormatter.format(netSoFar)}
+                </dd>
+              </div>
+            </dl>
           </section>
         )}
       </div>

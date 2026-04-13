@@ -183,10 +183,13 @@ export default async function MonthlyViewPage({
     .reduce((sum, e) => sum + Number(e.amount), 0);
   const stillToReceive = totalIncome - receivedIncome;
 
-  // Expected net: how much is left at the end of the month if every
-  // expected income arrives and every scheduled bill is paid. Piece 6
-  // will add one-off expenses and a "net so far" line using actuals.
-  const netExpected = totalIncome - totalBills;
+  const totalExpenses = expenses.reduce(
+    (sum, e) => sum + Number(e.amount),
+    0
+  );
+
+  const netExpected = totalIncome - totalBills - totalExpenses;
+  const netSoFar = receivedIncome - paidBills - totalExpenses;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -212,7 +215,9 @@ export default async function MonthlyViewPage({
         totalIncome={totalIncome}
         receivedIncome={receivedIncome}
         stillToReceive={stillToReceive}
+        totalExpenses={totalExpenses}
         netExpected={netExpected}
+        netSoFar={netSoFar}
       />
     </div>
   );
