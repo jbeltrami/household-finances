@@ -56,6 +56,8 @@ The schema lives in `supabase/migrations/`:
 | `0003_bill_templates_unique_active_name.sql` | Partial unique index preventing two active templates with the same name in a space |
 | `0004_months_locking_and_rls.sql` | Drops `locked` / `locked_at` from `months` (check-on-read locking). Adds SELECT/INSERT/UPDATE policies for `months` and `bill_instances` |
 | `0005_income_entries_rls.sql` | SELECT/INSERT/UPDATE/DELETE policies for `income_entries` (Piece 5). DELETE is exposed because income entries are user-created freely |
+| `0006_one_off_expenses_rls.sql` | SELECT/INSERT/UPDATE/DELETE policies for `one_off_expenses` (Piece 6) |
+| `0007_savings_rls.sql` | SELECT/INSERT/UPDATE/DELETE policies for `savings_funds` and `savings_contributions` (Piece 7). Contribution policies walk the FK to the parent fund and reuse `is_active_member(space_id)` there, so household-shared funds inherit access automatically once Piece 8 lands |
 
 Apply migrations by pasting their contents into the Supabase dashboard SQL editor in order. The `is_active_member(space_id)` helper function (defined in `0002`) is `SECURITY DEFINER` to avoid recursion when policies need to check membership against `space_members` itself.
 
@@ -145,7 +147,7 @@ src/app/bills/
 - **Actions return `{ error: string | null }`** for predictable failures (validation, duplicate name) so forms can render the error inline via `useActionState`. Reserve throws for unexpected crashes
 - **`redirect()` lives outside try/catch** — it works by throwing a Next.js sentinel error; catching it would misclassify the success case as a failure
 
-## Monthly view (Pieces 4a, 4b, 5)
+## Monthly view (Pieces 4a, 4b, 5, 6, 7)
 
 The monthly view at `/months/[year]/[month]` is the heart of the app. After sign-in, `/` redirects to the current month (e.g. `/months/2026/04`). Every month has its own bookmarkable URL.
 
@@ -165,10 +167,14 @@ The page wrapper uses `max-w-6xl` so the desktop layout has room. CalendarStrip'
 - **Per-instance amount override** — saves only that single `bill_instance.amount`, leaving the template untouched
 - **Income section (Piece 5)** — list of `income_entries` with name, expected date, amount, received/pending pill, Edit, and Delete. A `+` button next to the section heading opens a collapsible inline form for adding new entries
 - **Income routes by date, not by viewed month** — if you add an entry on April's page with an expected date in June, the entry is stored under June's `month_id`. The action calls `getOrCreateMonth` to lazily create the target month if needed
-- **Calendar badges** — small blue dot below the day number for days with bills due, small green dot for days with income expected. When a day has both, both dots show side by side
-- **Click-to-highlight** — clicking a current-month cell highlights it with a blue ring and adds a subtle blue background to matching bill rows AND income rows. Clicking the same day toggles off; navigating to a different month resets
+- **One-off expenses (Piece 6)** — list of `one_off_expenses` with name, date, amount, optional category and notes, Edit, and Delete. Same collapsible add-form pattern as income. Expenses feed into the balance math
+- **Calendar badges** — small outflow dot below the day number for days with bills or expenses, small green dot for days with income expected. When a day has both, both dots show side by side. **The outflow dot is red** when at least one bill due that day is overdue and unpaid; otherwise it's blue
+- **Click-to-highlight** — clicking a current-month cell highlights it with a blue ring and adds a subtle blue background to matching bill, expense, and income rows. Clicking the same day toggles off; navigating to a different month resets
 - **Calendar header** — prev/next arrows, single combined month dropdown (existing months from DB + next 6 months), and a Today button that resolves through `/` so it stays fresh
-- **Net (expected) summary** — appears below the bills totals when there's any data. Shows `total_income − total_bills` in green/red/gray depending on sign, with a top rule to set it apart visually
+- **Balance summary** — shown below the sections when there's any data. Three rows:
+  - **Saved this month** — sum of `savings_contributions.amount` (signed) scoped to this month. Read-only — savings CRUD lives at `/savings`
+  - **Expected net** — `total_income − total_bills − total_expenses − savings_net`
+  - **Net so far** — `received_income − paid_bills − overdue_unpaid_bills − total_expenses − savings_net`. The `overdue_unpaid_bills` term catches bills that are past their due date but not yet ticked as paid — they represent money that should already be gone, so they drag the real-time balance down even before the user toggles them
 - **Past-month locking (check-on-read)** — a past month is locked unless it has an `unlock_reason`. The UI hides edit affordances on locked months, and every mutation server action re-checks before writing
 - **Unlock flow** — amber banner with an inline form requiring a written reason (min 5 chars). On success the reason is stored in `months.unlock_reason`, the banner disappears, and editing is enabled
 
@@ -190,20 +196,36 @@ src/app/months/[year]/[month]/
 │   ├── create-income-entry.ts                     ← "use server" (lazy-creates target month)
 │   ├── toggle-income-received.ts                  ← "use server"
 │   ├── update-income-amount.ts                    ← "use server"
-│   └── delete-income-entry.ts                     ← "use server"
+│   ├── delete-income-entry.ts                     ← "use server"
+│   ├── create-one-off-expense.ts                  ← "use server"
+│   ├── update-one-off-expense.ts                  ← "use server"
+│   └── delete-one-off-expense.ts                  ← "use server"
 ├── form-state.ts                                  ← FormState type + initial state
+├── _types.ts                                      ← row types + grouped props (BillRow, IncomeGroup, etc.)
 └── _components/
     ├── MonthlyViewClient/
     │   └── MonthlyViewClient.tsx                  ← client wrapper, owns highlight state, two-column grid
     ├── CalendarStrip/
-    │   ├── CalendarStrip.tsx                      ← client, controls + grid + bill/income badges
+    │   ├── CalendarStrip.tsx                      ← client, controls + grid + bill/income/expense dots
     │   └── _helpers.ts                            ← buildCalendarGrid (private to component)
+    ├── IncomeSection/
+    │   └── IncomeSection.tsx                      ← heading, list, summary, add-form toggle
+    ├── BillsSection/
+    │   └── BillsSection.tsx                       ← heading, list, summary
+    ├── ExpensesSection/
+    │   └── ExpensesSection.tsx                    ← heading, list, summary, add-form toggle
+    ├── BalanceSection/
+    │   └── BalanceSection.tsx                     ← saved / expected net / net so far
     ├── BillInstanceRow/
     │   └── BillInstanceRow.tsx                    ← client, paid toggle + edit + highlight
     ├── IncomeEntryRow/
     │   └── IncomeEntryRow.tsx                     ← client, received toggle + edit + delete + highlight
+    ├── ExpenseEntryRow/
+    │   └── ExpenseEntryRow.tsx                    ← client, edit + delete + highlight
     ├── CreateIncomeEntryForm/
     │   └── CreateIncomeEntryForm.tsx              ← client, accordion form
+    ├── CreateOneOffExpenseForm/
+    │   └── CreateOneOffExpenseForm.tsx            ← client, accordion form
     └── UnlockBanner/
         └── UnlockBanner.tsx                       ← client, useActionState
 ```
@@ -219,6 +241,59 @@ src/app/months/[year]/[month]/
 - **Calendar grid is always 42 cells** — `buildCalendarGrid(year, month)` pads with leading days from the previous month and trailing days from the next month so the grid height stays stable across navigation. Padding cells are non-interactive; current-month cells are buttons
 - **`useTransition` over `useActionState` when you need to react to success/failure** — `useActionState` is fine when there's nothing to do after a successful submit (e.g. server-side `redirect()`), but combining it with `useEffect` to derive client state from `isPending` trips the React 19 `react-hooks/set-state-in-effect` lint rule. The cleaner pattern: `useTransition` + a manual `handleX(formData)` that calls the server action and handles success/error in the same callback. `BillInstanceRow`, `IncomeEntryRow`, and `CreateIncomeEntryForm` all use this pattern
 
+## Savings funds (Piece 7)
+
+Savings funds live at `/savings` and exist **outside** the monthly cycle. A fund has a `starting_balance`; movements are logged per month as `savings_contributions`. The running total is `starting_balance + sum(contributions)`.
+
+### Capabilities
+
+- **`/savings`** — list of the user's funds with running totals, plus a collapsible form to create a new fund
+- **`/savings/[id]`** — fund detail page: rename, running-total card (starting balance, net contributions, current total), full contribution history grouped by month, and a form to log deposits/withdrawals against any month (native `<input type="month">`)
+- **Deposits and withdrawals** — a single amount column with a signed value. The form offers two buttons (Deposit / Withdraw); the action flips the sign so the DB stores positive for deposits and negative for withdrawals. All downstream sums are pure algebra
+- **Lazy target-month creation** — logging a contribution against a month that doesn't exist yet triggers the same `getOrCreateMonth` idiom as income entries. Lock enforcement runs against the **target** month
+- **Monthly view integration** — the `/months/[year]/[month]` page shows a single read-only "Saved this month" row in the balance card, summing every contribution scoped to that month across every accessible fund. `savingsNet` is subtracted from both `netExpected` and `netSoFar`
+
+### File layout
+
+```
+src/app/savings/
+├── page.tsx                                       ← list funds + create form
+├── _types.ts                                      ← SavingsFundRow, SavingsContributionRow
+├── actions.ts                                     ← barrel re-export
+├── actions/
+│   ├── _helpers.ts                                ← parseFundFields, parseContributionFields (signed), fetchContributionContext
+│   ├── create-savings-fund.ts                     ← "use server"
+│   ├── update-savings-fund.ts                     ← "use server"
+│   ├── create-savings-contribution.ts             ← "use server" (lazy-creates target month, lock check)
+│   ├── update-savings-contribution.ts             ← "use server"
+│   └── delete-savings-contribution.ts             ← "use server"
+├── form-state.ts                                  ← FormState type + initial state
+├── _components/
+│   ├── CreateSavingsFundForm/
+│   │   └── CreateSavingsFundForm.tsx              ← client, accordion form
+│   ├── FundsListSection/
+│   │   └── FundsListSection.tsx                   ← heading, empty state, list
+│   └── SavingsFundRow/
+│       └── SavingsFundRow.tsx                     ← client, links to fund detail
+└── [id]/
+    ├── page.tsx                                   ← running total + contribution history
+    └── _components/
+        ├── EditFundNameForm/
+        │   └── EditFundNameForm.tsx               ← client, inline rename
+        ├── CreateContributionForm/
+        │   └── CreateContributionForm.tsx         ← client, deposit/withdraw + month picker
+        ├── ContributionsSection/
+        │   └── ContributionsSection.tsx           ← month-grouped history
+        └── ContributionRow/
+            └── ContributionRow.tsx                ← client, edit + delete
+```
+
+### Design notes
+
+- **Access inheritance via FK** — `savings_contributions` has no `space_id`. RLS policies (`0007`) walk the FK to `savings_funds` and call `is_active_member(f.space_id)` there. When Piece 8 lands and a fund lives in a household space, every active household member automatically gets CRUD on its contributions — no changes needed in this route
+- **Signed amounts everywhere** — the contribution form posts an amount + type, but the action normalizes that into a single `signedAmount` before any DB write. Downstream code (running totals, balance math, row display) never re-derives the sign from a UI flag
+- **Fat-DB separation** — the route follows the same Server-Component-reads / Server-Action-writes split as the rest of the app. Reads happen in `page.tsx` via `createClient()` during render; writes happen in `"use server"` actions invoked via `useActionState` / `useTransition`. RLS is the single source of truth for access control
+
 ## Build order
 
 | Piece | Scope                                                          | Status |
@@ -228,8 +303,8 @@ src/app/months/[year]/[month]/
 | 3     | Recurring bill templates — create, edit, deactivate            | Done   |
 | 4a    | Monthly view core — routes, on-demand creation, paid toggle    | Done   |
 | 4b    | Monthly view top calendar — calendar strip, badges, picker     | Done   |
-| 5     | Income entries — add/edit/mark received (one-off only)         | Done   |
-| 6     | One-off expenses + monthly balance calculation                 | Next   |
-| 7     | Savings funds — create fund, log contributions, running total  | —      |
-| 8     | Shared spaces — household creation, invite flow, aggregate     | —      |
-| 9     | Recurring income templates — biweekly / monthly cadence        | —      |
+| 5     | Income entries — add/edit/mark received (one-off only)         | Done           |
+| 6     | One-off expenses + monthly balance calculation                 | Done           |
+| 7     | Savings funds — create fund, log contributions, running total  | In progress    |
+| 8     | Shared spaces — household creation, invite flow, aggregate     | —              |
+| 9     | Recurring income templates — biweekly / monthly cadence        | —              |

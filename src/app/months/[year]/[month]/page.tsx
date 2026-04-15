@@ -128,6 +128,19 @@ export default async function MonthlyViewPage({
     notes: e.notes,
   }));
 
+  // Savings contributions logged against this month across every fund
+  // the user has access to. We only need the amounts — the sum is the
+  // net movement for the month and feeds the balance calculation.
+  const { data: rawSavingsContributions } = await supabase
+    .from("savings_contributions")
+    .select("amount")
+    .eq("month_id", monthRow.id);
+
+  const savingsNet = (rawSavingsContributions ?? []).reduce(
+    (sum, c) => sum + Number(c.amount),
+    0
+  );
+
   const today = todayYmd();
 
   // Build the deduped list of days in this month that have bills due.
@@ -205,9 +218,13 @@ export default async function MonthlyViewPage({
     0
   );
 
-  const netExpected = totalIncome - totalBills - totalExpenses;
+  const netExpected = totalIncome - totalBills - totalExpenses - savingsNet;
   const netSoFar =
-    receivedIncome - paidBills - overdueUnpaidBills - totalExpenses;
+    receivedIncome -
+    paidBills -
+    overdueUnpaidBills -
+    totalExpenses -
+    savingsNet;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -240,7 +257,7 @@ export default async function MonthlyViewPage({
           stillExpected: stillToReceive,
         }}
         expenses={{ entries: expenses, total: totalExpenses }}
-        balance={{ netExpected, netSoFar }}
+        balance={{ savingsNet, netExpected, netSoFar }}
       />
     </div>
   );

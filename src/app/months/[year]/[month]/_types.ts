@@ -52,6 +52,11 @@ export type ExpensesGroup = {
 };
 
 export type BalanceGroup = {
+  // Net change in savings for this month: positive = deposits net of
+  // withdrawals, negative = withdrawals net of deposits. Subtracted from
+  // both netExpected and netSoFar so the totals reflect the cash reality
+  // after the savings moves happen.
+  savingsNet: number;
   netExpected: number;
   netSoFar: number;
 };

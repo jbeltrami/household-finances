@@ -174,8 +174,8 @@ Net so far (received - paid)   R$18.530
 | 4a    | Monthly view core — routes, on-demand creation, paid toggle, navigation          | ✅ Done |
 | 4b    | Monthly view top calendar — calendar strip, badges, month picker dropdown        | ✅ Done |
 | 5     | Income entries — add/edit/mark received within a month (one-off only)            | ✅ Done |
-| 6     | One-off expenses + monthly balance calculation                                   | ⬜ Next |
-| 7     | Savings funds — create fund, log contributions, running total                    | ⬜      |
+| 6     | One-off expenses + monthly balance calculation                                   | ✅ Done |
+| 7     | Savings funds — create fund, log contributions, running total                    | 🚧 In progress |
 | 8     | Shared spaces — household creation, invite flow, aggregate view                  | ⬜      |
 | 9     | Recurring income templates — biweekly / monthly cadence, instance generation     | ⬜      |
 
@@ -280,6 +280,37 @@ Mobile stays single-column with the calendar grid hidden via the existing `hidde
 
 ---
 
+## Piece 7 plan — Savings funds
+
+Savings funds live outside the monthly cycle. A fund has a `starting_balance` and a set of per-month `savings_contributions` that roll up into `runningTotal = starting_balance + sum(contributions)`.
+
+**Management route: `/savings`**
+
+- List of the user's funds with their running totals. Click a fund → `/savings/[id]` detail page.
+- Detail page exposes: rename, running-total summary (starting balance, net contributions, current total), contribution history grouped by month, and a form to log new contributions.
+- Fund-level UX deliberately minimal for Piece 7: no deactivate/archive yet. Schema has no `active` column; the follow-up decision is whether to add one or allow hard delete.
+
+**Contributions**
+
+- A contribution belongs to both a fund and a month. The month is chosen via a native `<input type="month">` (yields `"YYYY-MM"`) and lazy-created via `getOrCreateMonth` if it doesn't exist — same idiom as income entries routing by `expected_date`.
+- **Signed amounts** — contributions use a single `amount` column but the form has two buttons, **Deposit** and **Withdraw**. The action parses the button's `type` field and flips the sign: deposits positive, withdrawals negative. `parseContributionFields` returns `signedAmount`, so the DB and all downstream sums can treat contributions as pure algebra.
+- **Lock enforcement** runs against the **target** month (the one in the form), not any page-level month, and lives in the server actions (not RLS) — same defense-in-depth approach as income/expenses.
+- **Access control is inherited.** `savings_contributions` has no `space_id`; its RLS policy walks the FK to `savings_funds` and calls `is_active_member(f.space_id)`. When a fund lives in a household space (Piece 8), all active household members automatically get CRUD on its contributions.
+
+**Monthly view integration (one row only)**
+
+- The `/months/[year]/[month]` page fetches the sum of `savings_contributions.amount` for the current month across every accessible fund and passes it to `BalanceSection` as `savingsNet`.
+- `BalanceSection` renders a single **"Saved this month"** row inside the balance card. No inline add/edit — the savings UI lives at `/savings`.
+- `savingsNet` is subtracted from both `netExpected` and `netSoFar`. A deposit (positive) reduces the month's net (money moved out of checking); a withdrawal (negative) increases it (money came back). Because signs are baked in, the math is a single subtraction in both places.
+
+**Out of scope for Piece 7**
+
+- Fund deactivate/archive/delete
+- Contribution-level reporting across months (only per-fund detail page has history for now)
+- Household fund sharing UX (enabled by RLS, but invite/link flow is Piece 8)
+
+---
+
 ## Piece 9 plan — Recurring income templates (deferred)
 
 Income recurrence was originally considered alongside Piece 5 but split out so Piece 5 can ship simple one-off entries first. Income recurrence is harder than bill recurrence for one reason: real-world paychecks often follow a **biweekly cycle** (every other Thursday) that doesn't align with month boundaries. A given calendar month can contain 0, 1, 2, or 3 paychecks depending on alignment.
@@ -331,6 +362,8 @@ This piece is strictly additive to Piece 5: existing one-off entries stay valid,
   - `0003_bill_templates_unique_active_name.sql` — partial unique index preventing two active templates with the same name in a space
   - `0004_months_locking_and_rls.sql` — dropped `locked` / `locked_at` columns from `months` (check-on-read locking); added SELECT/INSERT/UPDATE policies for `months` and `bill_instances`
   - `0005_income_entries_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `income_entries` (Piece 5)
+  - `0006_one_off_expenses_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `one_off_expenses` (Piece 6)
+  - `0007_savings_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `savings_funds` and `savings_contributions` (Piece 7). Contribution policies walk the FK to the parent fund and reuse `is_active_member(space_id)` there, so household-shared funds inherit access automatically
 
 ### Environment variables needed
 
@@ -356,7 +389,10 @@ home-finances-app/
 │       ├── 0001_initial_schema.sql        ← initial tables + trigger
 │       ├── 0002_rls_policies.sql          ← RLS + policies (Piece 3)
 │       ├── 0003_bill_templates_unique_active_name.sql  ← partial unique index
-│       └── 0004_months_locking_and_rls.sql   ← drop locked cols, RLS for months + bill_instances (Piece 4a)
+│       ├── 0004_months_locking_and_rls.sql   ← drop locked cols, RLS for months + bill_instances (Piece 4a)
+│       ├── 0005_income_entries_rls.sql    ← RLS for income_entries (Piece 5)
+│       ├── 0006_one_off_expenses_rls.sql  ← RLS for one_off_expenses (Piece 6)
+│       └── 0007_savings_rls.sql           ← RLS for savings_funds + savings_contributions (Piece 7)
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx                     ← root layout (HTML shell, fonts, navbar)
@@ -387,7 +423,37 @@ home-finances-app/
 │   │   │       └── _components/
 │   │   │           └── EditBillTemplateForm/
 │   │   │               └── EditBillTemplateForm.tsx
-│   │   └── months/                        ← monthly view (Pieces 4a, 4b, 5)
+│   │   ├── savings/                       ← savings funds (Piece 7)
+│   │   │   ├── page.tsx                   ← list funds + create form
+│   │   │   ├── _types.ts                  ← SavingsFundRow, SavingsContributionRow
+│   │   │   ├── actions.ts                 ← barrel re-export
+│   │   │   ├── actions/
+│   │   │   │   ├── _helpers.ts            ← parseFundFields, parseContributionFields (signed amount), fetchContributionContext, getPersonalSpace
+│   │   │   │   ├── create-savings-fund.ts
+│   │   │   │   ├── update-savings-fund.ts
+│   │   │   │   ├── create-savings-contribution.ts  ← lazy-creates target month, lock check
+│   │   │   │   ├── update-savings-contribution.ts
+│   │   │   │   └── delete-savings-contribution.ts
+│   │   │   ├── form-state.ts              ← FormState type + initial state
+│   │   │   ├── _components/
+│   │   │   │   ├── CreateSavingsFundForm/
+│   │   │   │   │   └── CreateSavingsFundForm.tsx
+│   │   │   │   ├── FundsListSection/
+│   │   │   │   │   └── FundsListSection.tsx
+│   │   │   │   └── SavingsFundRow/
+│   │   │   │       └── SavingsFundRow.tsx
+│   │   │   └── [id]/                      ← fund detail page
+│   │   │       ├── page.tsx               ← running total, contribution history
+│   │   │       └── _components/
+│   │   │           ├── EditFundNameForm/
+│   │   │           │   └── EditFundNameForm.tsx
+│   │   │           ├── CreateContributionForm/
+│   │   │           │   └── CreateContributionForm.tsx
+│   │   │           ├── ContributionsSection/
+│   │   │           │   └── ContributionsSection.tsx
+│   │   │           └── ContributionRow/
+│   │   │               └── ContributionRow.tsx
+│   │   └── months/                        ← monthly view (Pieces 4a, 4b, 5, 6, 7)
 │   │       └── [year]/[month]/
 │   │           ├── page.tsx               ← server component, fetches data, two-column wrapper
 │   │           ├── _helpers.ts            ← shared route helpers (sync + async)
@@ -435,7 +501,8 @@ home-finances-app/
 │   │   ├── Navbar.tsx                     ← server component, reads user
 │   │   └── SignOutButton.tsx              ← client component
 │   ├── helpers/
-│   │   └── format.ts                      ← shared formatters (brlFormatter, dateFormatter)
+│   │   ├── format.ts                      ← shared formatters (brlFormatter, dateFormatter)
+│   │   └── date.ts                        ← todayYmd(), currentYearMonth() — "YYYY-MM-DD" / "YYYY-MM" for string-compare against Postgres `date` columns
 │   ├── lib/
 │   │   └── supabase/                      ← third-party integrations only
 │   │       ├── client.ts                  ← browser Supabase client
@@ -494,3 +561,9 @@ Every route follows the same structure. Apply this pattern when adding new route
 - **Calendar grid is always 6×7 = 42 cells** — `buildCalendarGrid` pads with leading days from the previous month and trailing days from the next month so the grid height stays stable across navigation
 - **Income entries are routed by their `expected_date`, not the viewed month** — when the user adds income on April's page with a date in June, `createIncomeEntry` parses the date, calls `getOrCreateMonth` for the target month, and stores the entry under that month's `month_id`. The lock check runs against the **target** month, not the viewed month, so adding income to a past locked month is blocked even when the page you're on is unlocked
 - **Don't `setState` inside `useEffect` to react to action state** — the React 19 lint rule `react-hooks/set-state-in-effect` flags this. Use `useTransition` + a manual `handleX(formData)` function that calls the server action and handles success/error in the same callback. `useActionState` is still fine when you don't need to react to its state changes (e.g. server-side `redirect()` after success)
+- **"Net so far" subtracts overdue unpaid bills** — in `/months/[year]/[month]/page.tsx`, `netSoFar` subtracts `paidBills` **and** `overdueUnpaidBills` (unpaid instances whose `due_date <= today`). The rationale: those bills represent money that should already be gone from the account, even if the user hasn't ticked them paid yet. If you ever refactor this math, keep the two filters separate — one by `paid`, one by `due_date` — so paid future-dated bills don't get double-counted
+- **Calendar dot color encodes urgency** — `CalendarStrip` renders a **blue** dot for days with bills/expenses and a **red** dot when at least one bill due that day is overdue and unpaid. The page computes `daysWithOverdueBills` server-side using `todayYmd()` string comparison against `due_date`, so no client-side date math is needed
+- **Date string helpers live in `src/helpers/date.ts`** — use `todayYmd()` (`"YYYY-MM-DD"`) for comparison against Postgres `date` columns and `currentYearMonth()` (`"YYYY-MM"`) as the default value for native `<input type="month">`. Both use server-local time and are plain string formatters — no timezone parsing involved, which is the whole point
+- **Savings contributions use signed amounts** — the contributions form has two buttons ("Deposit" / "Withdraw") but a single `amount` column. `parseContributionFields` returns `signedAmount` (positive for deposits, negative for withdrawals). Downstream sums, balance math, and display logic all treat `amount` as pure algebra — never re-flip the sign based on the UI button
+- **Savings contributions inherit access from their parent fund** — `savings_contributions` has no `space_id`. Its RLS policies (`0007`) walk the FK to `savings_funds` and call `is_active_member(f.space_id)` there. This is what makes household-shared funds work automatically once Piece 8 lands — no changes needed in this route when fund ownership spans multiple users
+- **Monthly view's savings row is read-only** — `BalanceSection` shows "Saved this month" as a derived sum from `savings_contributions` scoped to the current month. There's no inline add/edit on the monthly page; all savings CRUD happens under `/savings`. The page does still pass `savingsNet` into both `netExpected` and `netSoFar` so the balance totals reflect the cash reality after deposits/withdrawals

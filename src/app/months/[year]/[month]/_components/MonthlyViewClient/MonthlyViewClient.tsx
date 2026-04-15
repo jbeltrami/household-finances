@@ -22,10 +22,12 @@ export default function MonthlyViewClient({
   expenses,
   balance,
 }: MonthlyViewProps) {
-  const hasAnyData =
-    bills.instances.length > 0 ||
-    income.entries.length > 0 ||
-    expenses.entries.length > 0;
+  const hasAnyData = !!(
+    bills.instances.length ||
+    income.entries.length ||
+    expenses.entries.length ||
+    balance.savingsNet
+  );
   const [highlightedDay, setHighlightedDay] = useState<number | null>(null);
 
   const handleSelectDay = (day: number) => {

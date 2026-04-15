@@ -34,6 +34,12 @@ export default async function Navbar() {
           >
             Bills
           </Link>
+          <Link
+            href="/savings"
+            className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+          >
+            Savings
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">
