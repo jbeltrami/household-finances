@@ -264,7 +264,24 @@ async function fetchMonth(
   return data ?? null;
 }
 
-async function generateBillInstances(
+// Idempotent bill-instance sync. Ensures every active template in the
+// space has a matching `bill_instances` row in the given month, without
+// touching rows that already exist.
+//
+// Called on every read of a month (via getOrCreateMonth) so that a
+// template created AFTER a month was first visited still shows up the
+// next time the user opens that month. Handles three edge cases that
+// the one-shot "generate at creation time" approach missed:
+//   - Template created after the month row exists
+//   - Template deactivated then reactivated
+//   - Month unlocked after being locked, allowing new activity
+//
+// Race handling: if a concurrent request inserts the same missing rows
+// between our SELECT and our INSERT, the (month_id, template_id) unique
+// constraint on bill_instances will make our INSERT fail with 23505.
+// We swallow that specific error because the winning request already
+// did the work we were about to do — the outcome is the same.
+async function syncBillInstances(
   supabase: SupabaseClient,
   monthId: string,
   spaceId: string,
@@ -279,7 +296,22 @@ async function generateBillInstances(
 
   if (!templates || templates.length === 0) return;
 
-  const instances = templates.map((t) => ({
+  const { data: existingInstances } = await supabase
+    .from("bill_instances")
+    .select("template_id")
+    .eq("month_id", monthId);
+
+  const existingTemplateIds = new Set(
+    (existingInstances ?? []).map((i) => i.template_id as string)
+  );
+
+  const missing = templates.filter(
+    (t) => !existingTemplateIds.has(t.id as string)
+  );
+
+  if (missing.length === 0) return;
+
+  const newInstances = missing.map((t) => ({
     month_id: monthId,
     template_id: t.id as string,
     space_id: spaceId,
@@ -288,17 +320,25 @@ async function generateBillInstances(
     paid: false,
   }));
 
-  await supabase.from("bill_instances").insert(instances);
+  const { error } = await supabase
+    .from("bill_instances")
+    .insert(newInstances);
+
+  if (error && error.code !== UNIQUE_VIOLATION) {
+    throw new Error(`Failed to sync bill instances: ${error.message}`);
+  }
 }
 
-// Idempotent: returns the existing month if there is one, otherwise
-// creates the month + a bill_instance per active template.
+// Returns the existing month if there is one, otherwise creates the
+// month row. In both cases, runs syncBillInstances to backfill any
+// missing bill_instances from templates active in the space.
 //
-// Race handling: two concurrent requests for the same brand-new month
-// will both pass the SELECT and try to INSERT. The unique constraint
-// on (space_id, year, month) makes one of them fail with code 23505;
-// the loser re-fetches and returns the row that the winner created.
-// The loser does NOT regenerate instances (the winner already did).
+// Race handling for the create path: two concurrent requests for the
+// same brand-new month will both pass the SELECT and try to INSERT.
+// The unique constraint on (space_id, year, month) makes one of them
+// fail with code 23505; the loser re-fetches and returns the row that
+// the winner created. Both paths then run syncBillInstances, which is
+// itself idempotent — safe to call twice.
 export async function getOrCreateMonth(
   supabase: SupabaseClient,
   spaceId: string,
@@ -306,7 +346,10 @@ export async function getOrCreateMonth(
   month: number
 ): Promise<MonthRow> {
   const existing = await fetchMonth(supabase, spaceId, year, month);
-  if (existing) return existing;
+  if (existing) {
+    await syncBillInstances(supabase, existing.id, spaceId, year, month);
+    return existing;
+  }
 
   const { data: created, error } = await supabase
     .from("months")
@@ -317,11 +360,14 @@ export async function getOrCreateMonth(
   if (error) {
     if (error.code === UNIQUE_VIOLATION) {
       const retry = await fetchMonth(supabase, spaceId, year, month);
-      if (retry) return retry;
+      if (retry) {
+        await syncBillInstances(supabase, retry.id, spaceId, year, month);
+        return retry;
+      }
     }
     throw new Error(`Failed to create month: ${error.message}`);
   }
 
-  await generateBillInstances(supabase, created.id, spaceId, year, month);
+  await syncBillInstances(supabase, created.id, spaceId, year, month);
   return created;
 }
