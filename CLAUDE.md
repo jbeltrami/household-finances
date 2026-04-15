@@ -447,6 +447,9 @@ This piece is strictly additive to Piece 5: existing one-off entries stay valid,
   - `0005_income_entries_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `income_entries` (Piece 5)
   - `0006_one_off_expenses_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `one_off_expenses` (Piece 6)
   - `0007_savings_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `savings_funds` and `savings_contributions` (Piece 7). Contribution policies walk the FK to the parent fund and reuse `is_active_member(space_id)` there, so funds in shared spaces inherit access automatically
+  - `0008_drop_household_type.sql` — drops `household` from the `spaces.type` CHECK constraint, leaving `personal | shared`. Cleanup for Piece 8's terminology alignment — "household" was one motivating use case, not a distinct type
+  - `0009_invitations_rls.sql` — introduces `is_space_owner(space_id)` helper (mirrors `is_active_member` but filters by `role = 'owner'`) and adds SELECT/INSERT/UPDATE/DELETE policies for `invitations`. SELECT is visible to active members of the space OR the invitee (email-matched via `auth.jwt() ->> 'email'`); INSERT/DELETE are owner-only; UPDATE is restricted to the invitee (accept / decline flow). Owner "revoke" uses DELETE rather than a 4th status value
+  - `0010_cross_space_reads.sql` — introduces `can_read_space(space_id)` helper (direct active membership OR indirect via `parent_space_id` pointing at a shared space I'm in) and swaps every existing SELECT policy on domain tables (`spaces`, `recurring_bill_templates`, `months`, `bill_instances`, `income_entries`, `one_off_expenses`, `savings_funds`, `savings_contributions`) from `is_active_member` to `can_read_space`. INSERT/UPDATE/DELETE policies are deliberately **not** touched — writes stay narrow so shared-space members can't mutate other members' personal-space entries from the shared view. This is what makes the shared-space aggregate query work end-to-end without silently dropping rows
 
 ### Environment variables needed
 
@@ -475,7 +478,10 @@ home-finances-app/
 │       ├── 0004_months_locking_and_rls.sql   ← drop locked cols, RLS for months + bill_instances (Piece 4a)
 │       ├── 0005_income_entries_rls.sql    ← RLS for income_entries (Piece 5)
 │       ├── 0006_one_off_expenses_rls.sql  ← RLS for one_off_expenses (Piece 6)
-│       └── 0007_savings_rls.sql           ← RLS for savings_funds + savings_contributions (Piece 7)
+│       ├── 0007_savings_rls.sql           ← RLS for savings_funds + savings_contributions (Piece 7)
+│       ├── 0008_drop_household_type.sql   ← drop 'household' from spaces.type CHECK (Piece 8, Step 1)
+│       ├── 0009_invitations_rls.sql       ← is_space_owner helper + RLS for invitations (Piece 8, Step 2a)
+│       └── 0010_cross_space_reads.sql     ← can_read_space helper + widened SELECT policies (Piece 8, Step 2b)
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx                     ← root layout (HTML shell, fonts, navbar)
@@ -628,6 +634,7 @@ Every route follows the same structure. Apply this pattern when adding new route
 - **Date-only columns + timezone trap** — Postgres `date` values come back as `"YYYY-MM-DD"` strings. `new Date("2026-04-01")` parses as UTC midnight, which in negative-offset timezones formats as the previous day. Always format with `Intl.DateTimeFormat(..., { timeZone: "UTC" })` for calendar-date fields
 - **Member departure** — never hard delete `space_members` rows; set `left_at` instead so historical months retain attribution; label departed members in the shared-space view using `left_at`. `parent_space_id` on the personal space is **not** cleared on leave (Option X), so the historical link from personal → shared is preserved
 - **Shared-space aggregate queries** — always query by `space_id IN (shared_space_id, ...linked_personal_space_ids)`, computed from `parent_space_id` at query time, not from current `space_members` membership. Because `parent_space_id` is preserved on leave, this naturally includes historical entries from departed members
+- **SELECT is cross-space, writes are not** — since migration `0010`, every SELECT policy on a domain table uses `can_read_space(space_id)`, which returns true for direct membership OR indirect membership via `parent_space_id`. This is what lets the shared-space aggregate query see rows from other members' personal spaces. INSERT/UPDATE/DELETE policies deliberately still use `is_active_member(space_id)` — a shared-space member must NOT be able to mutate another member's personal-space entries from the shared view. If you add a new domain table, SELECT should use `can_read_space`, writes should use `is_active_member`. Match the pattern
 - **Invitations** — match pending invites by email on every login; a dashboard banner surfaces them; unique constraint on (space_id, invited_email) prevents duplicate invites
 - **Trigger naming** — the personal space trigger is `on_auth_user_created` on `auth.users`; do not drop or rename it
 - **Never commit .env.local** — Supabase URL and publishable key must stay out of the repository

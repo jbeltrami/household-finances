@@ -58,6 +58,9 @@ The schema lives in `supabase/migrations/`:
 | `0005_income_entries_rls.sql` | SELECT/INSERT/UPDATE/DELETE policies for `income_entries` (Piece 5). DELETE is exposed because income entries are user-created freely |
 | `0006_one_off_expenses_rls.sql` | SELECT/INSERT/UPDATE/DELETE policies for `one_off_expenses` (Piece 6) |
 | `0007_savings_rls.sql` | SELECT/INSERT/UPDATE/DELETE policies for `savings_funds` and `savings_contributions` (Piece 7). Contribution policies walk the FK to the parent fund and reuse `is_active_member(space_id)` there, so funds in shared spaces inherit access automatically once Piece 8 lands |
+| `0008_drop_household_type.sql` | Drops `household` from the `spaces.type` CHECK constraint, leaving `personal | shared`. Cleanup for Piece 8's terminology alignment |
+| `0009_invitations_rls.sql` | Adds the `is_space_owner(space_id)` helper and full RLS policies for `invitations` (Piece 8, Step 2a). SELECT allowed for active members of the space or the invitee (email match); INSERT/DELETE owner-only; UPDATE restricted to the invitee for accept/decline |
+| `0010_cross_space_reads.sql` | Adds the `can_read_space(space_id)` helper and widens every existing SELECT policy on domain tables to allow reads from linked personal spaces of a shared space the user is in (Piece 8, Step 2b). Writes stay narrow — only reads are cross-space. This is what makes the shared-space aggregate query see rows from other members' personal spaces |
 
 Apply migrations by pasting their contents into the Supabase dashboard SQL editor in order. The `is_active_member(space_id)` helper function (defined in `0002`) is `SECURITY DEFINER` to avoid recursion when policies need to check membership against `space_members` itself.
 
