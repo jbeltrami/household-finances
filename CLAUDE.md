@@ -4,7 +4,8 @@
 
 A personal finance planner for a small group of friends and family. Each user
 manages their own monthly finances, with the option to link personal spaces into
-a shared household view. Built on Supabase (database + auth) with a Next.js
+a shared-space view (shared finances for couples, roommates, or any multi-person
+group — not just households). Built on Supabase (database + auth) with a Next.js
 frontend hosted on Vercel.
 
 ---
@@ -27,26 +28,26 @@ frontend hosted on Vercel.
 - **Recurring bill templates** — defined once, instances auto-generated per month
 - **Per-instance amount overrides** — a bill instance can differ from its template for that month only, without affecting the template or other months
 - **Past months auto-lock** — locked when a new month begins; unlocking requires a written reason (no password re-entry)
-- **Spaces with parent linking** — a personal space can be linked to a household space; its entries roll up into the household aggregate view
-- **Data flows one way** — personal → household only; the household view is a read-only aggregation, never a write target; entries always belong to the space they were created in
-- **Historical participation preserved** — when someone leaves a household, their past entries remain visible in historical months with correct attribution
-- **Household entries** — the household space can also have its own entries (joint expenses not belonging to either person)
+- **Spaces with parent linking** — a personal space can be linked to a shared space; its entries roll up into the shared-space aggregate view
+- **Data flows one way** — personal → shared only; a personal-space entry seen in the shared view is read-only there; the shared space can have its *own* entries (joint expenses), which are writable only from within the shared view; entries always belong to the space they were created in
+- **Historical participation preserved** — when someone leaves a shared space, their past entries remain visible in historical months with correct attribution
+- **Shared-space entries** — the shared space can also have its own entries (joint expenses not belonging to any specific member)
 - **Savings funds** — live outside the monthly cycle; contributions are logged per month; total = starting_balance + sum of all contributions
 - **Google OAuth only** — first login auto-creates the user's personal space via a database trigger
-- **Invite by email** — household owners invite by email; pending invites wait for the person to sign up if they don't have an account yet; accepted/declined via dashboard banner
+- **Invite by email** — shared-space owners invite by email; pending invites wait for the person to sign up if they don't have an account yet; accepted/declined via dashboard banner
 
 ---
 
 ## Core concept: Spaces
 
-A Space is a budget context. Types: `personal`, `household`, `shared`.
+A Space is a budget context. Types: `personal` and `shared`.
 
 - Every user gets a **personal space** automatically on first login (DB trigger)
-- Personal spaces can be **linked to a household space** via `parent_space_id`
-- The household view aggregates entries from the household space itself + all linked personal spaces
-- Entries in a personal space are attributed to their owner in the household view
+- Personal spaces can be **linked to a shared space** via `parent_space_id`
+- The shared-space view aggregates entries from the shared space itself + all linked personal spaces
+- Entries in a personal space are attributed to their owner in the shared-space view
 - An unlinked personal space is fully private
-- Leaving a household removes the `parent_space_id` link — personal space data remains fully intact
+- **Leaving a shared space preserves the link** — `space_members.left_at` gets set to gate future write access, but `parent_space_id` stays pointing at the shared space. This is what keeps historical entries visible in the aggregate view. Personal-space data is never touched on leave
 
 ---
 
@@ -54,7 +55,7 @@ A Space is a budget context. Types: `personal`, `household`, `shared`.
 
 ```sql
 spaces
-  id, name, type (personal | household | shared)
+  id, name, type (personal | shared)
   created_by, parent_space_id (nullable), created_at
 
 space_members
@@ -103,19 +104,20 @@ A `months` row is created on demand — when a user first navigates to a month.
 At that point, bill instances are auto-generated from all active templates in
 that space. Past months lock automatically; editing requires an unlock reason.
 
-### How the household view works
+### How the shared-space view works
 
-Query: all entries from the household space + all entries from spaces where
-`parent_space_id = household_space.id`. Entries are attributed by `space_id`
-so the UI can show "João — Unimed R$1.200" vs "Wife — Gym R$150".
+Query: all entries from the shared space + all entries from spaces where
+`parent_space_id = shared_space.id`. Entries are attributed by `space_id`
+so the UI can show "João — Unimed R$1.200" vs "Maria — Gym R$150".
 
 Past months retain attribution even after someone leaves, because entries carry
-their original `space_id` permanently. The household view labels departed
-members using `space_members.left_at`.
+their original `space_id` permanently *and* `parent_space_id` stays set on leave
+(Option X). The shared-space view labels departed members using
+`space_members.left_at` — they still appear, just marked as former members.
 
 ### How invitations work
 
-1. Household owner types an email address
+1. Shared-space owner types an email address
 2. An `invitations` row is created with `status: pending`
 3. If the person already has an account, they see a dashboard banner on next login
 4. If not, the invite waits — when they sign up with that email via Google, the banner appears
@@ -176,7 +178,7 @@ Net so far (received - paid)   R$18.530
 | 5     | Income entries — add/edit/mark received within a month (one-off only)            | ✅ Done |
 | 6     | One-off expenses + monthly balance calculation                                   | ✅ Done |
 | 7     | Savings funds — create fund, log contributions, running total                    | 🚧 In progress |
-| 8     | Shared spaces — household creation, invite flow, aggregate view                  | ⬜      |
+| 8     | Shared spaces — URL refactor, invite flow, aggregate view, dashboard             | 🚧 In progress |
 | 9     | Recurring income templates — biweekly / monthly cadence, instance generation     | ⬜      |
 
 ---
@@ -295,7 +297,7 @@ Savings funds live outside the monthly cycle. A fund has a `starting_balance` an
 - A contribution belongs to both a fund and a month. The month is chosen via a native `<input type="month">` (yields `"YYYY-MM"`) and lazy-created via `getOrCreateMonth` if it doesn't exist — same idiom as income entries routing by `expected_date`.
 - **Signed amounts** — contributions use a single `amount` column but the form has two buttons, **Deposit** and **Withdraw**. The action parses the button's `type` field and flips the sign: deposits positive, withdrawals negative. `parseContributionFields` returns `signedAmount`, so the DB and all downstream sums can treat contributions as pure algebra.
 - **Lock enforcement** runs against the **target** month (the one in the form), not any page-level month, and lives in the server actions (not RLS) — same defense-in-depth approach as income/expenses.
-- **Access control is inherited.** `savings_contributions` has no `space_id`; its RLS policy walks the FK to `savings_funds` and calls `is_active_member(f.space_id)`. When a fund lives in a household space (Piece 8), all active household members automatically get CRUD on its contributions.
+- **Access control is inherited.** `savings_contributions` has no `space_id`; its RLS policy walks the FK to `savings_funds` and calls `is_active_member(f.space_id)`. When a fund lives in a shared space (Piece 8), all active shared-space members automatically get CRUD on its contributions.
 
 **Monthly view integration (one row only)**
 
@@ -307,7 +309,88 @@ Savings funds live outside the monthly cycle. A fund has a `starting_balance` an
 
 - Fund deactivate/archive/delete
 - Contribution-level reporting across months (only per-fund detail page has history for now)
-- Household fund sharing UX (enabled by RLS, but invite/link flow is Piece 8)
+- Shared-space fund sharing UX (enabled by RLS, but invite/link flow is Piece 8)
+
+---
+
+## Piece 8 plan — Shared spaces
+
+Shared spaces (shared finances) let multiple users collaborate on a joint budget while each retaining their own private personal space. The whole piece is the biggest refactor in the build order because every existing route has to learn about a space context.
+
+### Product model
+
+- A **shared space** is a `space` with `type = 'shared'`. It has members (`space_members`) and can have its own entries (joint expenses, joint income, joint savings funds).
+- Personal spaces can link to a shared space via `parent_space_id`. A personal space can have at most one parent at a time.
+- The **shared-space view** is an aggregate: entries from the shared space + entries from every personal space whose `parent_space_id` points at it. Rows from a non-current space render attributed (e.g. "João — Unimed") and without edit affordances.
+- The shared space itself is a normal write target for joint entries. The read-only part of the view is the rolled-up personal-space rows, not the whole view.
+- **Option X (leave model)**: leaving a shared space sets `space_members.left_at` but does NOT clear `parent_space_id`. Historical entries stay visible in the aggregate view, departed members get a label in the UI.
+
+### URL structure
+
+All data routes live under `/spaces/[spaceId]/...`. This is the biggest refactor in Piece 8:
+
+- `/spaces/[spaceId]/months/[year]/[month]` (was `/months/[year]/[month]`)
+- `/spaces/[spaceId]/bills` (was `/bills`)
+- `/spaces/[spaceId]/savings` (was `/savings`)
+- `/spaces/[spaceId]/settings` — rename, invite, revoke, member list
+- `/spaces/new` — create a new shared space
+
+Every page knows its space context from the URL. Server components resolve `spaceId` from params and query by it instead of looking up a "personal space" implicitly. RLS ensures the user only sees spaces they're a member of; a stale or forged spaceId just returns empty results.
+
+### Dashboard at `/`
+
+The root route stops being a redirect and becomes a real page: a launchpad showing the user's spaces as cards.
+
+- **Pending invitations** — top section, only rendered when there are any. One row per invite with the inviting space, who invited them, Accept / Decline buttons.
+- **Your spaces** — one card per active membership (always includes the personal space; adds one per shared space). Each card shows:
+  - Space name + type badge (`Personal` / `Shared`)
+  - For shared spaces: member initials/avatars
+  - Current-month snapshot: **Net so far**, **Still to pay**, **Savings this month**
+  - Three deep links: **This month →**, **Bills →**, **Savings →**
+  - The whole card is clickable and routes to `/spaces/[id]/months/[current]`
+- **`+ Create shared space`** button routes to `/spaces/new`
+
+### Aggregate query helper
+
+A shared helper (probably in `src/lib/spaces/` or similar) takes a `spaceId` and returns the list of space_ids to query:
+
+- For a `personal` space: `[personalId]`
+- For a `shared` space: `[sharedId, ...childPersonalSpaceIds]`, where children are computed from `parent_space_id`
+
+Every data fetch in the monthly view, bills, and savings routes calls through this helper. The space type decides whether entries render as writable or as read-only attributed rows.
+
+### Invitation flow
+
+1. Owner enters an email on the shared-space settings page
+2. `invitations` row created with `status = 'pending'`, unique on `(space_id, invited_email)`
+3. On every request, a server component checks for pending invitations where `invited_email = user.email`
+4. If any exist, a banner renders (either on the dashboard or globally) with Accept / Decline
+5. **Accept**: creates a `space_members` row (role = `member`, `left_at = null`), sets the invitee's personal space `parent_space_id` to the shared space, marks the invite `accepted`
+6. **Decline**: marks the invite `declined`, nothing else
+7. The owner can see pending invitations and revoke them from the settings page
+
+### Build steps
+
+Piece 8 ships in small, check-in-able steps:
+
+0. **Terminology alignment (docs only)** — update CLAUDE.md and README.md to drop "household" for "shared space" / "shared finances"
+1. **Schema cleanup migration** — `0008_drop_household_type.sql`: drop `household` from the `spaces.type` CHECK constraint, leaving `personal | shared`
+2. **Invitations RLS migration** — `0009_invitations_rls.sql`: SELECT/INSERT/UPDATE/DELETE policies for `invitations`; audit existing policies for shared-space read paths
+3. **URL refactor** — introduce `/spaces/[spaceId]/...`, move existing routes underneath, update Navbar, fix "Today" button in CalendarStrip. No new features; app behaves identically but every page carries a spaceId. `/` keeps its current redirect temporarily
+4. **Space switcher** — Navbar dropdown listing active memberships, navigates to that space's current month
+5. **Create shared space** — `/spaces/new` form; creates space, adds creator as owner, sets creator's personal `parent_space_id`
+6. **Shared-space settings** — `/spaces/[spaceId]/settings` with rename, invite, revoke pending, member list
+7. **Invitation banner** — global component in the root layout; reads pending invites on every render; accept/decline actions
+8. **Aggregate query layer + attributed read-only rows** — helper + refactor of monthly view / bills / savings fetches; attribution labels; disabled edit affordances for non-current-space rows
+9. **Dashboard at `/`** — replaces the redirect. Depends on Step 8 being done so shared-space summaries are correct
+10. **Final docs pass**
+
+### Out of scope for Piece 8
+
+- Leave shared space / remove member (UX needs its own pass)
+- Email or push notifications for invites (in-app banner only)
+- Multi-parent personal spaces (a personal space can belong to one shared space at a time)
+- Charts, activity feeds, cross-space rollups on the dashboard
 
 ---
 
@@ -363,7 +446,7 @@ This piece is strictly additive to Piece 5: existing one-off entries stay valid,
   - `0004_months_locking_and_rls.sql` — dropped `locked` / `locked_at` columns from `months` (check-on-read locking); added SELECT/INSERT/UPDATE policies for `months` and `bill_instances`
   - `0005_income_entries_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `income_entries` (Piece 5)
   - `0006_one_off_expenses_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `one_off_expenses` (Piece 6)
-  - `0007_savings_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `savings_funds` and `savings_contributions` (Piece 7). Contribution policies walk the FK to the parent fund and reuse `is_active_member(space_id)` there, so household-shared funds inherit access automatically
+  - `0007_savings_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `savings_funds` and `savings_contributions` (Piece 7). Contribution policies walk the FK to the parent fund and reuse `is_active_member(space_id)` there, so funds in shared spaces inherit access automatically
 
 ### Environment variables needed
 
@@ -538,13 +621,13 @@ Every route follows the same structure. Apply this pattern when adding new route
 ## Key gotchas
 
 - **RLS blocks everything by default** — tables need explicit policies before the app can read/write them; queries in the Supabase SQL editor run as superuser and bypass RLS
-- **Data direction** — entries always belong to the space they were created in; the household view is a read-only aggregation, never a write target; never move or copy entries between spaces
+- **Data direction** — entries always belong to the space they were created in; personal-space entries seen in the shared-space view are read-only there; shared-space entries (joint expenses) are writable only from within the shared view; never move or copy entries between spaces
 - **Bill instance amounts** — always read from `bill_instances.amount`, never from the template, so per-month overrides are respected automatically
 - **Month creation is lazy** — a `months` row is created on demand the first time a user navigates to a `/months/[year]/[month]` route; bill instances are auto-generated at that point from the space's active templates. Races are handled by catching the unique-violation error and re-fetching
 - **Locked months — check-on-read** — a month is effectively locked when `(year, month)` is strictly in the past AND `unlock_reason IS NULL`. The `months.locked` / `locked_at` columns were dropped in `0004`. Use `isMonthLocked({ year, month, unlock_reason })` in both the page render and every mutation server action (defense in depth)
 - **Date-only columns + timezone trap** — Postgres `date` values come back as `"YYYY-MM-DD"` strings. `new Date("2026-04-01")` parses as UTC midnight, which in negative-offset timezones formats as the previous day. Always format with `Intl.DateTimeFormat(..., { timeZone: "UTC" })` for calendar-date fields
-- **Member departure** — never hard delete `space_members` rows; set `left_at` instead so historical months retain attribution; label departed members in the household view using `left_at`
-- **Household aggregate queries** — always query by `space_id IN (household_id, ...linked_personal_space_ids)`, not by current membership, to correctly include historical entries from departed members
+- **Member departure** — never hard delete `space_members` rows; set `left_at` instead so historical months retain attribution; label departed members in the shared-space view using `left_at`. `parent_space_id` on the personal space is **not** cleared on leave (Option X), so the historical link from personal → shared is preserved
+- **Shared-space aggregate queries** — always query by `space_id IN (shared_space_id, ...linked_personal_space_ids)`, computed from `parent_space_id` at query time, not from current `space_members` membership. Because `parent_space_id` is preserved on leave, this naturally includes historical entries from departed members
 - **Invitations** — match pending invites by email on every login; a dashboard banner surfaces them; unique constraint on (space_id, invited_email) prevents duplicate invites
 - **Trigger naming** — the personal space trigger is `on_auth_user_created` on `auth.users`; do not drop or rename it
 - **Never commit .env.local** — Supabase URL and publishable key must stay out of the repository
@@ -565,5 +648,5 @@ Every route follows the same structure. Apply this pattern when adding new route
 - **Calendar dot color encodes urgency** — `CalendarStrip` renders a **blue** dot for days with bills/expenses and a **red** dot when at least one bill due that day is overdue and unpaid. The page computes `daysWithOverdueBills` server-side using `todayYmd()` string comparison against `due_date`, so no client-side date math is needed
 - **Date string helpers live in `src/helpers/date.ts`** — use `todayYmd()` (`"YYYY-MM-DD"`) for comparison against Postgres `date` columns and `currentYearMonth()` (`"YYYY-MM"`) as the default value for native `<input type="month">`. Both use server-local time and are plain string formatters — no timezone parsing involved, which is the whole point
 - **Savings contributions use signed amounts** — the contributions form has two buttons ("Deposit" / "Withdraw") but a single `amount` column. `parseContributionFields` returns `signedAmount` (positive for deposits, negative for withdrawals). Downstream sums, balance math, and display logic all treat `amount` as pure algebra — never re-flip the sign based on the UI button
-- **Savings contributions inherit access from their parent fund** — `savings_contributions` has no `space_id`. Its RLS policies (`0007`) walk the FK to `savings_funds` and call `is_active_member(f.space_id)` there. This is what makes household-shared funds work automatically once Piece 8 lands — no changes needed in this route when fund ownership spans multiple users
+- **Savings contributions inherit access from their parent fund** — `savings_contributions` has no `space_id`. Its RLS policies (`0007`) walk the FK to `savings_funds` and call `is_active_member(f.space_id)` there. This is what makes shared-space funds work automatically once Piece 8 lands — no changes needed in this route when fund ownership spans multiple users
 - **Monthly view's savings row is read-only** — `BalanceSection` shows "Saved this month" as a derived sum from `savings_contributions` scoped to the current month. There's no inline add/edit on the monthly page; all savings CRUD happens under `/savings`. The page does still pass `savingsNet` into both `netExpected` and `netSoFar` so the balance totals reflect the cash reality after deposits/withdrawals

@@ -1,6 +1,6 @@
 # Home Finances App
 
-A personal finance planner for a small group of friends and family. Each user manages their own monthly finances, with the option to link personal spaces into a shared household view.
+A personal finance planner for a small group of friends and family. Each user manages their own monthly finances, with the option to link personal spaces into a shared-space view — shared finances for couples, roommates, or any multi-person group.
 
 ## Tech stack
 
@@ -57,7 +57,7 @@ The schema lives in `supabase/migrations/`:
 | `0004_months_locking_and_rls.sql` | Drops `locked` / `locked_at` from `months` (check-on-read locking). Adds SELECT/INSERT/UPDATE policies for `months` and `bill_instances` |
 | `0005_income_entries_rls.sql` | SELECT/INSERT/UPDATE/DELETE policies for `income_entries` (Piece 5). DELETE is exposed because income entries are user-created freely |
 | `0006_one_off_expenses_rls.sql` | SELECT/INSERT/UPDATE/DELETE policies for `one_off_expenses` (Piece 6) |
-| `0007_savings_rls.sql` | SELECT/INSERT/UPDATE/DELETE policies for `savings_funds` and `savings_contributions` (Piece 7). Contribution policies walk the FK to the parent fund and reuse `is_active_member(space_id)` there, so household-shared funds inherit access automatically once Piece 8 lands |
+| `0007_savings_rls.sql` | SELECT/INSERT/UPDATE/DELETE policies for `savings_funds` and `savings_contributions` (Piece 7). Contribution policies walk the FK to the parent fund and reuse `is_active_member(space_id)` there, so funds in shared spaces inherit access automatically once Piece 8 lands |
 
 Apply migrations by pasting their contents into the Supabase dashboard SQL editor in order. The `is_active_member(space_id)` helper function (defined in `0002`) is `SECURITY DEFINER` to avoid recursion when policies need to check membership against `space_members` itself.
 
@@ -290,7 +290,7 @@ src/app/savings/
 
 ### Design notes
 
-- **Access inheritance via FK** — `savings_contributions` has no `space_id`. RLS policies (`0007`) walk the FK to `savings_funds` and call `is_active_member(f.space_id)` there. When Piece 8 lands and a fund lives in a household space, every active household member automatically gets CRUD on its contributions — no changes needed in this route
+- **Access inheritance via FK** — `savings_contributions` has no `space_id`. RLS policies (`0007`) walk the FK to `savings_funds` and call `is_active_member(f.space_id)` there. When Piece 8 lands and a fund lives in a shared space, every active shared-space member automatically gets CRUD on its contributions — no changes needed in this route
 - **Signed amounts everywhere** — the contribution form posts an amount + type, but the action normalizes that into a single `signedAmount` before any DB write. Downstream code (running totals, balance math, row display) never re-derives the sign from a UI flag
 - **Fat-DB separation** — the route follows the same Server-Component-reads / Server-Action-writes split as the rest of the app. Reads happen in `page.tsx` via `createClient()` during render; writes happen in `"use server"` actions invoked via `useActionState` / `useTransition`. RLS is the single source of truth for access control
 
@@ -306,5 +306,5 @@ src/app/savings/
 | 5     | Income entries — add/edit/mark received (one-off only)         | Done           |
 | 6     | One-off expenses + monthly balance calculation                 | Done           |
 | 7     | Savings funds — create fund, log contributions, running total  | In progress    |
-| 8     | Shared spaces — household creation, invite flow, aggregate     | —              |
+| 8     | Shared spaces — URL refactor, invite flow, aggregate, dashboard| In progress    |
 | 9     | Recurring income templates — biweekly / monthly cadence        | —              |
