@@ -43,13 +43,12 @@ export default function IncomeEntryRow({
     expectedDay !== null &&
     expectedDay === highlightedDay;
 
-  const toggleReceivedAction = toggleIncomeReceived.bind(
-    null,
-    entry.id,
-    !entry.received,
-    year,
-    month
-  );
+  const [isToggling, startToggle] = useTransition();
+  const handleToggleReceived = () => {
+    startToggle(async () => {
+      await toggleIncomeReceived(entry.id, !entry.received, year, month, new FormData());
+    });
+  };
 
   // Update is invoked via useTransition rather than useActionState so we
   // can close edit mode in the success branch of the click handler — no
@@ -128,7 +127,11 @@ export default function IncomeEntryRow({
             <button
               type="submit"
               disabled={isUpdating}
-              className="rounded-md bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+              className={`rounded-md px-3 py-1 text-xs font-medium ${
+                isUpdating
+                  ? "animate-pulse bg-gray-400 text-white dark:bg-gray-600"
+                  : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+              }`}
             >
               {isUpdating ? "Saving…" : "Save"}
             </button>
@@ -169,19 +172,21 @@ export default function IncomeEntryRow({
             {entry.received ? "received" : "pending"}
           </span>
         ) : (
-          <form action={toggleReceivedAction}>
-            <button
-              type="submit"
-              className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
-                entry.received
+          <button
+            type="button"
+            onClick={handleToggleReceived}
+            disabled={isToggling}
+            className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+              isToggling
+                ? "animate-pulse bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                : entry.received
                   ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-200 dark:hover:bg-green-900/60"
                   : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-200 dark:hover:bg-yellow-900/60"
-              }`}
-              title={entry.received ? "Mark as pending" : "Mark as received"}
-            >
-              {entry.received ? "received" : "pending"}
-            </button>
-          </form>
+            }`}
+            title={entry.received ? "Mark as pending" : "Mark as received"}
+          >
+            {isToggling ? "…" : entry.received ? "received" : "pending"}
+          </button>
         )}
 
         {!noEdit && (
@@ -189,7 +194,11 @@ export default function IncomeEntryRow({
             type="button"
             onClick={handleDelete}
             disabled={isDeleting}
-            className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+            className={`text-xs font-medium ${
+              isDeleting
+                ? "animate-pulse text-red-400 dark:text-red-500"
+                : "text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+            }`}
           >
             {isDeleting ? "Deleting…" : "Delete"}
           </button>

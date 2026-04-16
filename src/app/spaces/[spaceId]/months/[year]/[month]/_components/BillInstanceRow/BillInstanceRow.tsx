@@ -43,15 +43,14 @@ export default function BillInstanceRow({
   const isHighlighted =
     highlightedDay !== null && dueDay !== null && dueDay === highlightedDay;
 
-  // The paid toggle is still a plain form → server action submission; it's
-  // a one-click thing with no client-side follow-up needed.
-  const togglePaidAction = toggleBillPaid.bind(
-    null,
-    instance.id,
-    !instance.paid,
-    year,
-    month
-  );
+  // The paid toggle uses useTransition so we can show a loading state
+  // while the server action runs.
+  const [isToggling, startToggle] = useTransition();
+  const handleTogglePaid = () => {
+    startToggle(async () => {
+      await toggleBillPaid(instance.id, !instance.paid, year, month, new FormData());
+    });
+  };
 
   // Update is invoked via useTransition rather than useActionState so we
   // can close edit mode in the success branch of the click handler — no
@@ -118,7 +117,11 @@ export default function BillInstanceRow({
             <button
               type="submit"
               disabled={isUpdating}
-              className="rounded-md bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+              className={`rounded-md px-3 py-1 text-xs font-medium ${
+                isUpdating
+                  ? "animate-pulse bg-gray-400 text-white dark:bg-gray-600"
+                  : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+              }`}
             >
               {isUpdating ? "Saving…" : "Save"}
             </button>
@@ -159,19 +162,21 @@ export default function BillInstanceRow({
             {instance.paid ? "paid" : "pending"}
           </span>
         ) : (
-          <form action={togglePaidAction}>
-            <button
-              type="submit"
-              className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
-                instance.paid
+          <button
+            type="button"
+            onClick={handleTogglePaid}
+            disabled={isToggling}
+            className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+              isToggling
+                ? "animate-pulse bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
+                : instance.paid
                   ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-200 dark:hover:bg-green-900/60"
                   : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-200 dark:hover:bg-yellow-900/60"
-              }`}
-              title={instance.paid ? "Mark as pending" : "Mark as paid"}
-            >
-              {instance.paid ? "paid" : "pending"}
-            </button>
-          </form>
+            }`}
+            title={instance.paid ? "Mark as pending" : "Mark as paid"}
+          >
+            {isToggling ? "…" : instance.paid ? "paid" : "pending"}
+          </button>
         )}
       </div>
 

@@ -1,7 +1,5 @@
-import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
 import NavbarNav, { type NavbarSpace } from "./NavbarNav";
-import SignOutButton from "./SignOutButton";
 
 type MembershipRow = {
   spaces: {
@@ -10,6 +8,15 @@ type MembershipRow = {
     type: "personal" | "shared";
   };
 };
+
+function getInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase())
+    .slice(0, 2)
+    .join("");
+}
 
 export default async function Navbar() {
   const supabase = await createClient();
@@ -51,35 +58,13 @@ export default async function Navbar() {
   const fullName = user.user_metadata?.full_name as string | undefined;
   const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
   const displayName = fullName ?? user.email ?? "User";
-  const initial = displayName.charAt(0).toUpperCase();
+  const initials = getInitials(displayName);
 
   return (
-    <nav className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-6">
-          <NavbarNav spaces={spaces} />
-        </div>
-
-        <div className="flex items-center gap-3">
-          {avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt={displayName}
-              width={32}
-              height={32}
-              className="rounded-full"
-            />
-          ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
-              {initial}
-            </div>
-          )}
-          <span className="text-sm text-gray-700 dark:text-gray-300">
-            {displayName}
-          </span>
-          <SignOutButton />
-        </div>
-      </div>
-    </nav>
+    <NavbarNav
+      spaces={spaces}
+      avatarUrl={avatarUrl}
+      initials={initials}
+    />
   );
 }

@@ -163,7 +163,11 @@ export default function ExpenseEntryRow({
               <button
                 type="submit"
                 disabled={isUpdating}
-                className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+                className={`rounded-md px-3 py-1.5 text-xs font-medium ${
+                isUpdating
+                  ? "animate-pulse bg-gray-400 text-white dark:bg-gray-600"
+                  : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+              }`}
               >
                 {isUpdating ? "Saving…" : "Save"}
               </button>
@@ -221,7 +225,11 @@ export default function ExpenseEntryRow({
             type="button"
             onClick={handleDelete}
             disabled={isDeleting}
-            className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+            className={`text-xs font-medium ${
+              isDeleting
+                ? "animate-pulse text-red-400 dark:text-red-500"
+                : "text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+            }`}
           >
             {isDeleting ? "Deleting…" : "Delete"}
           </button>
