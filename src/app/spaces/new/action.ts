@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { spaceMonthUrl } from "@/helpers/paths";
@@ -74,6 +75,10 @@ export async function createSharedSpace(
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Something went wrong" };
   }
+
+  // Bust the root layout cache so the Navbar re-renders with the
+  // new space in the switcher dropdown.
+  revalidatePath("/", "layout");
 
   // redirect() must be outside try/catch — it throws a Next.js
   // sentinel error that the framework catches internally.

@@ -6,6 +6,7 @@ import {
   spaceBillsUrl,
   spaceMonthUrl,
   spaceSavingsUrl,
+  spaceSettingsUrl,
 } from "@/helpers/paths";
 
 // Shape of a single switcher entry. Kept as a named export so the
@@ -59,6 +60,7 @@ export default function NavbarNav({ spaces }: Props) {
   // any future non-space routes we add.
   const match = pathname.match(/^\/spaces\/([^/]+)/);
   const currentSpaceId = match ? match[1] : spaces[0].id;
+  const currentSpace = spaces.find((s) => s.id === currentSpaceId);
 
   const handleSpaceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newSpaceId = e.target.value;
@@ -120,6 +122,14 @@ export default function NavbarNav({ spaces }: Props) {
       >
         Savings
       </Link>
+      {currentSpace?.type === "shared" && (
+        <Link
+          href={spaceSettingsUrl(currentSpaceId)}
+          className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+        >
+          Settings
+        </Link>
+      )}
     </>
   );
 }
