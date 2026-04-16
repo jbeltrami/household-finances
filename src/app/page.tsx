@@ -25,6 +25,7 @@ type SpaceSummary = SpaceRow & {
   netSoFar: number;
   stillToPay: number;
   savingsNet: number;
+  totalSavings: number;
 };
 
 // Compute the current-month snapshot for a single space (or its
@@ -48,11 +49,40 @@ async function computeSummary(
   const monthIds = (months ?? []).map((m) => m.id);
 
   // Member count (only meaningful for shared spaces, but cheap either way).
-  const { count: memberCount } = await supabase
-    .from("space_members")
-    .select("*", { count: "exact", head: true })
-    .eq("space_id", space.id)
-    .is("left_at", null);
+  // Savings funds — query independently of months since funds live outside
+  // the monthly cycle. starting_balance + all contributions = running total.
+  const [{ count: memberCount }, fundsRes] = await Promise.all([
+    supabase
+      .from("space_members")
+      .select("*", { count: "exact", head: true })
+      .eq("space_id", space.id)
+      .is("left_at", null),
+    supabase
+      .from("savings_funds")
+      .select("id, starting_balance")
+      .in("space_id", spaceIds),
+  ]);
+
+  const funds = fundsRes.data ?? [];
+  const startingBalanceSum = funds.reduce(
+    (s, f) => s + Number(f.starting_balance),
+    0
+  );
+
+  // All contributions across all funds (not month-scoped).
+  let allContributionsSum = 0;
+  if (funds.length > 0) {
+    const fundIds = funds.map((f) => f.id);
+    const { data: allContributions } = await supabase
+      .from("savings_contributions")
+      .select("amount")
+      .in("fund_id", fundIds);
+    allContributionsSum = (allContributions ?? []).reduce(
+      (s, c) => s + Number(c.amount),
+      0
+    );
+  }
+  const totalSavings = startingBalanceSum + allContributionsSum;
 
   if (monthIds.length === 0) {
     return {
@@ -61,6 +91,7 @@ async function computeSummary(
       netSoFar: 0,
       stillToPay: 0,
       savingsNet: 0,
+      totalSavings,
     };
   }
 
@@ -113,6 +144,7 @@ async function computeSummary(
     netSoFar,
     stillToPay,
     savingsNet,
+    totalSavings,
   };
 }
 
@@ -201,7 +233,7 @@ export default async function Dashboard() {
             </div>
 
             {/* Summary numbers */}
-            <dl className="mt-3 grid grid-cols-3 gap-4 text-sm">
+            <dl className="mt-3 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
               <div>
                 <dt className="text-xs text-gray-500 dark:text-gray-400">
                   Net so far
@@ -234,6 +266,16 @@ export default async function Dashboard() {
                   }`}
                 >
                   {brlFormatter.format(s.savingsNet)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500 dark:text-gray-400">
+                  Total savings
+                </dt>
+                <dd
+                  className={`mt-0.5 font-semibold ${colorClass(s.totalSavings)}`}
+                >
+                  {brlFormatter.format(s.totalSavings)}
                 </dd>
               </div>
             </dl>
