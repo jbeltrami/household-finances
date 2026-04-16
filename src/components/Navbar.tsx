@@ -1,9 +1,15 @@
-import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/server";
-import { spaceBillsUrl, spaceSavingsUrl } from "@/helpers/paths";
-import { getPersonalSpaceId } from "@/helpers/spaces";
+import NavbarNav, { type NavbarSpace } from "./NavbarNav";
 import SignOutButton from "./SignOutButton";
+
+type MembershipRow = {
+  spaces: {
+    id: string;
+    name: string;
+    type: "personal" | "shared";
+  };
+};
 
 export default async function Navbar() {
   const supabase = await createClient();
@@ -15,11 +21,32 @@ export default async function Navbar() {
   // renders, so if there's no user we don't render the navbar at all.
   if (!user) return null;
 
-  // Bills and Savings both live under /spaces/[spaceId]/... now, so we
-  // need a space to link to. For Piece 8 Step 3 we default every user to
-  // their own personal space. Step 4 replaces this with a space switcher
-  // dropdown once shared spaces actually exist.
-  const personalSpaceId = await getPersonalSpaceId(supabase);
+  // Every space the user is an *active* direct member of (left_at IS NULL).
+  // We query through space_members rather than spaces directly because the
+  // can_read_space RLS policy also returns linked personal spaces for
+  // shared-space members — those belong to other users and should not
+  // appear in the switcher.
+  const { data: rawMemberships } = await supabase
+    .from("space_members")
+    .select("spaces!inner(id, name, type)")
+    .eq("user_id", user.id)
+    .is("left_at", null);
+
+  const memberships = (rawMemberships ?? []) as unknown as MembershipRow[];
+
+  // Personal space first (it's your "home" context), shared spaces after
+  // sorted alphabetically. The server sort means the dropdown order is
+  // stable across renders without any client-side work.
+  const spaces: NavbarSpace[] = memberships
+    .map((m) => ({
+      id: m.spaces.id,
+      name: m.spaces.name,
+      type: m.spaces.type,
+    }))
+    .sort((a, b) => {
+      if (a.type !== b.type) return a.type === "personal" ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
 
   const fullName = user.user_metadata?.full_name as string | undefined;
   const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
@@ -30,28 +57,7 @@ export default async function Navbar() {
     <nav className="border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-6">
-          <Link
-            href="/"
-            className="text-lg font-semibold text-gray-900 hover:text-gray-700 dark:text-gray-100 dark:hover:text-gray-300"
-          >
-            Home Finances
-          </Link>
-          {personalSpaceId && (
-            <>
-              <Link
-                href={spaceBillsUrl(personalSpaceId)}
-                className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
-              >
-                Bills
-              </Link>
-              <Link
-                href={spaceSavingsUrl(personalSpaceId)}
-                className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
-              >
-                Savings
-              </Link>
-            </>
-          )}
+          <NavbarNav spaces={spaces} />
         </div>
 
         <div className="flex items-center gap-3">
