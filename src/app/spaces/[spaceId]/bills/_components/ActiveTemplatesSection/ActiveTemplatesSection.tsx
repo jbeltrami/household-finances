@@ -4,6 +4,19 @@ import { spaceBillEditUrl } from "@/helpers/paths";
 import { deactivateBillTemplate } from "../../actions";
 import type { BillTemplate } from "../../_types";
 
+const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+function cadenceLabel(t: BillTemplate): string | null {
+  switch (t.cadence) {
+    case "weekly":
+      return `Weekly — ${DAY_LABELS[t.day_of_week ?? 0]}`;
+    case "biweekly":
+      return `Biweekly — ${DAY_LABELS[t.day_of_week ?? 0]}`;
+    default:
+      return t.due_day ? `Due day ${t.due_day}` : null;
+  }
+}
+
 type Props = {
   spaceId: string;
   templates: BillTemplate[];
@@ -30,9 +43,9 @@ export default function ActiveTemplatesSection({ spaceId, templates }: Props) {
                 <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                   {t.name}
                 </p>
-                {t.due_day && (
+                {cadenceLabel(t) && (
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Due day {t.due_day}
+                    {cadenceLabel(t)}
                   </p>
                 )}
               </div>

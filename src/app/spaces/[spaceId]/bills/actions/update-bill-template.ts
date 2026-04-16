@@ -8,6 +8,7 @@ import { type FormState } from "../form-state";
 import {
   UNIQUE_VIOLATION,
   cascadeAmountToFutureInstances,
+  computeBiweeklyAnchor,
   parseTemplateFields,
 } from "./_helpers";
 
@@ -31,15 +32,40 @@ export async function updateBillTemplate(
     spaceId = formData.get("space_id")?.toString();
     if (!spaceId) return { error: "Missing space context" };
 
-    const { name, defaultAmount, dueDay } = parseTemplateFields(formData);
+    const { name, defaultAmount, cadence, dueDay, dayOfWeek } =
+      parseTemplateFields(formData);
     const cascade = formData.get("cascade") === "on";
+
+    // For biweekly: if the template already has an anchor AND the
+    // day_of_week hasn't changed, keep the existing anchor to preserve
+    // the phase. Otherwise compute a new one from today.
+    let biweeklyAnchor: string | null = null;
+    if (cadence === "biweekly" && dayOfWeek != null) {
+      const { data: existing } = await supabase
+        .from("recurring_bill_templates")
+        .select("day_of_week, biweekly_anchor")
+        .eq("id", id)
+        .single();
+
+      if (
+        existing?.biweekly_anchor &&
+        existing?.day_of_week === dayOfWeek
+      ) {
+        biweeklyAnchor = existing.biweekly_anchor as string;
+      } else {
+        biweeklyAnchor = computeBiweeklyAnchor(dayOfWeek);
+      }
+    }
 
     const { error: updateError } = await supabase
       .from("recurring_bill_templates")
       .update({
         name,
         default_amount: defaultAmount,
-        due_day: dueDay,
+        cadence,
+        due_day: cadence === "monthly" ? dueDay : null,
+        day_of_week: cadence !== "monthly" ? dayOfWeek : null,
+        biweekly_anchor: biweeklyAnchor,
       })
       .eq("id", id);
 

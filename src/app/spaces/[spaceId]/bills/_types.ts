@@ -3,5 +3,7 @@ export type BillTemplate = {
   name: string;
   default_amount: number | string;
   currency: string;
+  cadence: string;
   due_day: number | null;
+  day_of_week: number | null;
 };

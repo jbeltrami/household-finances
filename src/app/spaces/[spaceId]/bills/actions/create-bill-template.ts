@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { spaceBillsUrl } from "@/helpers/paths";
 import { type FormState } from "../form-state";
-import { UNIQUE_VIOLATION, parseTemplateFields } from "./_helpers";
+import {
+  UNIQUE_VIOLATION,
+  computeBiweeklyAnchor,
+  parseTemplateFields,
+} from "./_helpers";
 
 export async function createBillTemplate(
   prevState: FormState,
@@ -26,7 +30,8 @@ export async function createBillTemplate(
     const spaceId = formData.get("space_id")?.toString();
     if (!spaceId) return { error: "Missing space context" };
 
-    const { name, defaultAmount, dueDay } = parseTemplateFields(formData);
+    const { name, defaultAmount, cadence, dueDay, dayOfWeek } =
+      parseTemplateFields(formData);
 
     const { error: insertError } = await supabase
       .from("recurring_bill_templates")
@@ -35,7 +40,13 @@ export async function createBillTemplate(
         name,
         default_amount: defaultAmount,
         currency: "BRL",
-        due_day: dueDay,
+        cadence,
+        due_day: cadence === "monthly" ? dueDay : null,
+        day_of_week: cadence !== "monthly" ? dayOfWeek : null,
+        biweekly_anchor:
+          cadence === "biweekly" && dayOfWeek != null
+            ? computeBiweeklyAnchor(dayOfWeek)
+            : null,
       });
 
     if (insertError) {

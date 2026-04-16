@@ -239,6 +239,74 @@ export function dueDateFor(
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// Format a Date as "YYYY-MM-DD" without going through UTC parsing.
+function formatDateYmd(d: Date): string {
+  const yyyy = String(d.getFullYear()).padStart(4, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Every occurrence of a specific weekday in a given month.
+// dayOfWeek: 0=Sun, 1=Mon, ..., 6=Sat. Returns 4-5 "YYYY-MM-DD" strings.
+function weeklyDatesInMonth(
+  year: number,
+  month: number,
+  dayOfWeek: number
+): string[] {
+  const dates: string[] = [];
+  // Start from day 1 of the month (JS months are 0-indexed)
+  const d = new Date(year, month - 1, 1);
+  // Advance to the first occurrence of dayOfWeek
+  while (d.getDay() !== dayOfWeek) {
+    d.setDate(d.getDate() + 1);
+  }
+  // Walk through the month in 7-day steps
+  while (d.getMonth() === month - 1) {
+    dates.push(formatDateYmd(d));
+    d.setDate(d.getDate() + 7);
+  }
+  return dates;
+}
+
+// Biweekly occurrences of the anchor's weekday in a given month.
+// The anchor determines both the day-of-week and the phase (which
+// alternating weeks are "on"). Returns 0-3 "YYYY-MM-DD" strings.
+function biweeklyDatesInMonth(
+  year: number,
+  month: number,
+  anchorStr: string
+): string[] {
+  const anchor = new Date(anchorStr + "T12:00:00"); // noon to avoid DST edge
+  const monthStart = new Date(year, month - 1, 1, 12);
+  const monthEnd = new Date(year, month, 0, 12); // last day of month
+
+  // Compute the offset from the anchor to monthStart in whole days,
+  // then find how many days past a billing day monthStart falls.
+  const msPerDay = 86400000;
+  const diffDays = Math.round(
+    (monthStart.getTime() - anchor.getTime()) / msPerDay
+  );
+  let remainder = diffDays % 14;
+  if (remainder < 0) remainder += 14;
+
+  // First billing day on or after monthStart
+  const first = new Date(monthStart);
+  if (remainder !== 0) {
+    first.setDate(first.getDate() + (14 - remainder));
+  }
+
+  const dates: string[] = [];
+  const d = new Date(first);
+  while (d <= monthEnd) {
+    if (d >= monthStart) {
+      dates.push(formatDateYmd(d));
+    }
+    d.setDate(d.getDate() + 14);
+  }
+  return dates;
+}
+
 // Format a year/month as a human-readable Brazilian Portuguese label,
 // e.g. (2026, 4) → "abril de 2026".
 export function formatMonthLabel(year: number, month: number): string {
@@ -265,22 +333,19 @@ async function fetchMonth(
 }
 
 // Idempotent bill-instance sync. Ensures every active template in the
-// space has a matching `bill_instances` row in the given month, without
+// space has matching `bill_instances` rows in the given month — one row
+// for monthly templates, 4-5 for weekly, 2-3 for biweekly — without
 // touching rows that already exist.
 //
 // Called on every read of a month (via getOrCreateMonth) so that a
 // template created AFTER a month was first visited still shows up the
-// next time the user opens that month. Handles three edge cases that
-// the one-shot "generate at creation time" approach missed:
-//   - Template created after the month row exists
-//   - Template deactivated then reactivated
-//   - Month unlocked after being locked, allowing new activity
+// next time the user opens that month. Also handles template
+// deactivation/reactivation, post-unlock editing, and cadence changes.
 //
-// Race handling: if a concurrent request inserts the same missing rows
-// between our SELECT and our INSERT, the (month_id, template_id) unique
-// constraint on bill_instances will make our INSERT fail with 23505.
-// We swallow that specific error because the winning request already
-// did the work we were about to do — the outcome is the same.
+// Race handling: the partial unique indexes on bill_instances
+// (month_id, template_id, due_date) make concurrent duplicate INSERTs
+// fail with 23505. We swallow that error because the winning request
+// already did the work — the outcome is identical.
 async function syncBillInstances(
   supabase: SupabaseClient,
   monthId: string,
@@ -290,35 +355,78 @@ async function syncBillInstances(
 ) {
   const { data: templates } = await supabase
     .from("recurring_bill_templates")
-    .select("id, default_amount, due_day")
+    .select("id, default_amount, due_day, cadence, day_of_week, biweekly_anchor")
     .eq("space_id", spaceId)
     .eq("active", true);
 
   if (!templates || templates.length === 0) return;
 
+  // Existing instances: track (template_id, due_date) pairs since
+  // weekly/biweekly templates can have multiple per month.
   const { data: existingInstances } = await supabase
     .from("bill_instances")
-    .select("template_id")
+    .select("template_id, due_date")
     .eq("month_id", monthId);
 
-  const existingTemplateIds = new Set(
-    (existingInstances ?? []).map((i) => i.template_id as string)
+  const existingKeys = new Set(
+    (existingInstances ?? []).map(
+      (i) => `${i.template_id}|${i.due_date ?? ""}`
+    )
   );
 
-  const missing = templates.filter(
-    (t) => !existingTemplateIds.has(t.id as string)
-  );
+  type NewInstance = {
+    month_id: string;
+    template_id: string;
+    space_id: string;
+    amount: number;
+    due_date: string | null;
+    paid: boolean;
+  };
 
-  if (missing.length === 0) return;
+  const newInstances: NewInstance[] = [];
 
-  const newInstances = missing.map((t) => ({
-    month_id: monthId,
-    template_id: t.id as string,
-    space_id: spaceId,
-    amount: t.default_amount,
-    due_date: dueDateFor(year, month, t.due_day as number | null),
-    paid: false,
-  }));
+  for (const t of templates) {
+    // Compute the set of due dates for this template in this month.
+    let dueDates: (string | null)[];
+    const cadence = (t.cadence as string) ?? "monthly";
+
+    switch (cadence) {
+      case "weekly":
+        dueDates =
+          t.day_of_week != null
+            ? weeklyDatesInMonth(year, month, t.day_of_week as number)
+            : [null];
+        break;
+      case "biweekly":
+        dueDates = t.biweekly_anchor
+          ? biweeklyDatesInMonth(
+              year,
+              month,
+              t.biweekly_anchor as string
+            )
+          : [null];
+        break;
+      default:
+        // monthly — one instance on due_day (or null if no due_day)
+        dueDates = [dueDateFor(year, month, t.due_day as number | null)];
+    }
+
+    for (const dueDate of dueDates) {
+      const key = `${t.id}|${dueDate ?? ""}`;
+      if (!existingKeys.has(key)) {
+        newInstances.push({
+          month_id: monthId,
+          template_id: t.id as string,
+          space_id: spaceId,
+          amount: t.default_amount as number,
+          due_date: dueDate,
+          paid: false,
+        });
+      }
+    }
+  }
+
+  if (newInstances.length === 0) return;
 
   const { error } = await supabase
     .from("bill_instances")

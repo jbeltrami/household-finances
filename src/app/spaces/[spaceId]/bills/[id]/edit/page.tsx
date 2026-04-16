@@ -14,7 +14,7 @@ export default async function EditBillTemplatePage({
 
   const { data: template } = await supabase
     .from("recurring_bill_templates")
-    .select("id, name, default_amount, due_day")
+    .select("id, name, default_amount, due_day, cadence, day_of_week")
     .eq("id", id)
     .single();
 

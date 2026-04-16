@@ -1,14 +1,25 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { createBillTemplate } from "../../actions";
 import { initialFormState } from "../../form-state";
+
+const DAY_OPTIONS = [
+  { value: "0", label: "Dom" },
+  { value: "1", label: "Seg" },
+  { value: "2", label: "Ter" },
+  { value: "3", label: "Qua" },
+  { value: "4", label: "Qui" },
+  { value: "5", label: "Sex" },
+  { value: "6", label: "Sáb" },
+];
 
 type Props = {
   spaceId: string;
 };
 
 export default function CreateBillTemplateForm({ spaceId }: Props) {
+  const [cadence, setCadence] = useState("monthly");
   const [state, formAction, isPending] = useActionState(
     createBillTemplate,
     initialFormState
@@ -19,9 +30,6 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
       action={formAction}
       className="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
     >
-      {/* Hidden field so the server action knows which space to write the
-          new template into. This is untrusted client data — RLS is what
-          actually enforces access. */}
       <input type="hidden" name="space_id" value={spaceId} />
       <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
         Add a template
@@ -61,23 +69,72 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
+
+        {/* Cadence picker */}
         <div>
           <label
-            htmlFor="due_day"
+            htmlFor="cadence"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Due day (optional)
+            Recurrence
           </label>
-          <input
-            id="due_day"
-            name="due_day"
-            type="number"
-            min="1"
-            max="31"
-            placeholder="1–31"
+          <select
+            id="cadence"
+            name="cadence"
+            value={cadence}
+            onChange={(e) => setCadence(e.target.value)}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
-          />
+          >
+            <option value="monthly">Monthly</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Biweekly</option>
+          </select>
         </div>
+
+        {/* Monthly: due day */}
+        {cadence === "monthly" && (
+          <div>
+            <label
+              htmlFor="due_day"
+              className="block text-xs font-medium text-gray-700 dark:text-gray-300"
+            >
+              Due day (optional)
+            </label>
+            <input
+              id="due_day"
+              name="due_day"
+              type="number"
+              min="1"
+              max="31"
+              placeholder="1–31"
+              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
+            />
+          </div>
+        )}
+
+        {/* Weekly / Biweekly: day of week */}
+        {cadence !== "monthly" && (
+          <div>
+            <label
+              htmlFor="day_of_week"
+              className="block text-xs font-medium text-gray-700 dark:text-gray-300"
+            >
+              Day
+            </label>
+            <select
+              id="day_of_week"
+              name="day_of_week"
+              required
+              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
+            >
+              {DAY_OPTIONS.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {state.error && (
