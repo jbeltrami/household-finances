@@ -15,6 +15,8 @@ type Props = {
   month: number;
   locked: boolean;
   highlightedDay: number | null;
+  readOnly?: boolean;
+  attribution?: string;
 };
 
 export default function IncomeEntryRow({
@@ -23,7 +25,10 @@ export default function IncomeEntryRow({
   month,
   locked,
   highlightedDay,
+  readOnly,
+  attribution,
 }: Props) {
+  const noEdit = locked || !!readOnly;
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
@@ -93,6 +98,11 @@ export default function IncomeEntryRow({
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {attribution && (
+            <span className="mr-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+              {attribution} —
+            </span>
+          )}
           {entry.name}
         </p>
         {entry.expected_date && (
@@ -103,7 +113,7 @@ export default function IncomeEntryRow({
       </div>
 
       <div className="flex items-center gap-3">
-        {editing && !locked ? (
+        {editing && !noEdit ? (
           <form action={handleUpdate} className="flex items-center gap-2">
             <input
               type="number"
@@ -136,7 +146,7 @@ export default function IncomeEntryRow({
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {brlFormatter.format(Number(entry.amount))}
             </p>
-            {!locked && (
+            {!noEdit && (
               <button
                 type="button"
                 onClick={() => setEditing(true)}
@@ -148,7 +158,7 @@ export default function IncomeEntryRow({
           </>
         )}
 
-        {locked ? (
+        {noEdit ? (
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
               entry.received
@@ -174,7 +184,7 @@ export default function IncomeEntryRow({
           </form>
         )}
 
-        {!locked && (
+        {!noEdit && (
           <button
             type="button"
             onClick={handleDelete}

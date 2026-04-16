@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { todayYmd } from "@/helpers/date";
 import {
+  getAggregateSpaceIds,
+  getSpaceAttributions,
+} from "@/helpers/spaces";
+import {
   buildMonthOptions,
   getOrCreateMonth,
   isMonthLocked,
@@ -11,6 +15,7 @@ import type { BillRow, ExpenseRow, IncomeRow } from "./_types";
 
 type BillInstanceWithTemplate = {
   id: string;
+  space_id: string;
   amount: number | string;
   due_date: string | null;
   paid: boolean;
@@ -32,6 +37,14 @@ export default async function MonthlyViewPage({
 
   const supabase = await createClient();
 
+  // Compute the set of space IDs for this view. For a personal space
+  // this is just [spaceId]. For a shared space it's [sharedId, ...linkedPersonalIds],
+  // which is what makes the aggregate view union data from all members.
+  const spaceIds = await getAggregateSpaceIds(supabase, spaceId);
+
+  // Get/create the month row for the *viewed* space (triggers
+  // syncBillInstances for this space only — we don't create months
+  // or generate instances in other members' personal spaces).
   const monthRow = await getOrCreateMonth(supabase, spaceId, year, month);
 
   const locked = isMonthLocked({
@@ -40,8 +53,9 @@ export default async function MonthlyViewPage({
     unlock_reason: monthRow.unlock_reason,
   });
 
-  // Fetch all existing months in this space for the dropdown. RLS ensures
-  // we only see months the user has access to through this space.
+  // Fetch all existing months in the viewed space for the dropdown.
+  // The dropdown only shows months that *this* space has visited —
+  // not months from linked personal spaces.
   const { data: existingMonths } = await supabase
     .from("months")
     .select("year, month")
@@ -52,13 +66,28 @@ export default async function MonthlyViewPage({
     month,
   });
 
+  // Collect month row IDs for this year/month across ALL aggregate
+  // spaces. Linked personal spaces may or may not have a month row
+  // for this year/month — if they don't, they simply contribute
+  // nothing (we never create months in someone else's space).
+  const { data: aggregateMonths } = await supabase
+    .from("months")
+    .select("id")
+    .in("space_id", spaceIds)
+    .eq("year", year)
+    .eq("month", month);
+
+  const allMonthIds = (aggregateMonths ?? []).map((m) => m.id);
+
   // Nested select: pulls each instance plus its template name.
+  // Queries across all aggregate month IDs so the shared-space view
+  // includes bill instances from every linked personal space.
   const { data: rawInstances } = await supabase
     .from("bill_instances")
     .select(
-      "id, amount, due_date, paid, recurring_bill_templates(name)"
+      "id, space_id, amount, due_date, paid, recurring_bill_templates(name)"
     )
-    .eq("month_id", monthRow.id)
+    .in("month_id", allMonthIds)
     .order("due_date", { ascending: true, nullsFirst: false });
 
   const rawWithTemplate = (rawInstances ??
@@ -68,39 +97,39 @@ export default async function MonthlyViewPage({
   // client wrapper can pass straight to BillInstanceRow.
   const instances: BillRow[] = rawWithTemplate.map((i) => ({
     id: i.id,
+    space_id: i.space_id,
     name: i.recurring_bill_templates?.name ?? "(unnamed)",
     amount: i.amount,
     due_date: i.due_date,
     paid: i.paid,
   }));
 
-  // Income entries for this month. Free-form rows (no template), ordered
-  // by expected date with rows that have no date sinking to the bottom.
+  // Income entries across all aggregate months for this year/month.
   const { data: rawIncomeEntries } = await supabase
     .from("income_entries")
-    .select("id, name, amount, expected_date, received")
-    .eq("month_id", monthRow.id)
+    .select("id, space_id, name, amount, expected_date, received")
+    .in("month_id", allMonthIds)
     .order("expected_date", { ascending: true, nullsFirst: false });
 
   const incomeEntries: IncomeRow[] = (rawIncomeEntries ?? []).map((i) => ({
     id: i.id,
+    space_id: i.space_id,
     name: i.name,
     amount: i.amount,
     expected_date: i.expected_date,
     received: i.received,
   }));
 
-  // One-off expenses for this month. Free-form rows with optional date,
-  // category, and notes. Ordered by date with rows that have no date
-  // sinking to the bottom.
+  // One-off expenses across all aggregate months.
   const { data: rawExpenses } = await supabase
     .from("one_off_expenses")
-    .select("id, name, amount, date, category, notes")
-    .eq("month_id", monthRow.id)
+    .select("id, space_id, name, amount, date, category, notes")
+    .in("month_id", allMonthIds)
     .order("date", { ascending: true, nullsFirst: false });
 
   const expenses: ExpenseRow[] = (rawExpenses ?? []).map((e) => ({
     id: e.id,
+    space_id: e.space_id,
     name: e.name,
     amount: e.amount,
     date: e.date,
@@ -108,13 +137,12 @@ export default async function MonthlyViewPage({
     notes: e.notes,
   }));
 
-  // Savings contributions logged against this month across every fund
-  // the user has access to. We only need the amounts — the sum is the
-  // net movement for the month and feeds the balance calculation.
+  // Savings contributions across all aggregate months. We only need
+  // the amounts — the sum is the net movement for the month.
   const { data: rawSavingsContributions } = await supabase
     .from("savings_contributions")
     .select("amount")
-    .eq("month_id", monthRow.id);
+    .in("month_id", allMonthIds);
 
   const savingsNet = (rawSavingsContributions ?? []).reduce(
     (sum, c) => sum + Number(c.amount),
@@ -206,6 +234,14 @@ export default async function MonthlyViewPage({
     totalExpenses -
     savingsNet;
 
+  // Attribution labels for the aggregate view. Only needed when
+  // viewing a shared space (spaceIds.length > 1). For personal
+  // spaces this is an empty object and components skip attribution.
+  const attributions =
+    spaceIds.length > 1
+      ? await getSpaceAttributions(supabase, spaceIds)
+      : {};
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <MonthlyViewClient
@@ -239,6 +275,7 @@ export default async function MonthlyViewPage({
         }}
         expenses={{ entries: expenses, total: totalExpenses }}
         balance={{ savingsNet, netExpected, netSoFar }}
+        attributions={attributions}
       />
     </div>
   );

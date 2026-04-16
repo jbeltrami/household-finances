@@ -12,6 +12,7 @@ type Props = {
   month: number;
   locked: boolean;
   highlightedDay: number | null;
+  attributions: Record<string, string>;
 };
 
 export default function BillsSection({
@@ -21,6 +22,7 @@ export default function BillsSection({
   month,
   locked,
   highlightedDay,
+  attributions,
 }: Props) {
   return (
     <section className="mt-6">
@@ -46,6 +48,8 @@ export default function BillsSection({
                 month={month}
                 locked={locked}
                 highlightedDay={highlightedDay}
+                readOnly={i.space_id !== spaceId}
+                attribution={attributions[i.space_id]}
               />
             ))}
           </ul>

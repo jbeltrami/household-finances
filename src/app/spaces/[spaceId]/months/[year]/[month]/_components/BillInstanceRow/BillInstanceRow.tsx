@@ -14,6 +14,8 @@ type Props = {
   month: number;
   locked: boolean;
   highlightedDay: number | null;
+  readOnly?: boolean;
+  attribution?: string;
 };
 
 export default function BillInstanceRow({
@@ -22,7 +24,14 @@ export default function BillInstanceRow({
   month,
   locked,
   highlightedDay,
+  readOnly,
+  attribution,
 }: Props) {
+  // readOnly entries belong to a different space (another member's
+  // personal space viewed through the shared-space aggregate). They
+  // render with an attribution label and no edit/toggle controls —
+  // same visual treatment as locked rows.
+  const noEdit = locked || !!readOnly;
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
@@ -79,6 +88,11 @@ export default function BillInstanceRow({
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {attribution && (
+            <span className="mr-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+              {attribution} —
+            </span>
+          )}
           {instance.name}
         </p>
         {instance.due_date && (
@@ -89,7 +103,7 @@ export default function BillInstanceRow({
       </div>
 
       <div className="flex items-center gap-3">
-        {editing && !locked ? (
+        {editing && !noEdit ? (
           <form action={handleUpdate} className="flex items-center gap-2">
             <input
               type="number"
@@ -122,7 +136,7 @@ export default function BillInstanceRow({
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {brlFormatter.format(Number(instance.amount))}
             </p>
-            {!locked && (
+            {!noEdit && (
               <button
                 type="button"
                 onClick={() => setEditing(true)}
@@ -134,7 +148,7 @@ export default function BillInstanceRow({
           </>
         )}
 
-        {locked ? (
+        {noEdit ? (
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
               instance.paid

@@ -2,6 +2,7 @@ import type { YearMonth } from "./_helpers";
 
 export type BillRow = {
   id: string;
+  space_id: string;
   name: string;
   amount: number | string;
   due_date: string | null;
@@ -10,6 +11,7 @@ export type BillRow = {
 
 export type IncomeRow = {
   id: string;
+  space_id: string;
   name: string;
   amount: number | string;
   expected_date: string | null;
@@ -18,6 +20,7 @@ export type IncomeRow = {
 
 export type ExpenseRow = {
   id: string;
+  space_id: string;
   name: string;
   amount: number | string;
   date: string | null;
@@ -74,4 +77,8 @@ export type MonthlyViewProps = {
   income: IncomeGroup;
   expenses: ExpensesGroup;
   balance: BalanceGroup;
+  // spaceId → owner display name, for attributing entries from linked
+  // personal spaces in the shared-space aggregate view. Empty when
+  // viewing a personal space (no attribution needed).
+  attributions: Record<string, string>;
 };

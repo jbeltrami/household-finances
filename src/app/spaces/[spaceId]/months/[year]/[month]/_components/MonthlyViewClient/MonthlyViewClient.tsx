@@ -22,6 +22,7 @@ export default function MonthlyViewClient({
   income,
   expenses,
   balance,
+  attributions,
 }: MonthlyViewProps) {
   const hasAnyData = !!(
     bills.instances.length ||
@@ -68,6 +69,8 @@ export default function MonthlyViewClient({
           month={month}
           locked={locked}
           highlightedDay={highlightedDay}
+          spaceId={spaceId}
+          attributions={attributions}
         />
 
         <BillsSection
@@ -77,6 +80,7 @@ export default function MonthlyViewClient({
           month={month}
           locked={locked}
           highlightedDay={highlightedDay}
+          attributions={attributions}
         />
 
         <ExpensesSection
@@ -86,6 +90,8 @@ export default function MonthlyViewClient({
           month={month}
           locked={locked}
           highlightedDay={highlightedDay}
+          spaceId={spaceId}
+          attributions={attributions}
         />
 
         {hasAnyData && <BalanceSection balance={balance} />}

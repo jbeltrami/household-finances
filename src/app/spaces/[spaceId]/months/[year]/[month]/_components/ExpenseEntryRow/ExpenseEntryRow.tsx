@@ -14,6 +14,8 @@ type Props = {
   month: number;
   locked: boolean;
   highlightedDay: number | null;
+  readOnly?: boolean;
+  attribution?: string;
 };
 
 export default function ExpenseEntryRow({
@@ -22,7 +24,10 @@ export default function ExpenseEntryRow({
   month,
   locked,
   highlightedDay,
+  readOnly,
+  attribution,
 }: Props) {
+  const noEdit = locked || !!readOnly;
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
@@ -71,7 +76,7 @@ export default function ExpenseEntryRow({
   // When editing, the whole row becomes an inline form so we can show
   // name + amount + category + notes without cramming them into the
   // header strip. Date is not editable here (see the action comment).
-  if (editing && !locked) {
+  if (editing && !noEdit) {
     return (
       <li className="px-4 py-3">
         <form action={handleUpdate}>
@@ -177,6 +182,11 @@ export default function ExpenseEntryRow({
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          {attribution && (
+            <span className="mr-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+              {attribution} —
+            </span>
+          )}
           {expense.name}
         </p>
         {(expense.date || expense.category) && (
@@ -197,7 +207,7 @@ export default function ExpenseEntryRow({
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
           {brlFormatter.format(Number(expense.amount))}
         </p>
-        {!locked && (
+        {!noEdit && (
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -206,7 +216,7 @@ export default function ExpenseEntryRow({
             Edit
           </button>
         )}
-        {!locked && (
+        {!noEdit && (
           <button
             type="button"
             onClick={handleDelete}

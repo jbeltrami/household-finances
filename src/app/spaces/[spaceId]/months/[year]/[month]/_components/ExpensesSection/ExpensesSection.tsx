@@ -13,6 +13,8 @@ type Props = {
   month: number;
   locked: boolean;
   highlightedDay: number | null;
+  spaceId: string;
+  attributions: Record<string, string>;
 };
 
 export default function ExpensesSection({
@@ -22,6 +24,8 @@ export default function ExpensesSection({
   month,
   locked,
   highlightedDay,
+  spaceId,
+  attributions,
 }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -68,6 +72,8 @@ export default function ExpensesSection({
                 month={month}
                 locked={locked}
                 highlightedDay={highlightedDay}
+                readOnly={expense.space_id !== spaceId}
+                attribution={attributions[expense.space_id]}
               />
             ))}
           </ul>
