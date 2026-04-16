@@ -24,6 +24,14 @@ export default function BillsSection({
   highlightedDay,
   attributions,
 }: Props) {
+  // Pending bills keep the original sort order (by due_date ascending).
+  // Paid bills are sorted by amount descending so the biggest payments
+  // are easiest to spot at the top.
+  const pendingBills = bills.instances.filter((i) => !i.paid);
+  const paidBills = [...bills.instances.filter((i) => i.paid)].sort(
+    (a, b) => Number(b.amount) - Number(a.amount)
+  );
+
   return (
     <section className="mt-6">
       <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
@@ -39,20 +47,49 @@ export default function BillsSection({
         </p>
       ) : (
         <>
-          <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
-            {bills.instances.map((i) => (
-              <BillInstanceRow
-                key={i.id}
-                instance={i}
-                year={year}
-                month={month}
-                locked={locked}
-                highlightedDay={highlightedDay}
-                readOnly={i.space_id !== spaceId}
-                attribution={attributions[i.space_id]}
-              />
-            ))}
-          </ul>
+          {pendingBills.length > 0 && (
+            <>
+              <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-yellow-700 dark:text-yellow-400">
+                Pending ({pendingBills.length})
+              </h3>
+              <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
+                {pendingBills.map((i) => (
+                  <BillInstanceRow
+                    key={i.id}
+                    instance={i}
+                    year={year}
+                    month={month}
+                    locked={locked}
+                    highlightedDay={highlightedDay}
+                    readOnly={i.space_id !== spaceId}
+                    attribution={attributions[i.space_id]}
+                  />
+                ))}
+              </ul>
+            </>
+          )}
+
+          {paidBills.length > 0 && (
+            <>
+              <h3 className={`${pendingBills.length > 0 ? "mt-6" : "mt-4"} text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400`}>
+                Paid ({paidBills.length})
+              </h3>
+              <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
+                {paidBills.map((i) => (
+                  <BillInstanceRow
+                    key={i.id}
+                    instance={i}
+                    year={year}
+                    month={month}
+                    locked={locked}
+                    highlightedDay={highlightedDay}
+                    readOnly={i.space_id !== spaceId}
+                    attribution={attributions[i.space_id]}
+                  />
+                ))}
+              </ul>
+            </>
+          )}
 
           <dl className="mt-4 grid grid-cols-3 gap-4 rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
             <div>
