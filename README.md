@@ -61,8 +61,10 @@ The schema lives in `supabase/migrations/`:
 | `0008_drop_household_type.sql` | Drops `household` from the `spaces.type` CHECK constraint, leaving `personal | shared`. Cleanup for Piece 8's terminology alignment |
 | `0009_invitations_rls.sql` | Adds the `is_space_owner(space_id)` helper and full RLS policies for `invitations` (Piece 8, Step 2a). SELECT allowed for active members of the space or the invitee (email match); INSERT/DELETE owner-only; UPDATE restricted to the invitee for accept/decline |
 | `0010_cross_space_reads.sql` | Adds the `can_read_space(space_id)` helper and widens every existing SELECT policy on domain tables to allow reads from linked personal spaces of a shared space the user is in (Piece 8, Step 2b). Writes stay narrow — only reads are cross-space. This is what makes the shared-space aggregate query see rows from other members' personal spaces |
+| `0011_spaces_mutation_policies.sql` | INSERT on `spaces` (shared only, creator attribution enforced), UPDATE on `spaces` (creator can update), INSERT on `space_members` via `is_space_creator` SECURITY DEFINER helper (Piece 8, Step 5) |
+| `0012_invitee_join_policy.sql` | INSERT on `space_members` for invitees via `has_accepted_invitation` SECURITY DEFINER helper (Piece 8, Step 7) |
 
-Apply migrations by pasting their contents into the Supabase dashboard SQL editor in order. The `is_active_member(space_id)` helper function (defined in `0002`) is `SECURITY DEFINER` to avoid recursion when policies need to check membership against `space_members` itself.
+Apply migrations by pasting their contents into the Supabase dashboard SQL editor in order. SECURITY DEFINER helper functions (`is_active_member`, `is_space_owner`, `can_read_space`, `is_space_creator`, `has_accepted_invitation`) bypass RLS internally to avoid recursion when policies need to check other tables.
 
 ### Auth provider
 
@@ -308,6 +310,6 @@ src/app/savings/
 | 4b    | Monthly view top calendar — calendar strip, badges, picker     | Done   |
 | 5     | Income entries — add/edit/mark received (one-off only)         | Done           |
 | 6     | One-off expenses + monthly balance calculation                 | Done           |
-| 7     | Savings funds — create fund, log contributions, running total  | In progress    |
-| 8     | Shared spaces — URL refactor, invite flow, aggregate, dashboard| In progress    |
+| 7     | Savings funds — create fund, log contributions, running total  | Done           |
+| 8     | Shared spaces — URL refactor, invite flow, aggregate, dashboard| Done           |
 | 9     | Recurring income templates — biweekly / monthly cadence        | —              |

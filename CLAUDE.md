@@ -134,7 +134,7 @@ their original `space_id` permanently *and* `parent_space_id` stays set on leave
    - Creates a `personal` space named after the user's Google display name
    - Adds the user as `owner` of that space
 4. App checks for pending invitations matching the user's email
-5. User lands on their personal dashboard (with invite banner if applicable)
+5. User lands on the dashboard at `/` (with invite banner if applicable)
 
 ---
 
@@ -177,8 +177,8 @@ Net so far (received - paid)   R$18.530
 | 4b    | Monthly view top calendar — calendar strip, badges, month picker dropdown        | ✅ Done |
 | 5     | Income entries — add/edit/mark received within a month (one-off only)            | ✅ Done |
 | 6     | One-off expenses + monthly balance calculation                                   | ✅ Done |
-| 7     | Savings funds — create fund, log contributions, running total                    | 🚧 In progress |
-| 8     | Shared spaces — URL refactor, invite flow, aggregate view, dashboard             | 🚧 In progress |
+| 7     | Savings funds — create fund, log contributions, running total                    | ✅ Done |
+| 8     | Shared spaces — URL refactor, invite flow, aggregate view, dashboard             | ✅ Done |
 | 9     | Recurring income templates — biweekly / monthly cadence, instance generation     | ⬜      |
 
 ---
@@ -191,9 +191,9 @@ The monthly view is the heart of the app. It's split into two sub-pieces so the 
 
 **Routing**
 
-- `/months/[year]/[month]` is the canonical monthly URL (e.g. `/months/2026/04`). Year is 4-digit, month is 2-digit zero-padded
-- `/` (the home page) **redirects to the current month** so users land directly on it after sign-in. Bookmarkable URLs for every month
-- Navbar gets a "This month" link that always points to the current YYYY/MM
+- `/spaces/[spaceId]/months/[year]/[month]` is the canonical monthly URL (e.g. `/spaces/abc/months/2026/04`). Year is 4-digit, month is 2-digit zero-padded
+- `/` is the **dashboard** showing space cards with current-month summaries. Each card links to that space's current month. The dashboard replaced an earlier redirect
+- Navbar has a space switcher dropdown + Bills/Savings/Settings links that track the viewed space
 
 **On-demand month + instance creation**
 
@@ -215,7 +215,7 @@ The monthly view is the heart of the app. It's split into two sub-pieces so the 
 
 **Month navigation**
 
-- Prev / Next buttons that navigate to the adjacent `/months/[year]/[month]`. Always available, even for months that don't exist yet (the destination route will create the row on demand)
+- Prev / Next buttons that navigate to the adjacent `/spaces/[spaceId]/months/[year]/[month]`. Always available, even for months that don't exist yet (the destination route will create the row on demand)
 
 **Past-month locking — check-on-read**
 
@@ -237,7 +237,7 @@ The monthly view is the heart of the app. It's split into two sub-pieces so the 
 
 ### Piece 4b — top calendar strip
 
-A calendar strip displayed **above the monthly view content**, only on `/months/*` routes (not on `/bills` or other pages). Hidden on small screens (`md:` breakpoint and up only).
+A calendar strip displayed **above the monthly view content**, only on `/spaces/[spaceId]/months/*` routes (not on `/bills` or other pages). Hidden on small screens (`md:` breakpoint and up only).
 
 **Layout**
 
@@ -286,9 +286,9 @@ Mobile stays single-column with the calendar grid hidden via the existing `hidde
 
 Savings funds live outside the monthly cycle. A fund has a `starting_balance` and a set of per-month `savings_contributions` that roll up into `runningTotal = starting_balance + sum(contributions)`.
 
-**Management route: `/savings`**
+**Management route: `/spaces/[spaceId]/savings`**
 
-- List of the user's funds with their running totals. Click a fund → `/savings/[id]` detail page.
+- List of the user's funds with their running totals. Click a fund → `/spaces/[spaceId]/savings/[id]` detail page.
 - Detail page exposes: rename, running-total summary (starting balance, net contributions, current total), contribution history grouped by month, and a form to log new contributions.
 - Fund-level UX deliberately minimal for Piece 7: no deactivate/archive yet. Schema has no `active` column; the follow-up decision is whether to add one or allow hard delete.
 
@@ -301,8 +301,8 @@ Savings funds live outside the monthly cycle. A fund has a `starting_balance` an
 
 **Monthly view integration (one row only)**
 
-- The `/months/[year]/[month]` page fetches the sum of `savings_contributions.amount` for the current month across every accessible fund and passes it to `BalanceSection` as `savingsNet`.
-- `BalanceSection` renders a single **"Saved this month"** row inside the balance card. No inline add/edit — the savings UI lives at `/savings`.
+- The `/spaces/[spaceId]/months/[year]/[month]` page fetches the sum of `savings_contributions.amount` for the current month across every accessible fund and passes it to `BalanceSection` as `savingsNet`.
+- `BalanceSection` renders a single **"Saved this month"** row inside the balance card. No inline add/edit — the savings UI lives at `/spaces/[spaceId]/savings`.
 - `savingsNet` is subtracted from both `netExpected` and `netSoFar`. A deposit (positive) reduces the month's net (money moved out of checking); a withdrawal (negative) increases it (money came back). Because signs are baked in, the math is a single subtraction in both places.
 
 **Out of scope for Piece 7**
@@ -371,19 +371,19 @@ Every data fetch in the monthly view, bills, and savings routes calls through th
 
 ### Build steps
 
-Piece 8 ships in small, check-in-able steps:
+Piece 8 shipped in small, check-in-able steps:
 
-0. **Terminology alignment (docs only)** — update CLAUDE.md and README.md to drop "household" for "shared space" / "shared finances"
-1. **Schema cleanup migration** — `0008_drop_household_type.sql`: drop `household` from the `spaces.type` CHECK constraint, leaving `personal | shared`
-2. **Invitations RLS migration** — `0009_invitations_rls.sql`: SELECT/INSERT/UPDATE/DELETE policies for `invitations`; audit existing policies for shared-space read paths
-3. **URL refactor** — introduce `/spaces/[spaceId]/...`, move existing routes underneath, update Navbar, fix "Today" button in CalendarStrip. No new features; app behaves identically but every page carries a spaceId. `/` keeps its current redirect temporarily
-4. **Space switcher** — Navbar dropdown listing active memberships, navigates to that space's current month
-5. **Create shared space** — `/spaces/new` form; creates space, adds creator as owner, sets creator's personal `parent_space_id`
-6. **Shared-space settings** — `/spaces/[spaceId]/settings` with rename, invite, revoke pending, member list
-7. **Invitation banner** — global component in the root layout; reads pending invites on every render; accept/decline actions
-8. **Aggregate query layer + attributed read-only rows** — helper + refactor of monthly view / bills / savings fetches; attribution labels; disabled edit affordances for non-current-space rows
-9. **Dashboard at `/`** — replaces the redirect. Depends on Step 8 being done so shared-space summaries are correct
-10. **Final docs pass**
+0. ✅ **Terminology alignment (docs only)** — drop "household" for "shared space" / "shared finances"
+1. ✅ **Schema cleanup migration** — `0008_drop_household_type.sql`
+2. ✅ **Invitations RLS** — `0009_invitations_rls.sql` + `0010_cross_space_reads.sql`
+3. ✅ **URL refactor** — `/spaces/[spaceId]/...` for all data routes; `src/helpers/paths.ts` centralizes URL builders
+4. ✅ **Space switcher** — `NavbarNav` client component with dropdown + URL-aware Bills/Savings/Settings links
+5. ✅ **Create shared space** — `/spaces/new` + `0011_spaces_mutation_policies.sql` (INSERT spaces, UPDATE spaces, INSERT space_members via `is_space_creator`)
+6. ✅ **Shared-space settings** — `/spaces/[spaceId]/settings` with rename, invite, revoke, member list
+7. ✅ **Invitation banner** — `InvitationBanner` in root layout + `0012_invitee_join_policy.sql` (INSERT space_members via `has_accepted_invitation`)
+8. ✅ **Aggregate query layer** — `getAggregateSpaceIds` + `getSpaceAttributions` in `src/helpers/spaces.ts`; monthly view queries across all month IDs; rows carry `space_id` + `readOnly` / `attribution` props
+9. ✅ **Dashboard at `/`** — space cards with current-month summaries (Net so far, Still to pay, Saved this month) + deep links + stretched-link pattern for clickable cards
+10. ✅ **Final docs pass**
 
 ### Out of scope for Piece 8
 
@@ -423,7 +423,7 @@ recurring_income_templates
 
 **UI surface:**
 
-- New `/income` page mirroring `/bills` (list active templates, create, edit, deactivate)
+- New `/spaces/[spaceId]/income` page mirroring `/spaces/[spaceId]/bills` (list active templates, create, edit, deactivate)
 - Cadence picker in the create/edit form (Quinzenal / Mensal)
 - Monthly view continues to support both template-generated entries (Piece 9) and free-form one-offs (Piece 5)
 
@@ -475,7 +475,7 @@ home-finances-app/
 ├── supabase/
 │   └── migrations/
 │       ├── 0001_initial_schema.sql        ← initial tables + trigger
-│       ├── 0002_rls_policies.sql          ← RLS + policies (Piece 3)
+│       ├── 0002_rls_policies.sql          ← RLS enabled on all tables; SELECT/INSERT/UPDATE/DELETE policies for `spaces`, `space_members`, and `recurring_bill_templates`
 │       ├── 0003_bill_templates_unique_active_name.sql  ← partial unique index
 │       ├── 0004_months_locking_and_rls.sql   ← drop locked cols, RLS for months + bill_instances (Piece 4a)
 │       ├── 0005_income_entries_rls.sql    ← RLS for income_entries (Piece 5)
@@ -483,117 +483,139 @@ home-finances-app/
 │       ├── 0007_savings_rls.sql           ← RLS for savings_funds + savings_contributions (Piece 7)
 │       ├── 0008_drop_household_type.sql   ← drop 'household' from spaces.type CHECK (Piece 8, Step 1)
 │       ├── 0009_invitations_rls.sql       ← is_space_owner helper + RLS for invitations (Piece 8, Step 2a)
-│       └── 0010_cross_space_reads.sql     ← can_read_space helper + widened SELECT policies (Piece 8, Step 2b)
+│       ├── 0010_cross_space_reads.sql     ← can_read_space helper + widened SELECT policies (Piece 8, Step 2b)
+│       ├── 0011_spaces_mutation_policies.sql ← INSERT/UPDATE on spaces, INSERT on space_members via is_space_creator (Piece 8, Step 5)
+│       └── 0012_invitee_join_policy.sql   ← INSERT on space_members via has_accepted_invitation (Piece 8, Step 7)
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx                     ← root layout (HTML shell, fonts, navbar)
-│   │   ├── page.tsx                       ← redirect to current month
+│   │   ├── layout.tsx                     ← root layout (HTML shell, fonts, navbar, invitation banner)
+│   │   ├── page.tsx                       ← dashboard: space cards with current-month summaries + deep links
 │   │   ├── globals.css                    ← Tailwind imports + dark mode media query
 │   │   ├── login/
 │   │   │   └── page.tsx                   ← Google OAuth login page
 │   │   ├── auth/
 │   │   │   └── callback/
 │   │   │       └── route.ts               ← OAuth callback handler
-│   │   ├── bills/                         ← recurring bill templates (Piece 3)
-│   │   │   ├── page.tsx                   ← server component, fetches data, delegates to sections
-│   │   │   ├── _types.ts                  ← BillTemplate type
-│   │   │   ├── actions.ts                 ← barrel re-export of server actions
-│   │   │   ├── actions/
-│   │   │   │   ├── _helpers.ts            ← shared helpers (no "use server")
-│   │   │   │   ├── create-bill-template.ts
-│   │   │   │   ├── update-bill-template.ts
-│   │   │   │   └── deactivate-bill-template.ts
-│   │   │   ├── form-state.ts              ← FormState type + initial state
-│   │   │   ├── _components/
-│   │   │   │   ├── CreateBillTemplateForm/
-│   │   │   │   │   └── CreateBillTemplateForm.tsx
-│   │   │   │   └── ActiveTemplatesSection/
-│   │   │   │       └── ActiveTemplatesSection.tsx
-│   │   │   └── [id]/edit/
-│   │   │       ├── page.tsx
-│   │   │       └── _components/
-│   │   │           └── EditBillTemplateForm/
-│   │   │               └── EditBillTemplateForm.tsx
-│   │   ├── savings/                       ← savings funds (Piece 7)
-│   │   │   ├── page.tsx                   ← list funds + create form
-│   │   │   ├── _types.ts                  ← SavingsFundRow, SavingsContributionRow
-│   │   │   ├── actions.ts                 ← barrel re-export
-│   │   │   ├── actions/
-│   │   │   │   ├── _helpers.ts            ← parseFundFields, parseContributionFields (signed amount), fetchContributionContext, getPersonalSpace
-│   │   │   │   ├── create-savings-fund.ts
-│   │   │   │   ├── update-savings-fund.ts
-│   │   │   │   ├── create-savings-contribution.ts  ← lazy-creates target month, lock check
-│   │   │   │   ├── update-savings-contribution.ts
-│   │   │   │   └── delete-savings-contribution.ts
-│   │   │   ├── form-state.ts              ← FormState type + initial state
-│   │   │   ├── _components/
-│   │   │   │   ├── CreateSavingsFundForm/
-│   │   │   │   │   └── CreateSavingsFundForm.tsx
-│   │   │   │   ├── FundsListSection/
-│   │   │   │   │   └── FundsListSection.tsx
-│   │   │   │   └── SavingsFundRow/
-│   │   │   │       └── SavingsFundRow.tsx
-│   │   │   └── [id]/                      ← fund detail page
-│   │   │       ├── page.tsx               ← running total, contribution history
-│   │   │       └── _components/
-│   │   │           ├── EditFundNameForm/
-│   │   │           │   └── EditFundNameForm.tsx
-│   │   │           ├── CreateContributionForm/
-│   │   │           │   └── CreateContributionForm.tsx
-│   │   │           ├── ContributionsSection/
-│   │   │           │   └── ContributionsSection.tsx
-│   │   │           └── ContributionRow/
-│   │   │               └── ContributionRow.tsx
-│   │   └── months/                        ← monthly view (Pieces 4a, 4b, 5, 6, 7)
-│   │       └── [year]/[month]/
-│   │           ├── page.tsx               ← server component, fetches data, two-column wrapper
-│   │           ├── _helpers.ts            ← shared route helpers (sync + async)
-│   │           ├── actions.ts             ← barrel re-export of server actions
-│   │           ├── actions/
-│   │           │   ├── toggle-bill-paid.ts
-│   │           │   ├── update-bill-instance-amount.ts
-│   │           │   ├── unlock-month.ts
-│   │           │   ├── create-income-entry.ts          ← lazy-creates target month
-│   │           │   ├── toggle-income-received.ts
-│   │           │   ├── update-income-amount.ts
-│   │           │   ├── delete-income-entry.ts
-│   │           │   ├── create-one-off-expense.ts
-│   │           │   ├── update-one-off-expense.ts
-│   │           │   └── delete-one-off-expense.ts
-│   │           ├── form-state.ts          ← FormState type + initial state
-│   │           ├── _types.ts               ← row types + grouped props (BillRow, IncomeGroup, etc.)
-│   │           └── _components/
-│   │               ├── MonthlyViewClient/
-│   │               │   └── MonthlyViewClient.tsx   ← client wrapper, owns highlight state, two-column grid
-│   │               ├── CalendarStrip/
-│   │               │   ├── CalendarStrip.tsx       ← client, controls + grid + bill/income badges
-│   │               │   └── _helpers.ts             ← buildCalendarGrid (private)
-│   │               ├── IncomeSection/
-│   │               │   └── IncomeSection.tsx       ← section: heading, list, summary, add-form toggle
-│   │               ├── BillsSection/
-│   │               │   └── BillsSection.tsx        ← section: heading, list, summary
-│   │               ├── ExpensesSection/
-│   │               │   └── ExpensesSection.tsx     ← section: heading, list, summary, add-form toggle
-│   │               ├── BalanceSection/
-│   │               │   └── BalanceSection.tsx      ← section: net expected + net so far
-│   │               ├── BillInstanceRow/
-│   │               │   └── BillInstanceRow.tsx     ← client, paid toggle + edit + highlight
-│   │               ├── IncomeEntryRow/
-│   │               │   └── IncomeEntryRow.tsx      ← client, received toggle + edit + delete + highlight
-│   │               ├── ExpenseEntryRow/
-│   │               │   └── ExpenseEntryRow.tsx     ← client, edit + delete + highlight
-│   │               ├── CreateIncomeEntryForm/
-│   │               │   └── CreateIncomeEntryForm.tsx  ← client, accordion form
-│   │               ├── CreateOneOffExpenseForm/
-│   │               │   └── CreateOneOffExpenseForm.tsx ← client, accordion form
-│   │               └── UnlockBanner/
-│   │                   └── UnlockBanner.tsx        ← client, unlock-with-reason flow
+│   │   └── spaces/
+│   │       ├── new/                       ← create shared space (Piece 8, Step 5)
+│   │       │   ├── page.tsx               ← client, name form
+│   │       │   └── action.ts              ← createSharedSpace server action
+│   │       └── [spaceId]/                 ← all data routes live under a space context
+│   │           ├── bills/                 ← recurring bill templates (Piece 3)
+│   │           │   ├── page.tsx           ← server component, fetches data, delegates to sections
+│   │           │   ├── _types.ts          ← BillTemplate type
+│   │           │   ├── actions.ts         ← barrel re-export of server actions
+│   │           │   ├── actions/
+│   │           │   │   ├── _helpers.ts    ← parseTemplateFields, cascadeAmountToFutureInstances
+│   │           │   │   ├── create-bill-template.ts
+│   │           │   │   ├── update-bill-template.ts
+│   │           │   │   └── deactivate-bill-template.ts
+│   │           │   ├── form-state.ts      ← FormState type + initial state
+│   │           │   ├── _components/
+│   │           │   │   ├── CreateBillTemplateForm/
+│   │           │   │   │   └── CreateBillTemplateForm.tsx
+│   │           │   │   └── ActiveTemplatesSection/
+│   │           │   │       └── ActiveTemplatesSection.tsx
+│   │           │   └── [id]/edit/
+│   │           │       ├── page.tsx
+│   │           │       └── _components/
+│   │           │           └── EditBillTemplateForm/
+│   │           │               └── EditBillTemplateForm.tsx
+│   │           ├── savings/               ← savings funds (Piece 7)
+│   │           │   ├── page.tsx           ← list funds + create form
+│   │           │   ├── _types.ts          ← SavingsFundRow, SavingsContributionRow
+│   │           │   ├── actions.ts         ← barrel re-export
+│   │           │   ├── actions/
+│   │           │   │   ├── _helpers.ts    ← parseFundFields, parseContributionFields (signed amount), fetchContributionContext
+│   │           │   │   ├── create-savings-fund.ts
+│   │           │   │   ├── update-savings-fund.ts
+│   │           │   │   ├── create-savings-contribution.ts  ← lazy-creates target month, lock check
+│   │           │   │   ├── update-savings-contribution.ts
+│   │           │   │   └── delete-savings-contribution.ts
+│   │           │   ├── form-state.ts      ← FormState type + initial state
+│   │           │   ├── _components/
+│   │           │   │   ├── CreateSavingsFundForm/
+│   │           │   │   │   └── CreateSavingsFundForm.tsx
+│   │           │   │   ├── FundsListSection/
+│   │           │   │   │   └── FundsListSection.tsx
+│   │           │   │   └── SavingsFundRow/
+│   │           │   │       └── SavingsFundRow.tsx
+│   │           │   └── [id]/              ← fund detail page
+│   │           │       ├── page.tsx       ← running total, contribution history
+│   │           │       └── _components/
+│   │           │           ├── EditFundNameForm/
+│   │           │           │   └── EditFundNameForm.tsx
+│   │           │           ├── CreateContributionForm/
+│   │           │           │   └── CreateContributionForm.tsx
+│   │           │           ├── ContributionsSection/
+│   │           │           │   └── ContributionsSection.tsx
+│   │           │           └── ContributionRow/
+│   │           │               └── ContributionRow.tsx
+│   │           ├── months/                ← monthly view (Pieces 4a, 4b, 5, 6, 7, 8)
+│   │           │   └── [year]/[month]/
+│   │           │       ├── page.tsx       ← server component, aggregate fetch, two-column wrapper
+│   │           │       ├── _helpers.ts    ← getOrCreateMonth, syncBillInstances, isMonthLocked, checkXEditable (EditCheckResult), monthUrl helpers
+│   │           │       ├── actions.ts     ← barrel re-export of server actions
+│   │           │       ├── actions/
+│   │           │       │   ├── toggle-bill-paid.ts
+│   │           │       │   ├── update-bill-instance-amount.ts
+│   │           │       │   ├── unlock-month.ts
+│   │           │       │   ├── create-income-entry.ts          ← lazy-creates target month
+│   │           │       │   ├── toggle-income-received.ts
+│   │           │       │   ├── update-income-amount.ts
+│   │           │       │   ├── delete-income-entry.ts
+│   │           │       │   ├── create-one-off-expense.ts
+│   │           │       │   ├── update-one-off-expense.ts
+│   │           │       │   └── delete-one-off-expense.ts
+│   │           │       ├── form-state.ts  ← FormState type + initial state
+│   │           │       ├── _types.ts      ← row types (with space_id) + grouped props + MonthlyViewProps (with attributions)
+│   │           │       └── _components/
+│   │           │           ├── MonthlyViewClient/
+│   │           │           │   └── MonthlyViewClient.tsx   ← client wrapper, owns highlight state, two-column grid
+│   │           │           ├── CalendarStrip/
+│   │           │           │   ├── CalendarStrip.tsx       ← client, controls + grid + bill/income/expense dots
+│   │           │           │   └── _helpers.ts             ← buildCalendarGrid (private)
+│   │           │           ├── IncomeSection/
+│   │           │           │   └── IncomeSection.tsx       ← section: heading, list, summary, add-form toggle
+│   │           │           ├── BillsSection/
+│   │           │           │   └── BillsSection.tsx        ← section: heading, list, summary
+│   │           │           ├── ExpensesSection/
+│   │           │           │   └── ExpensesSection.tsx     ← section: heading, list, summary, add-form toggle
+│   │           │           ├── BalanceSection/
+│   │           │           │   └── BalanceSection.tsx      ← section: net expected + net so far
+│   │           │           ├── BillInstanceRow/
+│   │           │           │   └── BillInstanceRow.tsx     ← client, paid toggle + edit + highlight + readOnly/attribution
+│   │           │           ├── IncomeEntryRow/
+│   │           │           │   └── IncomeEntryRow.tsx      ← client, received toggle + edit + delete + highlight + readOnly/attribution
+│   │           │           ├── ExpenseEntryRow/
+│   │           │           │   └── ExpenseEntryRow.tsx     ← client, edit + delete + highlight + readOnly/attribution
+│   │           │           ├── CreateIncomeEntryForm/
+│   │           │           │   └── CreateIncomeEntryForm.tsx  ← client, accordion form
+│   │           │           ├── CreateOneOffExpenseForm/
+│   │           │           │   └── CreateOneOffExpenseForm.tsx ← client, accordion form
+│   │           │           └── UnlockBanner/
+│   │           │               └── UnlockBanner.tsx        ← client, unlock-with-reason flow
+│   │           └── settings/              ← shared-space settings (Piece 8, Step 6)
+│   │               ├── page.tsx           ← server, rename + members + invite + pending invites
+│   │               ├── actions.ts         ← renameSpace, inviteMember, revokeInvitation
+│   │               └── _components/
+│   │                   ├── RenameSpaceForm.tsx
+│   │                   ├── InviteMemberForm.tsx
+│   │                   ├── MemberList.tsx
+│   │                   └── PendingInvitations.tsx
 │   ├── components/
-│   │   ├── Navbar.tsx                     ← server component, reads user
+│   │   ├── Navbar.tsx                     ← server component, fetches memberships, delegates to NavbarNav
+│   │   ├── NavbarNav.tsx                  ← client, space switcher dropdown + Bills/Savings/Settings links (URL-aware)
+│   │   ├── InvitationBanner/
+│   │   │   ├── InvitationBanner.tsx       ← server, queries pending invites by email
+│   │   │   ├── InvitationBannerClient.tsx ← client, accept/decline buttons
+│   │   │   └── actions.ts                ← acceptInvitation, declineInvitation
 │   │   └── SignOutButton.tsx              ← client component
 │   ├── helpers/
 │   │   ├── format.ts                      ← shared formatters (brlFormatter, dateFormatter)
-│   │   └── date.ts                        ← todayYmd(), currentYearMonth() — "YYYY-MM-DD" / "YYYY-MM" for string-compare against Postgres `date` columns
+│   │   ├── date.ts                        ← todayYmd(), currentYearMonth() — "YYYY-MM-DD" / "YYYY-MM" for string-compare against Postgres `date` columns
+│   │   ├── paths.ts                       ← URL builders: spaceMonthUrl, spaceBillsUrl, spaceBillEditUrl, spaceSavingsUrl, spaceFundUrl, spaceSettingsUrl
+│   │   └── spaces.ts                     ← getPersonalSpaceId, getAggregateSpaceIds, getSpaceAttributions
 │   ├── lib/
 │   │   └── supabase/                      ← third-party integrations only
 │   │       ├── client.ts                  ← browser Supabase client
@@ -653,9 +675,13 @@ Every route follows the same structure. Apply this pattern when adding new route
 - **Calendar grid is always 6×7 = 42 cells** — `buildCalendarGrid` pads with leading days from the previous month and trailing days from the next month so the grid height stays stable across navigation
 - **Income entries are routed by their `expected_date`, not the viewed month** — when the user adds income on April's page with a date in June, `createIncomeEntry` parses the date, calls `getOrCreateMonth` for the target month, and stores the entry under that month's `month_id`. The lock check runs against the **target** month, not the viewed month, so adding income to a past locked month is blocked even when the page you're on is unlocked
 - **Don't `setState` inside `useEffect` to react to action state** — the React 19 lint rule `react-hooks/set-state-in-effect` flags this. Use `useTransition` + a manual `handleX(formData)` function that calls the server action and handles success/error in the same callback. `useActionState` is still fine when you don't need to react to its state changes (e.g. server-side `redirect()` after success)
-- **"Net so far" subtracts overdue unpaid bills** — in `/months/[year]/[month]/page.tsx`, `netSoFar` subtracts `paidBills` **and** `overdueUnpaidBills` (unpaid instances whose `due_date <= today`). The rationale: those bills represent money that should already be gone from the account, even if the user hasn't ticked them paid yet. If you ever refactor this math, keep the two filters separate — one by `paid`, one by `due_date` — so paid future-dated bills don't get double-counted
+- **"Net so far" subtracts overdue unpaid bills** — in `/spaces/[spaceId]/months/[year]/[month]/page.tsx`, `netSoFar` subtracts `paidBills` **and** `overdueUnpaidBills` (unpaid instances whose `due_date <= today`). The rationale: those bills represent money that should already be gone from the account, even if the user hasn't ticked them paid yet. If you ever refactor this math, keep the two filters separate — one by `paid`, one by `due_date` — so paid future-dated bills don't get double-counted
 - **Calendar dot color encodes urgency** — `CalendarStrip` renders a **blue** dot for days with bills/expenses and a **red** dot when at least one bill due that day is overdue and unpaid. The page computes `daysWithOverdueBills` server-side using `todayYmd()` string comparison against `due_date`, so no client-side date math is needed
 - **Date string helpers live in `src/helpers/date.ts`** — use `todayYmd()` (`"YYYY-MM-DD"`) for comparison against Postgres `date` columns and `currentYearMonth()` (`"YYYY-MM"`) as the default value for native `<input type="month">`. Both use server-local time and are plain string formatters — no timezone parsing involved, which is the whole point
 - **Savings contributions use signed amounts** — the contributions form has two buttons ("Deposit" / "Withdraw") but a single `amount` column. `parseContributionFields` returns `signedAmount` (positive for deposits, negative for withdrawals). Downstream sums, balance math, and display logic all treat `amount` as pure algebra — never re-flip the sign based on the UI button
 - **Savings contributions inherit access from their parent fund** — `savings_contributions` has no `space_id`. Its RLS policies (`0007`) walk the FK to `savings_funds` and call `is_active_member(f.space_id)` there. This is what makes shared-space funds work automatically once Piece 8 lands — no changes needed in this route when fund ownership spans multiple users
-- **Monthly view's savings row is read-only** — `BalanceSection` shows "Saved this month" as a derived sum from `savings_contributions` scoped to the current month. There's no inline add/edit on the monthly page; all savings CRUD happens under `/savings`. The page does still pass `savingsNet` into both `netExpected` and `netSoFar` so the balance totals reflect the cash reality after deposits/withdrawals
+- **Monthly view's savings row is read-only** — `BalanceSection` shows "Saved this month" as a derived sum from `savings_contributions` scoped to the current month. There's no inline add/edit on the monthly page; all savings CRUD happens under `/spaces/[spaceId]/savings`. The page does still pass `savingsNet` into both `netExpected` and `netSoFar` so the balance totals reflect the cash reality after deposits/withdrawals
+- **Supabase INSERT + `.select()` + RLS chicken-and-egg** — if you create a row and immediately need its ID via `.select().single()`, PostgREST evaluates the RETURNING clause against the SELECT RLS policy. If the SELECT policy requires membership that doesn't exist yet (e.g. creating a space before adding yourself as a member), the RETURNING is blocked and Supabase surfaces an RLS error. Fix: generate the UUID client-side with `crypto.randomUUID()` and pass it in the insert, bypassing the need for `.select().single()` entirely
+- **RLS subqueries are subject to other tables' RLS** — a `WITH CHECK` expression that subqueries another table runs under the caller's RLS context. If the target table's SELECT policy blocks the lookup (e.g. checking `spaces.created_by` when the user can't read that space yet), the policy silently fails. Always wrap cross-table checks in SECURITY DEFINER helper functions (like `is_space_creator`, `has_accepted_invitation`) to bypass the other table's RLS. Convention: name them `is_X` / `has_X`, mark them `SECURITY DEFINER STABLE`, lock `search_path = public`
+- **Invitations** — match pending invites by email on every login; a dashboard banner surfaces them; unique constraint on (space_id, invited_email) prevents duplicate invites
+- **`revalidatePath("/", "layout")` for membership changes** — creating a shared space, accepting an invite, or declining one changes the user's membership list. The Navbar reads memberships server-side in the root layout, which Next.js caches across navigations. Call `revalidatePath("/", "layout")` in any action that modifies `space_members` to bust this cache and make the Navbar dropdown update immediately
