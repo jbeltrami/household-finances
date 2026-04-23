@@ -23,6 +23,8 @@ type Template = {
   due_day: number | null;
   cadence: string | null;
   day_of_week: number | null;
+  installments_total: number | null;
+  installments_start_month: string | null;
 };
 
 type Props = {
@@ -32,6 +34,9 @@ type Props = {
 
 export default function EditBillTemplateForm({ spaceId, template }: Props) {
   const [cadence, setCadence] = useState(template.cadence ?? "monthly");
+  const [installmentsEnabled, setInstallmentsEnabled] = useState(
+    template.installments_total != null
+  );
 
   const boundAction = updateBillTemplate.bind(null, template.id);
   const [state, formAction, isPending] = useActionState(
@@ -152,6 +157,61 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
           </div>
         )}
       </div>
+
+      {cadence === "monthly" && (
+        <div className="mt-4 rounded-md border border-gray-200 p-3 dark:border-gray-700">
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              name="installments_enabled"
+              checked={installmentsEnabled}
+              onChange={(e) => setInstallmentsEnabled(e.target.checked)}
+            />
+            <span>Parcelamento (bounded number of monthly installments)</span>
+          </label>
+
+          {installmentsEnabled && (
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label
+                  htmlFor="installments_total"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300"
+                >
+                  How many installments?
+                </label>
+                <input
+                  id="installments_total"
+                  name="installments_total"
+                  type="number"
+                  min="1"
+                  step="1"
+                  required={installmentsEnabled}
+                  defaultValue={template.installments_total ?? ""}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="installments_start_month"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300"
+                >
+                  First installment month
+                </label>
+                <input
+                  id="installments_start_month"
+                  name="installments_start_month"
+                  type="month"
+                  required={installmentsEnabled}
+                  defaultValue={
+                    template.installments_start_month?.slice(0, 7) ?? ""
+                  }
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <label className="mt-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
         <input

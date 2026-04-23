@@ -19,6 +19,10 @@ export type TemplateFields = {
   cadence: "monthly" | "weekly" | "biweekly";
   dueDay: number | null;
   dayOfWeek: number | null;
+  installmentsTotal: number | null;
+  // "YYYY-MM-01" when set, so it matches Postgres date semantics and our
+  // CHECK constraint requiring day = 1.
+  installmentsStartMonth: string | null;
 };
 
 // Shared parser/validator for the create and update forms.
@@ -67,7 +71,42 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
     }
   }
 
-  return { name, defaultAmount, cadence, dueDay, dayOfWeek };
+  let installmentsTotal: number | null = null;
+  let installmentsStartMonth: string | null = null;
+
+  const installmentsEnabled = formData.get("installments_enabled") === "on";
+  if (installmentsEnabled) {
+    if (cadence !== "monthly") {
+      throw new Error("Installments are only supported for monthly bills");
+    }
+    const totalRaw = formData.get("installments_total")?.toString();
+    const startRaw = formData.get("installments_start_month")?.toString();
+
+    if (!totalRaw) throw new Error("Number of installments is required");
+    if (!startRaw) throw new Error("Start month is required");
+
+    installmentsTotal = Number(totalRaw);
+    if (!Number.isInteger(installmentsTotal) || installmentsTotal <= 0) {
+      throw new Error("Number of installments must be a positive integer");
+    }
+
+    // <input type="month"> yields "YYYY-MM" — normalize to "YYYY-MM-01"
+    // so it matches the CHECK constraint requiring day = 1.
+    if (!/^\d{4}-\d{2}$/.test(startRaw)) {
+      throw new Error("Start month must be a valid YYYY-MM value");
+    }
+    installmentsStartMonth = `${startRaw}-01`;
+  }
+
+  return {
+    name,
+    defaultAmount,
+    cadence,
+    dueDay,
+    dayOfWeek,
+    installmentsTotal,
+    installmentsStartMonth,
+  };
 }
 
 // Compute the biweekly anchor: the next occurrence of `dayOfWeek`

@@ -35,6 +35,15 @@ export default function BillInstanceRow({
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
+  const progress = instance.installmentProgress;
+  const isInstallment = progress != null;
+
+  // For an unpaid installment bill, the user can choose how many
+  // installments this single payment covers (default 1, capped at the
+  // template's remaining). Paid instances render their stored coverage
+  // directly and skip this input.
+  const [coverInput, setCoverInput] = useState(1);
+
   // Parse the due day directly from the YYYY-MM-DD string so we don't
   // hit the UTC timezone trap that plagues new Date("YYYY-MM-DD").
   const dueDay = instance.due_date
@@ -43,12 +52,16 @@ export default function BillInstanceRow({
   const isHighlighted =
     highlightedDay !== null && dueDay !== null && dueDay === highlightedDay;
 
-  // The paid toggle uses useTransition so we can show a loading state
-  // while the server action runs.
   const [isToggling, startToggle] = useTransition();
-  const handleTogglePaid = () => {
+  const handleTogglePaid = (coveredOverride?: number) => {
     startToggle(async () => {
-      await toggleBillPaid(instance.id, !instance.paid, year, month, new FormData());
+      const covered = coveredOverride ?? coverInput;
+      await toggleBillPaid(
+        instance.id,
+        !instance.paid,
+        instance.paid ? 1 : covered,
+        new FormData()
+      );
     });
   };
 
@@ -79,6 +92,18 @@ export default function BillInstanceRow({
     setUpdateError(null);
   };
 
+  // Progress badge math: X/Y paid. For a paid prepaid instance we show
+  // the instance's coverage alongside the overall progress ("×3") so the
+  // user can tell which payment absorbed the extra installments.
+  const progressBadge = progress ? `${progress.paid}/${progress.total}` : null;
+  const showCoverInput =
+    isInstallment &&
+    !instance.paid &&
+    !noEdit &&
+    progress != null &&
+    progress.remaining > 1;
+  const maxCover = progress?.remaining ?? 1;
+
   return (
     <li
       className={`flex items-center justify-between px-4 py-3 transition-colors ${
@@ -86,13 +111,26 @@ export default function BillInstanceRow({
       }`}
     >
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+        <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
           {attribution && (
-            <span className="mr-1 text-xs font-normal text-gray-500 dark:text-gray-400">
+            <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
               {attribution} —
             </span>
           )}
-          {instance.name}
+          <span>{instance.name}</span>
+          {progressBadge && (
+            <span
+              className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+              title="Installments paid / total"
+            >
+              {progressBadge}
+            </span>
+          )}
+          {instance.paid && instance.installments_covered > 1 && (
+            <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+              ×{instance.installments_covered} this month
+            </span>
+          )}
         </p>
         {instance.due_date && (
           <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -151,6 +189,36 @@ export default function BillInstanceRow({
           </>
         )}
 
+        {showCoverInput && (
+          <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+            <span>covers</span>
+            <input
+              type="number"
+              min={1}
+              max={maxCover}
+              value={coverInput}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                if (Number.isInteger(n) && n >= 1 && n <= maxCover) {
+                  setCoverInput(n);
+                }
+              }}
+              className="w-12 rounded-md border border-gray-300 bg-white px-1 py-0.5 text-center text-xs text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            />
+            {maxCover > 1 && coverInput < maxCover && (
+              <button
+                type="button"
+                onClick={() => handleTogglePaid(maxCover)}
+                disabled={isToggling}
+                className="rounded-md px-1.5 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                title={`Pay off all ${maxCover} remaining`}
+              >
+                pay all
+              </button>
+            )}
+          </div>
+        )}
+
         {noEdit ? (
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -164,7 +232,7 @@ export default function BillInstanceRow({
         ) : (
           <button
             type="button"
-            onClick={handleTogglePaid}
+            onClick={() => handleTogglePaid()}
             disabled={isToggling}
             className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
               isToggling

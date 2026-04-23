@@ -16,10 +16,16 @@ import type { BillRow, ExpenseRow, IncomeRow } from "./_types";
 type BillInstanceWithTemplate = {
   id: string;
   space_id: string;
+  template_id: string;
   amount: number | string;
   due_date: string | null;
   paid: boolean;
-  recurring_bill_templates: { name: string } | null;
+  installments_covered: number;
+  recurring_bill_templates: {
+    name: string;
+    default_amount: number | string;
+    installments_total: number | null;
+  } | null;
 };
 
 export default async function MonthlyViewPage({
@@ -85,7 +91,7 @@ export default async function MonthlyViewPage({
   const { data: rawInstances } = await supabase
     .from("bill_instances")
     .select(
-      "id, space_id, amount, due_date, paid, recurring_bill_templates(name)"
+      "id, space_id, template_id, amount, due_date, paid, installments_covered, recurring_bill_templates(name, default_amount, installments_total)"
     )
     .in("month_id", allMonthIds)
     .order("due_date", { ascending: true, nullsFirst: false });
@@ -93,16 +99,65 @@ export default async function MonthlyViewPage({
   const rawWithTemplate = (rawInstances ??
     []) as unknown as BillInstanceWithTemplate[];
 
+  // For installment templates visible this month, fetch total covered-units
+  // paid across *all* months so we can show "X/Y" progress next to the name.
+  // We read from every paid instance of these templates regardless of month,
+  // which is how a prepayment in an earlier month shows up here.
+  const installmentTemplateIds = Array.from(
+    new Set(
+      rawWithTemplate
+        .filter((i) => i.recurring_bill_templates?.installments_total != null)
+        .map((i) => i.template_id)
+    )
+  );
+
+  const paidCoveredByTemplate = new Map<string, number>();
+  if (installmentTemplateIds.length > 0) {
+    const { data: paidRows } = await supabase
+      .from("bill_instances")
+      .select("template_id, installments_covered")
+      .in("template_id", installmentTemplateIds)
+      .eq("paid", true);
+
+    for (const p of paidRows ?? []) {
+      const tid = p.template_id as string;
+      const cov = (p.installments_covered as number) ?? 1;
+      paidCoveredByTemplate.set(
+        tid,
+        (paidCoveredByTemplate.get(tid) ?? 0) + cov
+      );
+    }
+  }
+
   // Flatten the nested template name into a simpler row shape that the
   // client wrapper can pass straight to BillInstanceRow.
-  const instances: BillRow[] = rawWithTemplate.map((i) => ({
-    id: i.id,
-    space_id: i.space_id,
-    name: i.recurring_bill_templates?.name ?? "(unnamed)",
-    amount: i.amount,
-    due_date: i.due_date,
-    paid: i.paid,
-  }));
+  const instances: BillRow[] = rawWithTemplate.map((i) => {
+    const total = i.recurring_bill_templates?.installments_total ?? null;
+    const progress =
+      total != null
+        ? {
+            paid: paidCoveredByTemplate.get(i.template_id) ?? 0,
+            total,
+            remaining:
+              total - (paidCoveredByTemplate.get(i.template_id) ?? 0),
+            defaultAmount: Number(
+              i.recurring_bill_templates?.default_amount ?? 0
+            ),
+          }
+        : null;
+
+    return {
+      id: i.id,
+      space_id: i.space_id,
+      template_id: i.template_id,
+      name: i.recurring_bill_templates?.name ?? "(unnamed)",
+      amount: i.amount,
+      due_date: i.due_date,
+      paid: i.paid,
+      installments_covered: i.installments_covered ?? 1,
+      installmentProgress: progress,
+    };
+  });
 
   // Income entries across all aggregate months for this year/month.
   const { data: rawIncomeEntries } = await supabase

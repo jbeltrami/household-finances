@@ -30,8 +30,15 @@ export async function createBillTemplate(
     const spaceId = formData.get("space_id")?.toString();
     if (!spaceId) return { error: "Missing space context" };
 
-    const { name, defaultAmount, cadence, dueDay, dayOfWeek } =
-      parseTemplateFields(formData);
+    const {
+      name,
+      defaultAmount,
+      cadence,
+      dueDay,
+      dayOfWeek,
+      installmentsTotal,
+      installmentsStartMonth,
+    } = parseTemplateFields(formData);
 
     const { error: insertError } = await supabase
       .from("recurring_bill_templates")
@@ -47,6 +54,8 @@ export async function createBillTemplate(
           cadence === "biweekly" && dayOfWeek != null
             ? computeBiweeklyAnchor(dayOfWeek)
             : null,
+        installments_total: installmentsTotal,
+        installments_start_month: installmentsStartMonth,
       });
 
     if (insertError) {

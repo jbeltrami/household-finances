@@ -32,8 +32,15 @@ export async function updateBillTemplate(
     spaceId = formData.get("space_id")?.toString();
     if (!spaceId) return { error: "Missing space context" };
 
-    const { name, defaultAmount, cadence, dueDay, dayOfWeek } =
-      parseTemplateFields(formData);
+    const {
+      name,
+      defaultAmount,
+      cadence,
+      dueDay,
+      dayOfWeek,
+      installmentsTotal,
+      installmentsStartMonth,
+    } = parseTemplateFields(formData);
     const cascade = formData.get("cascade") === "on";
 
     // For biweekly: if the template already has an anchor AND the
@@ -66,6 +73,8 @@ export async function updateBillTemplate(
         due_day: cadence === "monthly" ? dueDay : null,
         day_of_week: cadence !== "monthly" ? dayOfWeek : null,
         biweekly_anchor: biweeklyAnchor,
+        installments_total: installmentsTotal,
+        installments_start_month: installmentsStartMonth,
       })
       .eq("id", id);
 

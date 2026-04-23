@@ -3,10 +3,22 @@ import type { YearMonth } from "./_helpers";
 export type BillRow = {
   id: string;
   space_id: string;
+  template_id: string;
   name: string;
   amount: number | string;
   due_date: string | null;
   paid: boolean;
+  installments_covered: number;
+  // Populated only for installment bills. paid/total are in "covered units"
+  // (a prepayment with covered=3 contributes 3 to paid). defaultAmount is
+  // the template default so the UI can compute amount = default × covered
+  // when the user sets a non-1 coverage.
+  installmentProgress: {
+    paid: number;
+    total: number;
+    remaining: number;
+    defaultAmount: number;
+  } | null;
 };
 
 export type IncomeRow = {

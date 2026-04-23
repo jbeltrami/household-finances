@@ -216,6 +216,18 @@ export function nextMonth(
   return { year, month: month + 1 };
 }
 
+// Offset a "YYYY-MM" string by N months, returning a "YYYY-MM" string.
+// Used for installment window math — we keep everything in string form
+// to dodge the timezone pitfalls that plague Date arithmetic on dates
+// stored as "YYYY-MM-DD" in Postgres.
+export function addMonthsYm(ym: string, offset: number): string {
+  const [y, m] = ym.split("-").map(Number);
+  const absolute = y * 12 + (m - 1) + offset;
+  const year = Math.floor(absolute / 12);
+  const month = (absolute % 12) + 1;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+}
+
 // Format a year/month into a "YYYY-MM-DD" string, clamping the day to
 // the last day of the month if it's larger (e.g. dueDay 31 in February
 // becomes the 28th or 29th).
@@ -355,11 +367,58 @@ async function syncBillInstances(
 ) {
   const { data: templates } = await supabase
     .from("recurring_bill_templates")
-    .select("id, default_amount, due_day, cadence, day_of_week, biweekly_anchor")
+    .select(
+      "id, default_amount, due_day, cadence, day_of_week, biweekly_anchor, installments_total, installments_start_month"
+    )
     .eq("space_id", spaceId)
     .eq("active", true);
 
   if (!templates || templates.length === 0) return;
+
+  // For installment templates, compute how much "extra coverage" already
+  // got paid in other months. Each paid instance with covered>1 represents
+  // one month that absorbed multiple installments, which shifts the
+  // effective end month earlier. extra = sum(covered - 1) across paid
+  // instances. If it ends up zero (no prepayments yet), the effective end
+  // is just start + (total - 1) months.
+  const installmentTemplateIds = templates
+    .filter((t) => (t.installments_total as number | null) != null)
+    .map((t) => t.id as string);
+
+  const extraByTemplate = new Map<string, number>();
+  if (installmentTemplateIds.length > 0) {
+    const { data: paidInstances } = await supabase
+      .from("bill_instances")
+      .select("template_id, installments_covered")
+      .in("template_id", installmentTemplateIds)
+      .eq("paid", true);
+
+    for (const row of paidInstances ?? []) {
+      const tid = row.template_id as string;
+      const extra = ((row.installments_covered as number) ?? 1) - 1;
+      extraByTemplate.set(tid, (extraByTemplate.get(tid) ?? 0) + extra);
+    }
+  }
+
+  // Skip installment templates that fall outside their window for this
+  // month. Non-installment templates always generate.
+  const currentYm = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+
+  const eligibleTemplates = templates.filter((t) => {
+    const total = t.installments_total as number | null;
+    if (total == null) return true;
+
+    const startYm = (t.installments_start_month as string).slice(0, 7);
+    if (currentYm < startYm) return false;
+
+    const extra = extraByTemplate.get(t.id as string) ?? 0;
+    const endYm = addMonthsYm(startYm, total - 1 - extra);
+    if (currentYm > endYm) return false;
+
+    return true;
+  });
+
+  if (eligibleTemplates.length === 0) return;
 
   // Existing instances: track (template_id, due_date) pairs since
   // weekly/biweekly templates can have multiple per month.
@@ -385,7 +444,7 @@ async function syncBillInstances(
 
   const newInstances: NewInstance[] = [];
 
-  for (const t of templates) {
+  for (const t of eligibleTemplates) {
     // Compute the set of due dates for this template in this month.
     let dueDates: (string | null)[];
     const cadence = (t.cadence as string) ?? "monthly";

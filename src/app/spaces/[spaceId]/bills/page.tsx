@@ -16,7 +16,9 @@ export default async function BillsPage({
   // forged spaceId simply returns an empty list.
   const { data: rawTemplates } = await supabase
     .from("recurring_bill_templates")
-    .select("id, name, default_amount, currency, cadence, due_day, day_of_week")
+    .select(
+      "id, name, default_amount, currency, cadence, due_day, day_of_week, installments_total, installments_start_month"
+    )
     .eq("space_id", spaceId)
     .eq("active", true)
     .order("name");
@@ -29,7 +31,50 @@ export default async function BillsPage({
     cadence: (t.cadence as string) ?? "monthly",
     due_day: t.due_day,
     day_of_week: t.day_of_week,
+    installments_total: t.installments_total,
+    installments_start_month: t.installments_start_month,
   }));
+
+  // Compute paid-covered sums for every installment template so we can
+  // tell active-but-in-progress apart from fully-paid-off. A template is
+  // considered complete when sum(installments_covered across paid rows)
+  // meets the total.
+  const installmentTemplateIds = templates
+    .filter((t) => t.installments_total != null)
+    .map((t) => t.id);
+
+  const paidCoveredByTemplate = new Map<string, number>();
+  if (installmentTemplateIds.length > 0) {
+    const { data: paidRows } = await supabase
+      .from("bill_instances")
+      .select("template_id, installments_covered")
+      .in("template_id", installmentTemplateIds)
+      .eq("paid", true);
+
+    for (const p of paidRows ?? []) {
+      const tid = p.template_id as string;
+      const cov = (p.installments_covered as number) ?? 1;
+      paidCoveredByTemplate.set(
+        tid,
+        (paidCoveredByTemplate.get(tid) ?? 0) + cov
+      );
+    }
+  }
+
+  const activeTemplates: BillTemplate[] = [];
+  const completedTemplates: BillTemplate[] = [];
+  for (const t of templates) {
+    if (t.installments_total == null) {
+      activeTemplates.push(t);
+      continue;
+    }
+    const paid = paidCoveredByTemplate.get(t.id) ?? 0;
+    if (paid >= t.installments_total) {
+      completedTemplates.push(t);
+    } else {
+      activeTemplates.push(t);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -42,7 +87,20 @@ export default async function BillsPage({
 
       <CreateBillTemplateForm spaceId={spaceId} />
 
-      <ActiveTemplatesSection spaceId={spaceId} templates={templates} />
+      <ActiveTemplatesSection
+        spaceId={spaceId}
+        templates={activeTemplates}
+        paidCoveredByTemplate={paidCoveredByTemplate}
+      />
+
+      {completedTemplates.length > 0 && (
+        <ActiveTemplatesSection
+          spaceId={spaceId}
+          templates={completedTemplates}
+          paidCoveredByTemplate={paidCoveredByTemplate}
+          variant="completed"
+        />
+      )}
     </div>
   );
 }

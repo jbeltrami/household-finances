@@ -73,7 +73,10 @@ invitations
 
 recurring_bill_templates
   id, space_id, name
-  default_amount, currency, due_day (nullable), active, created_at
+  default_amount, currency, active, created_at
+  cadence ('monthly' | 'weekly' | 'biweekly'), due_day, day_of_week, biweekly_anchor
+  installments_total (nullable int), installments_start_month (nullable date, day=1)
+  -- installments_total set => bounded series on monthly cadence; null => indefinite
 
 months
   id, space_id, year, month
@@ -87,7 +90,9 @@ income_entries
 bill_instances
   id, month_id, template_id, space_id
   amount (can differ from template default), due_date, paid, created_at
-  unique (month_id, template_id)
+  installments_covered (int, default 1)  -- how many installments this one payment covers
+  -- uniqueness: partial indexes on (month_id, template_id, due_date) for non-null dates
+  -- and (month_id, template_id) for null dates
 
 one_off_expenses
   id, month_id, space_id
@@ -210,7 +215,7 @@ This piece is strictly additive to Piece 5: existing one-off entries stay valid,
 - RLS: enabled on all tables
 - Auth provider: Google OAuth only
 - Migrations live in `supabase/migrations/` (see `history.md` for detailed descriptions of each migration)
-- Current highest migration: `0012_invitee_join_policy.sql` — next new migration should be `0013_*.sql`
+- Current highest migration: `0014_bill_installments.sql` — next new migration should be `0015_*.sql`
 
 ### Environment variables
 
@@ -280,4 +285,5 @@ Every route follows the same structure. Apply this pattern when adding new route
 - **Monthly view's savings row is read-only** — `BalanceSection` shows "Saved this month" as a derived sum from `savings_contributions` scoped to the current month. There's no inline add/edit on the monthly page; all savings CRUD happens under `/spaces/[spaceId]/savings`. The page does still pass `savingsNet` into both `netExpected` and `netSoFar` so the balance totals reflect the cash reality after deposits/withdrawals
 - **Supabase INSERT + `.select()` + RLS chicken-and-egg** — if you create a row and immediately need its ID via `.select().single()`, PostgREST evaluates the RETURNING clause against the SELECT RLS policy. If the SELECT policy requires membership that doesn't exist yet (e.g. creating a space before adding yourself as a member), the RETURNING is blocked and Supabase surfaces an RLS error. Fix: generate the UUID client-side with `crypto.randomUUID()` and pass it in the insert, bypassing the need for `.select().single()` entirely
 - **RLS subqueries are subject to other tables' RLS** — a `WITH CHECK` expression that subqueries another table runs under the caller's RLS context. If the target table's SELECT policy blocks the lookup (e.g. checking `spaces.created_by` when the user can't read that space yet), the policy silently fails. Always wrap cross-table checks in SECURITY DEFINER helper functions (like `is_space_creator`, `has_accepted_invitation`) to bypass the other table's RLS. Convention: name them `is_X` / `has_X`, mark them `SECURITY DEFINER STABLE`, lock `search_path = public`
+- **Installment bills compress the schedule** — a template with `installments_total` set generates one `bill_instance` per month starting at `installments_start_month`. Paying an instance with `installments_covered > 1` represents a prepayment (one payment covering multiple installments). `syncBillInstances` then shifts the effective end earlier by `sum(covered - 1) for paid instances` so the total generated coverage always lands at `installments_total`. On prepay, the `toggleBillPaid` action also deletes *unpaid* future instances for that template — they get regenerated up to the new effective end on subsequent month visits. Progress in the UI is `sum(covered for paid) / installments_total`, not a row count. Installments are gated to monthly cadence; a CHECK constraint enforces this alongside `day(start_month) = 1`
 - **`revalidatePath("/", "layout")` for membership changes** — creating a shared space, accepting an invite, or declining one changes the user's membership list. The Navbar reads memberships server-side in the root layout, which Next.js caches across navigations. Call `revalidatePath("/", "layout")` in any action that modifies `space_members` to bust this cache and make the Navbar dropdown update immediately
