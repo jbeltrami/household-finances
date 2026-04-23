@@ -3,13 +3,18 @@
 import { useState, useTransition } from "react";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
 import {
-  toggleBillPaid,
-  updateBillInstanceAmount,
+  overrideEntryAmount,
+  skipEntryOccurrence,
+  toggleEntryPaid,
+  deleteEntry,
+  type OverrideAmountTarget,
+  type SkipTarget,
+  type TogglePaidTarget,
 } from "../../actions";
-import type { BillRow } from "../../_types";
+import type { EntryRow } from "../../_types";
 
 type Props = {
-  instance: BillRow;
+  entry: EntryRow;
   year: number;
   month: number;
   locked: boolean;
@@ -18,8 +23,41 @@ type Props = {
   attribution?: string;
 };
 
+// Compute the TogglePaidTarget for this entry. Virtual entries carry
+// their template+date+space so the server action can materialize a
+// new row on first pay; materialized entries just reference their id.
+function togglePaidTargetFor(entry: EntryRow): TogglePaidTarget {
+  if (entry.id != null) return { kind: "materialized", entryId: entry.id };
+  return {
+    kind: "virtual",
+    templateId: entry.template_id!,
+    date: entry.date,
+    spaceId: entry.space_id,
+  };
+}
+
+function overrideTargetFor(entry: EntryRow): OverrideAmountTarget {
+  if (entry.id != null) return { kind: "materialized", entryId: entry.id };
+  return {
+    kind: "virtual",
+    templateId: entry.template_id!,
+    date: entry.date,
+    spaceId: entry.space_id,
+  };
+}
+
+function skipTargetFor(entry: EntryRow): SkipTarget {
+  if (entry.id != null) return { kind: "materialized", entryId: entry.id };
+  return {
+    kind: "virtual",
+    templateId: entry.template_id!,
+    date: entry.date,
+    spaceId: entry.space_id,
+  };
+}
+
 export default function BillInstanceRow({
-  instance,
+  entry,
   year,
   month,
   locked,
@@ -27,54 +65,41 @@ export default function BillInstanceRow({
   readOnly,
   attribution,
 }: Props) {
-  // readOnly entries belong to a different space (another member's
-  // personal space viewed through the shared-space aggregate). They
-  // render with an attribution label and no edit/toggle controls —
-  // same visual treatment as locked rows.
+  void year;
+  void month;
+
   const noEdit = locked || !!readOnly;
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
-  const progress = instance.installmentProgress;
+  const progress = entry.installmentProgress;
   const isInstallment = progress != null;
 
-  // For an unpaid installment bill, the user can choose how many
-  // installments this single payment covers (default 1, capped at the
-  // template's remaining). Paid instances render their stored coverage
-  // directly and skip this input.
   const [coverInput, setCoverInput] = useState(1);
 
-  // Parse the due day directly from the YYYY-MM-DD string so we don't
-  // hit the UTC timezone trap that plagues new Date("YYYY-MM-DD").
-  const dueDay = instance.due_date
-    ? parseInt(instance.due_date.split("-")[2], 10)
-    : null;
+  // Parse the day from the YYYY-MM-DD string directly — no Date parsing.
+  const dueDay = parseInt(entry.date.split("-")[2], 10);
   const isHighlighted =
-    highlightedDay !== null && dueDay !== null && dueDay === highlightedDay;
+    highlightedDay !== null && dueDay === highlightedDay;
 
   const [isToggling, startToggle] = useTransition();
   const handleTogglePaid = (coveredOverride?: number) => {
     startToggle(async () => {
       const covered = coveredOverride ?? coverInput;
-      await toggleBillPaid(
-        instance.id,
-        !instance.paid,
-        instance.paid ? 1 : covered,
+      await toggleEntryPaid(
+        togglePaidTargetFor(entry),
+        !entry.paid,
+        entry.paid ? 1 : covered,
         new FormData()
       );
     });
   };
 
-  // Update is invoked via useTransition rather than useActionState so we
-  // can close edit mode in the success branch of the click handler — no
-  // useEffect / setState-in-effect anti-pattern.
   const [isUpdating, startUpdate] = useTransition();
   const handleUpdate = (formData: FormData) => {
     startUpdate(async () => {
-      const result = await updateBillInstanceAmount(
-        instance.id,
-        year,
-        month,
+      const result = await overrideEntryAmount(
+        overrideTargetFor(entry),
         { error: null },
         formData
       );
@@ -92,17 +117,41 @@ export default function BillInstanceRow({
     setUpdateError(null);
   };
 
-  // Progress badge math: X/Y paid. For a paid prepaid instance we show
-  // the instance's coverage alongside the overall progress ("×3") so the
-  // user can tell which payment absorbed the extra installments.
-  const progressBadge = progress ? `${progress.paid}/${progress.total}` : null;
+  const [isSkipping, startSkip] = useTransition();
+  const handleSkip = () => {
+    if (!window.confirm(`Skip "${entry.name}" for this occurrence?`)) return;
+    startSkip(async () => {
+      await skipEntryOccurrence(skipTargetFor(entry), new FormData());
+    });
+  };
+
+  // Delete is only meaningful for materialized entries. For one-offs
+  // it removes the row; for exceptions it reverts to virtual state.
+  const [isDeleting, startDelete] = useTransition();
+  const handleDelete = () => {
+    if (entry.id == null) return;
+    if (!window.confirm(`Remove override for "${entry.name}"?`)) return;
+    startDelete(async () => {
+      await deleteEntry(entry.id!);
+    });
+  };
+
+  const progressBadge = progress
+    ? `${progress.paid}/${progress.total}`
+    : null;
   const showCoverInput =
     isInstallment &&
-    !instance.paid &&
+    !entry.paid &&
     !noEdit &&
     progress != null &&
     progress.remaining > 1;
   const maxCover = progress?.remaining ?? 1;
+
+  // Materialized entries that aren't paid/skipped are overrides — offer
+  // a "revert" affordance via deleteEntry so the row returns to virtual
+  // state (template default amount).
+  const showRevert =
+    entry.id != null && !entry.paid && entry.template_id != null && !noEdit;
 
   return (
     <li
@@ -117,7 +166,7 @@ export default function BillInstanceRow({
               {attribution} —
             </span>
           )}
-          <span>{instance.name}</span>
+          <span>{entry.name}</span>
           {progressBadge && (
             <span
               className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200"
@@ -126,17 +175,15 @@ export default function BillInstanceRow({
               {progressBadge}
             </span>
           )}
-          {instance.paid && instance.installments_covered > 1 && (
+          {entry.paid && entry.installments_covered > 1 && (
             <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-              ×{instance.installments_covered} this month
+              ×{entry.installments_covered} this month
             </span>
           )}
         </p>
-        {instance.due_date && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Due {dateFormatter.format(new Date(instance.due_date))}
-          </p>
-        )}
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Due {dateFormatter.format(new Date(entry.date))}
+        </p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -148,7 +195,7 @@ export default function BillInstanceRow({
               min="0"
               step="5"
               required
-              defaultValue={String(instance.amount)}
+              defaultValue={String(entry.amount)}
               autoFocus
               className="w-28 rounded-md border border-gray-300 bg-white px-2 py-1 text-right text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
             />
@@ -175,7 +222,7 @@ export default function BillInstanceRow({
         ) : (
           <>
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {brlFormatter.format(Number(instance.amount))}
+              {brlFormatter.format(entry.amount)}
             </p>
             {!noEdit && (
               <button
@@ -222,12 +269,12 @@ export default function BillInstanceRow({
         {noEdit ? (
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              instance.paid
+              entry.paid
                 ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200"
                 : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"
             }`}
           >
-            {instance.paid ? "paid" : "pending"}
+            {entry.paid ? "paid" : "pending"}
           </span>
         ) : (
           <button
@@ -237,13 +284,45 @@ export default function BillInstanceRow({
             className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
               isToggling
                 ? "animate-pulse bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
-                : instance.paid
+                : entry.paid
                   ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-200 dark:hover:bg-green-900/60"
                   : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-200 dark:hover:bg-yellow-900/60"
             }`}
-            title={instance.paid ? "Mark as pending" : "Mark as paid"}
+            title={entry.paid ? "Mark as pending" : "Mark as paid"}
           >
-            {isToggling ? "…" : instance.paid ? "paid" : "pending"}
+            {isToggling ? "…" : entry.paid ? "paid" : "pending"}
+          </button>
+        )}
+
+        {!noEdit && !entry.paid && (
+          <button
+            type="button"
+            onClick={handleSkip}
+            disabled={isSkipping}
+            className={`text-xs font-medium ${
+              isSkipping
+                ? "animate-pulse text-gray-400 dark:text-gray-500"
+                : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+            }`}
+            title="Skip this occurrence"
+          >
+            {isSkipping ? "…" : "Skip"}
+          </button>
+        )}
+
+        {showRevert && (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className={`text-xs font-medium ${
+              isDeleting
+                ? "animate-pulse text-red-400 dark:text-red-500"
+                : "text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+            }`}
+            title="Revert to template default"
+          >
+            {isDeleting ? "…" : "Revert"}
           </button>
         )}
       </div>

@@ -1,17 +1,17 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { createOneOffExpense } from "../../actions";
+import { createOneOffEntry } from "../../actions";
 
 type Props = {
-  monthId: string;
+  spaceId: string;
   year: number;
   month: number;
   onSuccess?: () => void;
 };
 
 export default function CreateOneOffExpenseForm({
-  monthId,
+  spaceId,
   year,
   month,
   onSuccess,
@@ -22,8 +22,8 @@ export default function CreateOneOffExpenseForm({
 
   const handleSubmit = (formData: FormData) => {
     startSubmit(async () => {
-      const result = await createOneOffExpense(
-        monthId,
+      const result = await createOneOffEntry(
+        spaceId,
         year,
         month,
         { error: null },
@@ -38,6 +38,11 @@ export default function CreateOneOffExpenseForm({
       }
     });
   };
+
+  // Default the date to the first of the currently viewed month.
+  const defaultDate = `${year.toString().padStart(4, "0")}-${month
+    .toString()
+    .padStart(2, "0")}-01`;
 
   return (
     <form
@@ -88,12 +93,14 @@ export default function CreateOneOffExpenseForm({
             htmlFor="expense_date"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Date (optional)
+            Date
           </label>
           <input
             id="expense_date"
             name="date"
             type="date"
+            required
+            defaultValue={defaultDate}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>

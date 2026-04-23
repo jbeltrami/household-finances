@@ -8,14 +8,6 @@ import CreateContributionForm from "./_components/CreateContributionForm/CreateC
 import ContributionsSection from "./_components/ContributionsSection/ContributionsSection";
 import type { SavingsContributionRow } from "../_types";
 
-type RawContribution = {
-  id: string;
-  amount: number | string;
-  notes: string | null;
-  month_id: string;
-  months: { year: number; month: number } | null;
-};
-
 export default async function SavingsFundDetailPage({
   params,
 }: {
@@ -33,27 +25,23 @@ export default async function SavingsFundDetailPage({
 
   if (!fund) notFound();
 
-  // All contributions for this fund, with their month's year/month
-  // flattened for easy grouping. Sorted so the most recent month comes
-  // first; within a month, Supabase orders by created_at.
+  // Date-keyed contributions. Newest first via `date` descending;
+  // within a day, created_at breaks ties.
   const { data: rawContributions } = await supabase
     .from("savings_contributions")
-    .select("id, amount, notes, month_id, months!inner(year, month)")
+    .select("id, amount, notes, date")
     .eq("fund_id", fundId)
+    .order("date", { ascending: false })
     .order("created_at", { ascending: false });
 
-  const rawList = (rawContributions ?? []) as unknown as RawContribution[];
-
-  const contributions: SavingsContributionRow[] = rawList
-    .filter((c) => c.months !== null)
-    .map((c) => ({
+  const contributions: SavingsContributionRow[] = (rawContributions ?? []).map(
+    (c) => ({
       id: c.id,
       amount: c.amount,
       notes: c.notes,
-      month_id: c.month_id,
-      year: c.months!.year,
-      month: c.months!.month,
-    }));
+      date: c.date,
+    })
+  );
 
   const totalContributions = contributions.reduce(
     (sum, c) => sum + Number(c.amount),

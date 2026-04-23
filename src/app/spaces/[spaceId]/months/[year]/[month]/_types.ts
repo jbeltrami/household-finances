@@ -1,18 +1,21 @@
 import type { YearMonth } from "./_helpers";
 
-export type BillRow = {
-  id: string;
+// A resolved ledger entry — unified shape for virtual template
+// occurrences and materialized rows in `entries`. When id is null,
+// the entry is virtual (no DB row yet); mutations on it must
+// materialize a row first. See src/helpers/ledger.ts for details.
+export type EntryRow = {
+  id: string | null;
   space_id: string;
-  template_id: string;
+  template_id: string | null;
+  date: string;
   name: string;
-  amount: number | string;
-  due_date: string | null;
+  amount: number;
+  currency: string;
+  category: string | null;
+  notes: string | null;
   paid: boolean;
   installments_covered: number;
-  // Populated only for installment bills. paid/total are in "covered units"
-  // (a prepayment with covered=3 contributes 3 to paid). defaultAmount is
-  // the template default so the UI can compute amount = default × covered
-  // when the user sets a non-1 coverage.
   installmentProgress: {
     paid: number;
     total: number;
@@ -25,19 +28,9 @@ export type IncomeRow = {
   id: string;
   space_id: string;
   name: string;
-  amount: number | string;
-  expected_date: string | null;
+  amount: number;
+  expected_date: string;
   received: boolean;
-};
-
-export type ExpenseRow = {
-  id: string;
-  space_id: string;
-  name: string;
-  amount: number | string;
-  date: string | null;
-  category: string | null;
-  notes: string | null;
 };
 
 export type CalendarGroup = {
@@ -47,8 +40,10 @@ export type CalendarGroup = {
   daysWithExpenses: number[];
 };
 
+// Bills group contains entries whose `template_id` is non-null
+// (recurring occurrences — virtual or materialized exceptions).
 export type BillsGroup = {
-  instances: BillRow[];
+  entries: EntryRow[];
   total: number;
   paid: number;
   remaining: number;
@@ -61,16 +56,14 @@ export type IncomeGroup = {
   stillExpected: number;
 };
 
+// Expenses group contains entries whose `template_id` is null
+// (free-form one-offs).
 export type ExpensesGroup = {
-  entries: ExpenseRow[];
+  entries: EntryRow[];
   total: number;
 };
 
 export type BalanceGroup = {
-  // Net change in savings for this month: positive = deposits net of
-  // withdrawals, negative = withdrawals net of deposits. Subtracted from
-  // both netExpected and netSoFar so the totals reflect the cash reality
-  // after the savings moves happen.
   savingsNet: number;
   netExpected: number;
   netSoFar: number;
@@ -82,15 +75,11 @@ export type MonthlyViewProps = {
   month: number;
   monthOptions: YearMonth[];
   locked: boolean;
-  monthId: string;
   unlockReason: string | null;
   calendar: CalendarGroup;
   bills: BillsGroup;
   income: IncomeGroup;
   expenses: ExpensesGroup;
   balance: BalanceGroup;
-  // spaceId → owner display name, for attributing entries from linked
-  // personal spaces in the shared-space aggregate view. Empty when
-  // viewing a personal space (no attribution needed).
   attributions: Record<string, string>;
 };

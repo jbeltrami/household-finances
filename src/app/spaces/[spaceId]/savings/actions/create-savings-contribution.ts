@@ -7,19 +7,13 @@ import {
   spaceMonthUrl,
   spaceSavingsUrl,
 } from "@/helpers/paths";
+import { checkDateEditable } from "@/helpers/lock";
 import type { FormState } from "../form-state";
 import { parseContributionFields } from "./_helpers";
-import {
-  getOrCreateMonth,
-  isMonthLocked,
-} from "@/app/spaces/[spaceId]/months/[year]/[month]/_helpers";
 
-// Create a contribution against a specific fund. The target month comes
-// from the form (as "YYYY-MM") and is lazy-created through the same
-// helper the monthly view uses. Lock enforcement is applied to the
-// *target* month, not the savings page — adding a contribution to a
-// past locked month is blocked even though the savings page itself
-// isn't month-scoped.
+// Create a contribution against a specific fund. Contributions are
+// date-keyed (no more month_id); the lock check runs against the
+// target month so adding to a past locked month stays blocked.
 export async function createSavingsContribution(
   fundId: string,
   prevState: FormState,
@@ -35,11 +29,9 @@ export async function createSavingsContribution(
     } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
 
-    const { signedAmount, year, month, notes } =
+    const { signedAmount, date, year, month, notes } =
       parseContributionFields(formData);
 
-    // Look up the fund's space so we can create its month row in the
-    // right scope. RLS guarantees we only see funds we have access to.
     const { data: fund } = await supabase
       .from("savings_funds")
       .select("space_id")
@@ -47,23 +39,12 @@ export async function createSavingsContribution(
       .single();
     if (!fund) return { error: "Fund not found" };
 
-    const targetMonth = await getOrCreateMonth(
-      supabase,
-      fund.space_id,
-      year,
-      month
-    );
-
-    if (isMonthLocked(targetMonth)) {
-      return {
-        error:
-          "That month is locked. Unlock it before logging a contribution there.",
-      };
-    }
+    const check = await checkDateEditable(supabase, fund.space_id, date);
+    if (!check.ok) return { error: check.error };
 
     const { error } = await supabase.from("savings_contributions").insert({
       fund_id: fundId,
-      month_id: targetMonth.id,
+      date,
       amount: signedAmount,
       notes,
     });
@@ -74,8 +55,6 @@ export async function createSavingsContribution(
 
     revalidatePath(spaceSavingsUrl(fund.space_id));
     revalidatePath(spaceFundUrl(fund.space_id, fundId));
-    // The monthly view shows a savings summary row, so nudge the target
-    // month's page too.
     revalidatePath(spaceMonthUrl(fund.space_id, year, month));
 
     return { error: null };

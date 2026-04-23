@@ -1,34 +1,25 @@
-// Shared helpers used by the bill template actions.
-//
-// This file is intentionally NOT marked with `"use server"` because it
-// exports synchronous utilities and types. A `"use server"` file can only
-// export async functions, so internal helpers must live in a plain module.
-//
-// The `_` prefix is a Next.js convention for private files that aren't
-// routes — it signals intent.
+// Shared helpers for bill-template server actions. Not a "use server"
+// file — exports synchronous utilities and types.
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-
-// Postgres error code for unique_violation (when our partial unique index
-// rejects a duplicate active name).
+// Postgres error code for unique_violation (our partial unique index
+// on active template names).
 export const UNIQUE_VIOLATION = "23505";
 
 export type TemplateFields = {
   name: string;
   defaultAmount: number;
+  category: string | null;
   cadence: "monthly" | "weekly" | "biweekly";
   dueDay: number | null;
   dayOfWeek: number | null;
   installmentsTotal: number | null;
-  // "YYYY-MM-01" when set, so it matches Postgres date semantics and our
-  // CHECK constraint requiring day = 1.
   installmentsStartMonth: string | null;
 };
 
-// Shared parser/validator for the create and update forms.
 export function parseTemplateFields(formData: FormData): TemplateFields {
   const name = formData.get("name")?.toString().trim();
   const defaultAmountRaw = formData.get("default_amount")?.toString();
+  const categoryRaw = formData.get("category")?.toString().trim();
   const cadenceRaw = formData.get("cadence")?.toString() ?? "monthly";
 
   if (!name) throw new Error("Name is required");
@@ -60,7 +51,6 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
       }
     }
   } else {
-    // weekly or biweekly — day_of_week is required
     const dowRaw = formData.get("day_of_week")?.toString();
     if (dowRaw == null || dowRaw === "") {
       throw new Error("Day of week is required for weekly/biweekly bills");
@@ -90,8 +80,6 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
       throw new Error("Number of installments must be a positive integer");
     }
 
-    // <input type="month"> yields "YYYY-MM" — normalize to "YYYY-MM-01"
-    // so it matches the CHECK constraint requiring day = 1.
     if (!/^\d{4}-\d{2}$/.test(startRaw)) {
       throw new Error("Start month must be a valid YYYY-MM value");
     }
@@ -101,6 +89,7 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
   return {
     name,
     defaultAmount,
+    category: categoryRaw || null,
     cadence,
     dueDay,
     dayOfWeek,
@@ -109,10 +98,9 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
   };
 }
 
-// Compute the biweekly anchor: the next occurrence of `dayOfWeek`
-// on or after today. This sets the phase for biweekly billing —
-// all future/past biweekly dates are computed in 14-day steps from
-// this anchor.
+// Compute the biweekly anchor: the next occurrence of `dayOfWeek` on
+// or after today. Sets the phase for biweekly billing — all future/
+// past biweekly dates are computed in 14-day steps from this anchor.
 export function computeBiweeklyAnchor(dayOfWeek: number): string {
   const today = new Date();
   let daysUntil = dayOfWeek - today.getDay();
@@ -123,36 +111,4 @@ export function computeBiweeklyAnchor(dayOfWeek: number): string {
   const mm = String(target.getMonth() + 1).padStart(2, "0");
   const dd = String(target.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
-}
-
-// Cascade an amount change to unpaid bill instances in the current or
-// future months. Past months are auto-locked, so we don't touch them
-// even though they wouldn't match the filter anyway.
-export async function cascadeAmountToFutureInstances(
-  supabase: SupabaseClient,
-  templateId: string,
-  newAmount: number
-) {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // JS months are 0-indexed
-
-  // Find months that are current or later.
-  const { data: months } = await supabase
-    .from("months")
-    .select("id")
-    .or(
-      `year.gt.${currentYear},and(year.eq.${currentYear},month.gte.${currentMonth})`
-    );
-
-  if (!months || months.length === 0) return;
-
-  const monthIds = months.map((m) => m.id);
-
-  await supabase
-    .from("bill_instances")
-    .update({ amount: newAmount })
-    .eq("template_id", templateId)
-    .eq("paid", false)
-    .in("month_id", monthIds);
 }

@@ -1,7 +1,6 @@
-// Row types for the savings route. A fund's running total is derived
-// on the server (starting_balance + sum of contributions) and flowed
-// down to components as plain numbers, so the UI never has to repeat
-// the math.
+// Row types for the savings route. Running total is derived on the
+// server (starting_balance + sum of contributions) and flowed down to
+// components as plain numbers, so the UI never has to repeat the math.
 
 export type SavingsFundRow = {
   id: string;
@@ -16,7 +15,5 @@ export type SavingsContributionRow = {
   id: string;
   amount: number | string;
   notes: string | null;
-  month_id: string;
-  year: number;
-  month: number;
+  date: string;   // "YYYY-MM-DD"
 };

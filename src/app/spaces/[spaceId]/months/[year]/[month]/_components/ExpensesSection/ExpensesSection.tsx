@@ -8,23 +8,23 @@ import type { ExpensesGroup } from "../../_types";
 
 type Props = {
   expenses: ExpensesGroup;
-  monthId: string;
+  spaceId: string;
   year: number;
   month: number;
   locked: boolean;
   highlightedDay: number | null;
-  spaceId: string;
   attributions: Record<string, string>;
 };
 
+// Key helper: one-off entries always have an id (they're materialized
+// by creation), so no virtual fallback needed here.
 export default function ExpensesSection({
   expenses,
-  monthId,
+  spaceId,
   year,
   month,
   locked,
   highlightedDay,
-  spaceId,
   attributions,
 }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -50,7 +50,7 @@ export default function ExpensesSection({
 
       {!locked && showAddForm && (
         <CreateOneOffExpenseForm
-          monthId={monthId}
+          spaceId={spaceId}
           year={year}
           month={month}
           onSuccess={() => setShowAddForm(false)}
@@ -66,7 +66,7 @@ export default function ExpensesSection({
           <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
             {expenses.entries.map((expense) => (
               <ExpenseEntryRow
-                key={expense.id}
+                key={expense.id!}
                 expense={expense}
                 year={year}
                 month={month}

@@ -3,21 +3,23 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { spaceMonthUrl } from "@/helpers/paths";
+import { isMonthLocked } from "@/helpers/lock";
 import { type FormState } from "../form-state";
-import { isMonthLocked } from "../_helpers";
 
 const MIN_REASON_LENGTH = 5;
 
+// Insert (or update) the month_unlocks row for the given (space, year,
+// month). Once the row exists, isMonthLocked treats the month as
+// editable. Rejects attempts to unlock current or future months — they
+// aren't locked to begin with, so a row there is just noise.
 export async function unlockMonth(
-  monthId: string,
+  spaceId: string,
   year: number,
   month: number,
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
   void prevState;
-  void year;
-  void month;
 
   try {
     const supabase = await createClient();
@@ -35,40 +37,24 @@ export async function unlockMonth(
       };
     }
 
-    // Safety check: the month must actually be locked. Unlocking a current
-    // or future month is a no-op but we reject it to avoid storing stray
-    // reasons on months that never needed unlocking. We also grab space_id
-    // here so we can build the revalidatePath URL without a second lookup.
-    const { data: monthRow } = await supabase
-      .from("months")
-      .select("space_id, year, month, unlock_reason")
-      .eq("id", monthId)
-      .single();
-
-    if (!monthRow) return { error: "Month not found" };
-
-    if (
-      !isMonthLocked({
-        year: monthRow.year,
-        month: monthRow.month,
-        unlock_reason: monthRow.unlock_reason,
-      })
-    ) {
+    if (!isMonthLocked({ year, month, hasUnlock: false })) {
       return { error: "This month is not locked" };
     }
 
-    const { error } = await supabase
-      .from("months")
-      .update({ unlock_reason: reason })
-      .eq("id", monthId);
-
-    if (error) {
-      return { error: `Failed to unlock month: ${error.message}` };
-    }
-
-    revalidatePath(
-      spaceMonthUrl(monthRow.space_id, monthRow.year, monthRow.month)
+    const { error } = await supabase.from("month_unlocks").upsert(
+      {
+        space_id: spaceId,
+        year,
+        month,
+        reason,
+        unlocked_by: user.id,
+      },
+      { onConflict: "space_id,year,month" }
     );
+
+    if (error) return { error: `Failed to unlock month: ${error.message}` };
+
+    revalidatePath(spaceMonthUrl(spaceId, year, month));
     return { error: null };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Something went wrong" };

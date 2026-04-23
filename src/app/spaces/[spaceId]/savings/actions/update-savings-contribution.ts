@@ -7,14 +7,12 @@ import {
   spaceMonthUrl,
   spaceSavingsUrl,
 } from "@/helpers/paths";
+import { checkSavingsContributionEditable } from "@/helpers/lock";
 import type { FormState } from "../form-state";
-import { fetchContributionContext } from "./_helpers";
-import { isMonthLocked } from "@/app/spaces/[spaceId]/months/[year]/[month]/_helpers";
 
-// Update a contribution's amount, type, and notes. The month the
-// contribution belongs to stays fixed — to move a contribution to a
-// different month, delete it and create a new one. This keeps the
-// lock-check surface area small and avoids juggling two month rows.
+// Update a contribution's amount, type, and notes. The date stays
+// fixed — to move a contribution to a different month, delete and
+// recreate. Keeps lock-check surface area small.
 export async function updateSavingsContribution(
   contributionId: string,
   prevState: FormState,
@@ -45,15 +43,18 @@ export async function updateSavingsContribution(
     const signedAmount = type === "deposit" ? amount : -amount;
     const notes = notesRaw ? notesRaw : null;
 
-    const ctx = await fetchContributionContext(supabase, contributionId);
-    if (!ctx) return { error: "Contribution not found" };
+    const check = await checkSavingsContributionEditable(
+      supabase,
+      contributionId
+    );
+    if (!check.ok) return { error: check.error };
 
-    if (isMonthLocked(ctx)) {
-      return {
-        error:
-          "That month is locked. Unlock it before editing this contribution.",
-      };
-    }
+    const { data: ctx } = await supabase
+      .from("savings_contributions")
+      .select("fund_id")
+      .eq("id", contributionId)
+      .single();
+    if (!ctx) return { error: "Contribution not found" };
 
     const { error } = await supabase
       .from("savings_contributions")
@@ -64,9 +65,9 @@ export async function updateSavingsContribution(
       return { error: `Failed to update contribution: ${error.message}` };
     }
 
-    revalidatePath(spaceSavingsUrl(ctx.spaceId));
-    revalidatePath(spaceFundUrl(ctx.spaceId, ctx.fundId));
-    revalidatePath(spaceMonthUrl(ctx.spaceId, ctx.year, ctx.month));
+    revalidatePath(spaceSavingsUrl(check.spaceId));
+    revalidatePath(spaceFundUrl(check.spaceId, ctx.fund_id));
+    revalidatePath(spaceMonthUrl(check.spaceId, check.year, check.month));
 
     return { error: null };
   } catch (e) {

@@ -2,14 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
-import {
-  deleteOneOffExpense,
-  updateOneOffExpense,
-} from "../../actions";
-import type { ExpenseRow } from "../../_types";
+import { deleteEntry, updateEntry } from "../../actions";
+import type { EntryRow } from "../../_types";
 
 type Props = {
-  expense: ExpenseRow;
+  expense: EntryRow;                 // template_id is guaranteed null here
   year: number;
   month: number;
   locked: boolean;
@@ -27,27 +24,23 @@ export default function ExpenseEntryRow({
   readOnly,
   attribution,
 }: Props) {
+  void year;
+  void month;
+
   const noEdit = locked || !!readOnly;
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
-  // Parse the day directly from the YYYY-MM-DD string so we avoid the
-  // UTC timezone trap, then match it against the calendar-selected day.
-  const expenseDay = expense.date
-    ? parseInt(expense.date.split("-")[2], 10)
-    : null;
+  const expenseDay = parseInt(expense.date.split("-")[2], 10);
   const isHighlighted =
-    highlightedDay !== null &&
-    expenseDay !== null &&
-    expenseDay === highlightedDay;
+    highlightedDay !== null && expenseDay === highlightedDay;
 
   const [isUpdating, startUpdate] = useTransition();
   const handleUpdate = (formData: FormData) => {
+    if (expense.id == null) return;
     startUpdate(async () => {
-      const result = await updateOneOffExpense(
-        expense.id,
-        year,
-        month,
+      const result = await updateEntry(
+        expense.id!,
         { error: null },
         formData
       );
@@ -67,15 +60,13 @@ export default function ExpenseEntryRow({
 
   const [isDeleting, startDelete] = useTransition();
   const handleDelete = () => {
+    if (expense.id == null) return;
     if (!window.confirm(`Delete "${expense.name}"?`)) return;
     startDelete(async () => {
-      await deleteOneOffExpense(expense.id, year, month);
+      await deleteEntry(expense.id!);
     });
   };
 
-  // When editing, the whole row becomes an inline form so we can show
-  // name + amount + category + notes without cramming them into the
-  // header strip. Date is not editable here (see the action comment).
   if (editing && !noEdit) {
     return (
       <li className="px-4 py-3">
@@ -164,10 +155,10 @@ export default function ExpenseEntryRow({
                 type="submit"
                 disabled={isUpdating}
                 className={`rounded-md px-3 py-1.5 text-xs font-medium ${
-                isUpdating
-                  ? "animate-pulse bg-gray-400 text-white dark:bg-gray-600"
-                  : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-              }`}
+                  isUpdating
+                    ? "animate-pulse bg-gray-400 text-white dark:bg-gray-600"
+                    : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+                }`}
               >
                 {isUpdating ? "Saving…" : "Save"}
               </button>
@@ -193,13 +184,10 @@ export default function ExpenseEntryRow({
           )}
           {expense.name}
         </p>
-        {(expense.date || expense.category) && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {expense.date && dateFormatter.format(new Date(expense.date))}
-            {expense.date && expense.category && " · "}
-            {expense.category}
-          </p>
-        )}
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {dateFormatter.format(new Date(expense.date))}
+          {expense.category && ` · ${expense.category}`}
+        </p>
         {expense.notes && (
           <p className="mt-1 text-xs italic text-gray-500 dark:text-gray-400">
             {expense.notes}
@@ -209,7 +197,7 @@ export default function ExpenseEntryRow({
 
       <div className="flex shrink-0 items-center gap-3">
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {brlFormatter.format(Number(expense.amount))}
+          {brlFormatter.format(expense.amount)}
         </p>
         {!noEdit && (
           <button
@@ -220,7 +208,7 @@ export default function ExpenseEntryRow({
             Edit
           </button>
         )}
-        {!noEdit && (
+        {!noEdit && expense.id != null && (
           <button
             type="button"
             onClick={handleDelete}

@@ -5,7 +5,7 @@ import { brlFormatter, dateFormatter } from "@/helpers/format";
 import {
   deleteIncomeEntry,
   toggleIncomeReceived,
-  updateIncomeAmount,
+  updateIncomeEntry,
 } from "../../actions";
 import type { IncomeRow } from "../../_types";
 
@@ -28,40 +28,29 @@ export default function IncomeEntryRow({
   readOnly,
   attribution,
 }: Props) {
+  void year;
+  void month;
+
   const noEdit = locked || !!readOnly;
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
-  // Parse the expected-date day directly from the YYYY-MM-DD string so we
-  // avoid the UTC timezone trap. Then compare against highlightedDay from
-  // the calendar click handler.
-  const expectedDay = entry.expected_date
-    ? parseInt(entry.expected_date.split("-")[2], 10)
-    : null;
+  const expectedDay = parseInt(entry.expected_date.split("-")[2], 10);
   const isHighlighted =
-    highlightedDay !== null &&
-    expectedDay !== null &&
-    expectedDay === highlightedDay;
+    highlightedDay !== null && expectedDay === highlightedDay;
 
   const [isToggling, startToggle] = useTransition();
   const handleToggleReceived = () => {
     startToggle(async () => {
-      await toggleIncomeReceived(entry.id, !entry.received, year, month, new FormData());
+      await toggleIncomeReceived(entry.id, !entry.received, new FormData());
     });
   };
 
-  // Update is invoked via useTransition rather than useActionState so we
-  // can close edit mode in the success branch of the click handler — no
-  // useEffect / setState-in-effect anti-pattern. The form action receives
-  // FormData and forwards it to the server action manually, with the
-  // editor having full control over what happens after the response.
   const [isUpdating, startUpdate] = useTransition();
   const handleUpdate = (formData: FormData) => {
     startUpdate(async () => {
-      const result = await updateIncomeAmount(
+      const result = await updateIncomeEntry(
         entry.id,
-        year,
-        month,
         { error: null },
         formData
       );
@@ -79,13 +68,11 @@ export default function IncomeEntryRow({
     setUpdateError(null);
   };
 
-  // Delete is also invoked via useTransition. window.confirm() gates the
-  // call — simple and good enough for a personal app.
   const [isDeleting, startDelete] = useTransition();
   const handleDelete = () => {
     if (!window.confirm(`Delete "${entry.name}"?`)) return;
     startDelete(async () => {
-      await deleteIncomeEntry(entry.id, year, month);
+      await deleteIncomeEntry(entry.id);
     });
   };
 
@@ -104,16 +91,21 @@ export default function IncomeEntryRow({
           )}
           {entry.name}
         </p>
-        {entry.expected_date && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Expected {dateFormatter.format(new Date(entry.expected_date))}
-          </p>
-        )}
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Expected {dateFormatter.format(new Date(entry.expected_date))}
+        </p>
       </div>
 
       <div className="flex items-center gap-3">
         {editing && !noEdit ? (
           <form action={handleUpdate} className="flex items-center gap-2">
+            <input
+              type="text"
+              name="name"
+              required
+              defaultValue={entry.name}
+              className="w-32 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            />
             <input
               type="number"
               name="amount"
@@ -147,7 +139,7 @@ export default function IncomeEntryRow({
         ) : (
           <>
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {brlFormatter.format(Number(entry.amount))}
+              {brlFormatter.format(entry.amount)}
             </p>
             {!noEdit && (
               <button

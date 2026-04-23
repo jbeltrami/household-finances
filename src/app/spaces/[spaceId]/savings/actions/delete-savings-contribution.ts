@@ -7,12 +7,8 @@ import {
   spaceMonthUrl,
   spaceSavingsUrl,
 } from "@/helpers/paths";
-import { fetchContributionContext } from "./_helpers";
-import { isMonthLocked } from "@/app/spaces/[spaceId]/months/[year]/[month]/_helpers";
+import { checkSavingsContributionEditable } from "@/helpers/lock";
 
-// Delete a contribution. Like update, rejects deletes from locked
-// months. Non-FormState signature because the UI calls this via
-// useTransition rather than useActionState.
 export async function deleteSavingsContribution(
   contributionId: string
 ): Promise<{ error: string | null }> {
@@ -24,15 +20,18 @@ export async function deleteSavingsContribution(
     } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
 
-    const ctx = await fetchContributionContext(supabase, contributionId);
-    if (!ctx) return { error: "Contribution not found" };
+    const check = await checkSavingsContributionEditable(
+      supabase,
+      contributionId
+    );
+    if (!check.ok) return { error: check.error };
 
-    if (isMonthLocked(ctx)) {
-      return {
-        error:
-          "That month is locked. Unlock it before deleting this contribution.",
-      };
-    }
+    const { data: ctx } = await supabase
+      .from("savings_contributions")
+      .select("fund_id")
+      .eq("id", contributionId)
+      .single();
+    if (!ctx) return { error: "Contribution not found" };
 
     const { error } = await supabase
       .from("savings_contributions")
@@ -43,9 +42,9 @@ export async function deleteSavingsContribution(
       return { error: `Failed to delete contribution: ${error.message}` };
     }
 
-    revalidatePath(spaceSavingsUrl(ctx.spaceId));
-    revalidatePath(spaceFundUrl(ctx.spaceId, ctx.fundId));
-    revalidatePath(spaceMonthUrl(ctx.spaceId, ctx.year, ctx.month));
+    revalidatePath(spaceSavingsUrl(check.spaceId));
+    revalidatePath(spaceFundUrl(check.spaceId, ctx.fund_id));
+    revalidatePath(spaceMonthUrl(check.spaceId, check.year, check.month));
 
     return { error: null };
   } catch (e) {

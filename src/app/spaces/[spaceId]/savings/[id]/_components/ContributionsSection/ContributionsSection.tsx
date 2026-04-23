@@ -1,7 +1,5 @@
-import {
-  capitalize,
-  formatMonthLabel,
-} from "@/app/spaces/[spaceId]/months/[year]/[month]/_helpers";
+import { formatMonthLabel, parseYearMonthFromYmd } from "@/helpers/date";
+import { capitalize } from "@/app/spaces/[spaceId]/months/[year]/[month]/_helpers";
 import ContributionRow from "../ContributionRow/ContributionRow";
 import type { SavingsContributionRow } from "../../../_types";
 
@@ -15,15 +13,18 @@ type Props = {
   contributions: SavingsContributionRow[];
 };
 
-// Group contributions by month for display. Months render most-recent
-// first; contributions within a month keep their fetch order.
+// Group contributions by month, parsed out of the `date` string.
+// Months render most-recent first; contributions within a month keep
+// the fetch order (which was date DESC, created_at DESC).
 function groupByMonth(rows: SavingsContributionRow[]): MonthGroup[] {
   const byKey = new Map<string, MonthGroup>();
   for (const c of rows) {
-    const key = `${c.year}-${c.month}`;
+    const parsed = parseYearMonthFromYmd(c.date);
+    if (!parsed) continue;
+    const key = `${parsed.year}-${parsed.month}`;
     let group = byKey.get(key);
     if (!group) {
-      group = { year: c.year, month: c.month, contributions: [] };
+      group = { year: parsed.year, month: parsed.month, contributions: [] };
       byKey.set(key, group);
     }
     group.contributions.push(c);

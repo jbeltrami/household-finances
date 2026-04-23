@@ -15,6 +15,13 @@ type Props = {
   attributions: Record<string, string>;
 };
 
+// Key for React list rendering. Materialized entries use their id;
+// virtual entries have no id so we fall back to template+date (which
+// is guaranteed unique within a month via the partial unique index).
+function keyFor(entry: { id: string | null; template_id: string | null; date: string }) {
+  return entry.id ?? `virtual-${entry.template_id}-${entry.date}`;
+}
+
 export default function BillsSection({
   spaceId,
   bills,
@@ -24,12 +31,9 @@ export default function BillsSection({
   highlightedDay,
   attributions,
 }: Props) {
-  // Pending bills keep the original sort order (by due_date ascending).
-  // Paid bills are sorted by amount descending so the biggest payments
-  // are easiest to spot at the top.
-  const pendingBills = bills.instances.filter((i) => !i.paid);
-  const paidBills = [...bills.instances.filter((i) => i.paid)].sort(
-    (a, b) => Number(b.amount) - Number(a.amount)
+  const pendingBills = bills.entries.filter((e) => !e.paid);
+  const paidBills = [...bills.entries.filter((e) => e.paid)].sort(
+    (a, b) => b.amount - a.amount
   );
 
   return (
@@ -37,13 +41,13 @@ export default function BillsSection({
       <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
         Bills
       </h2>
-      {bills.instances.length === 0 ? (
+      {bills.entries.length === 0 ? (
         <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
           No bills this month. Add a recurring template under{" "}
           <a href={spaceBillsUrl(spaceId)} className="underline">
             Bills
-          </a>{" "}
-          and revisit this page to generate instances.
+          </a>
+          .
         </p>
       ) : (
         <>
@@ -53,16 +57,16 @@ export default function BillsSection({
                 Pending ({pendingBills.length})
               </h3>
               <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
-                {pendingBills.map((i) => (
+                {pendingBills.map((e) => (
                   <BillInstanceRow
-                    key={i.id}
-                    instance={i}
+                    key={keyFor(e)}
+                    entry={e}
                     year={year}
                     month={month}
                     locked={locked}
                     highlightedDay={highlightedDay}
-                    readOnly={i.space_id !== spaceId}
-                    attribution={attributions[i.space_id]}
+                    readOnly={e.space_id !== spaceId}
+                    attribution={attributions[e.space_id]}
                   />
                 ))}
               </ul>
@@ -71,20 +75,22 @@ export default function BillsSection({
 
           {paidBills.length > 0 && (
             <>
-              <h3 className={`${pendingBills.length > 0 ? "mt-6" : "mt-4"} text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400`}>
+              <h3
+                className={`${pendingBills.length > 0 ? "mt-6" : "mt-4"} text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400`}
+              >
                 Paid ({paidBills.length})
               </h3>
               <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
-                {paidBills.map((i) => (
+                {paidBills.map((e) => (
                   <BillInstanceRow
-                    key={i.id}
-                    instance={i}
+                    key={keyFor(e)}
+                    entry={e}
                     year={year}
                     month={month}
                     locked={locked}
                     highlightedDay={highlightedDay}
-                    readOnly={i.space_id !== spaceId}
-                    attribution={attributions[i.space_id]}
+                    readOnly={e.space_id !== spaceId}
+                    attribution={attributions[e.space_id]}
                   />
                 ))}
               </ul>

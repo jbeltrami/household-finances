@@ -8,23 +8,21 @@ import type { IncomeGroup } from "../../_types";
 
 type Props = {
   income: IncomeGroup;
-  monthId: string;
+  spaceId: string;
   year: number;
   month: number;
   locked: boolean;
   highlightedDay: number | null;
-  spaceId: string;
   attributions: Record<string, string>;
 };
 
 export default function IncomeSection({
   income,
-  monthId,
+  spaceId,
   year,
   month,
   locked,
   highlightedDay,
-  spaceId,
   attributions,
 }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -50,7 +48,7 @@ export default function IncomeSection({
 
       {!locked && showAddForm && (
         <CreateIncomeEntryForm
-          monthId={monthId}
+          spaceId={spaceId}
           year={year}
           month={month}
           onSuccess={() => setShowAddForm(false)}

@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { spaceMonthUrl } from "@/helpers/paths";
+import { formatMonthLabel } from "@/helpers/date";
 import {
   capitalize,
-  formatMonthLabel,
   nextMonth,
   prevMonth,
   type YearMonth,

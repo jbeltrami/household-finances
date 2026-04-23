@@ -11,13 +11,10 @@ export default async function BillsPage({
   const { spaceId } = await params;
   const supabase = await createClient();
 
-  // Query active templates for the space in the URL. RLS ensures
-  // the user can only see spaces they belong to, so a stale or
-  // forged spaceId simply returns an empty list.
   const { data: rawTemplates } = await supabase
     .from("recurring_bill_templates")
     .select(
-      "id, name, default_amount, currency, cadence, due_day, day_of_week, installments_total, installments_start_month"
+      "id, name, default_amount, currency, category, cadence, due_day, day_of_week, installments_total, installments_start_month"
     )
     .eq("space_id", spaceId)
     .eq("active", true)
@@ -28,6 +25,7 @@ export default async function BillsPage({
     name: t.name,
     default_amount: t.default_amount,
     currency: t.currency,
+    category: t.category,
     cadence: (t.cadence as string) ?? "monthly",
     due_day: t.due_day,
     day_of_week: t.day_of_week,
@@ -35,10 +33,9 @@ export default async function BillsPage({
     installments_start_month: t.installments_start_month,
   }));
 
-  // Compute paid-covered sums for every installment template so we can
-  // tell active-but-in-progress apart from fully-paid-off. A template is
-  // considered complete when sum(installments_covered across paid rows)
-  // meets the total.
+  // Installment progress = sum(installments_covered across paid rows)
+  // in the `entries` table. "Paid" is the source of truth for how many
+  // installments the user has settled.
   const installmentTemplateIds = templates
     .filter((t) => t.installments_total != null)
     .map((t) => t.id);
@@ -46,7 +43,7 @@ export default async function BillsPage({
   const paidCoveredByTemplate = new Map<string, number>();
   if (installmentTemplateIds.length > 0) {
     const { data: paidRows } = await supabase
-      .from("bill_instances")
+      .from("entries")
       .select("template_id, installments_covered")
       .in("template_id", installmentTemplateIds)
       .eq("paid", true);
@@ -82,7 +79,8 @@ export default async function BillsPage({
         Recurring bills
       </h1>
       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Templates used to generate monthly bill instances.
+        Templates expand virtually into monthly occurrences. Per-occurrence
+        edits only materialize when you pay, override, or skip.
       </p>
 
       <CreateBillTemplateForm spaceId={spaceId} />

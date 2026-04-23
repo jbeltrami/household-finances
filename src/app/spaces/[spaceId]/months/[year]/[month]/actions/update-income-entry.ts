@@ -3,19 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { spaceMonthUrl } from "@/helpers/paths";
+import { checkIncomeEntryEditable } from "@/helpers/lock";
 import { type FormState } from "../form-state";
-import { checkIncomeEntryEditable } from "../_helpers";
 
-export async function updateIncomeAmount(
-  id: string,
-  year: number,
-  month: number,
+// Update income entry name and/or amount. Date edits go through a
+// separate flow (delete + recreate) because changing the date can
+// move the entry to a different month.
+export async function updateIncomeEntry(
+  entryId: string,
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
   void prevState;
-  void year;
-  void month;
 
   try {
     const supabase = await createClient();
@@ -25,10 +24,13 @@ export async function updateIncomeAmount(
     } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
 
-    const check = await checkIncomeEntryEditable(supabase, id);
+    const check = await checkIncomeEntryEditable(supabase, entryId);
     if (!check.ok) return { error: check.error };
 
+    const name = formData.get("name")?.toString().trim();
     const amountRaw = formData.get("amount")?.toString();
+
+    if (!name) return { error: "Name is required" };
     if (!amountRaw) return { error: "Amount is required" };
 
     const amount = Number(amountRaw);
@@ -38,12 +40,10 @@ export async function updateIncomeAmount(
 
     const { error } = await supabase
       .from("income_entries")
-      .update({ amount })
-      .eq("id", id);
+      .update({ name, amount })
+      .eq("id", entryId);
 
-    if (error) {
-      return { error: `Failed to update income entry: ${error.message}` };
-    }
+    if (error) return { error: `Failed to update income: ${error.message}` };
 
     revalidatePath(spaceMonthUrl(check.spaceId, check.year, check.month));
     return { error: null };

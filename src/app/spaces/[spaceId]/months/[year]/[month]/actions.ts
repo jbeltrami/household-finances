@@ -1,17 +1,26 @@
-// Manifest / barrel file for monthly view server actions.
-//
-// Each action lives in its own file under ./actions/ with its own
-// `"use server"` directive. This file simply re-exports them.
-// Do NOT add `"use server"` here — a barrel file must be a plain
-// module so it can re-export anything.
+// Barrel for monthly-view server actions. Each action lives in its
+// own file under ./actions/ with its own `"use server"` directive.
+// Do NOT add `"use server"` here — a barrel must stay a plain module.
 
-export { toggleBillPaid } from "./actions/toggle-bill-paid";
-export { updateBillInstanceAmount } from "./actions/update-bill-instance-amount";
-export { unlockMonth } from "./actions/unlock-month";
+export { toggleEntryPaid } from "./actions/toggle-entry-paid";
+export { overrideEntryAmount } from "./actions/override-entry-amount";
+export {
+  skipEntryOccurrence,
+  unskipEntryOccurrence,
+} from "./actions/skip-entry-occurrence";
+export { createOneOffEntry } from "./actions/create-one-off-entry";
+export { updateEntry } from "./actions/update-entry";
+export { deleteEntry } from "./actions/delete-entry";
+
 export { createIncomeEntry } from "./actions/create-income-entry";
+export { updateIncomeEntry } from "./actions/update-income-entry";
 export { toggleIncomeReceived } from "./actions/toggle-income-received";
-export { updateIncomeAmount } from "./actions/update-income-amount";
 export { deleteIncomeEntry } from "./actions/delete-income-entry";
-export { createOneOffExpense } from "./actions/create-one-off-expense";
-export { updateOneOffExpense } from "./actions/update-one-off-expense";
-export { deleteOneOffExpense } from "./actions/delete-one-off-expense";
+
+export { unlockMonth } from "./actions/unlock-month";
+
+// Re-export target types so client components can type their action
+// calls without deep-importing from individual action files.
+export type { TogglePaidTarget } from "./actions/toggle-entry-paid";
+export type { OverrideAmountTarget } from "./actions/override-entry-amount";
+export type { SkipTarget } from "./actions/skip-entry-occurrence";

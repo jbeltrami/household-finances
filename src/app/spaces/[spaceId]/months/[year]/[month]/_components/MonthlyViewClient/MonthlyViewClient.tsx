@@ -15,7 +15,6 @@ export default function MonthlyViewClient({
   month,
   monthOptions,
   locked,
-  monthId,
   unlockReason,
   calendar,
   bills,
@@ -25,7 +24,7 @@ export default function MonthlyViewClient({
   attributions,
 }: MonthlyViewProps) {
   const hasAnyData = !!(
-    bills.instances.length ||
+    bills.entries.length ||
     income.entries.length ||
     expenses.entries.length ||
     balance.savingsNet
@@ -54,7 +53,9 @@ export default function MonthlyViewClient({
       </aside>
 
       <div className="md:col-span-3">
-        {locked && <UnlockBanner monthId={monthId} year={year} month={month} />}
+        {locked && (
+          <UnlockBanner spaceId={spaceId} year={year} month={month} />
+        )}
 
         {!locked && unlockReason && (
           <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
@@ -64,12 +65,11 @@ export default function MonthlyViewClient({
 
         <IncomeSection
           income={income}
-          monthId={monthId}
+          spaceId={spaceId}
           year={year}
           month={month}
           locked={locked}
           highlightedDay={highlightedDay}
-          spaceId={spaceId}
           attributions={attributions}
         />
 
@@ -85,12 +85,11 @@ export default function MonthlyViewClient({
 
         <ExpensesSection
           expenses={expenses}
-          monthId={monthId}
+          spaceId={spaceId}
           year={year}
           month={month}
           locked={locked}
           highlightedDay={highlightedDay}
-          spaceId={spaceId}
           attributions={attributions}
         />
 

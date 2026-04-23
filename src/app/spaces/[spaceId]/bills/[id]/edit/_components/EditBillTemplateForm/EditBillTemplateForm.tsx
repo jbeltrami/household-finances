@@ -20,6 +20,7 @@ type Template = {
   id: string;
   name: string;
   default_amount: number | string;
+  category: string | null;
   due_day: number | null;
   cadence: string | null;
   day_of_week: number | null;
@@ -86,7 +87,23 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
           />
         </div>
 
-        {/* Cadence picker */}
+        <div className="sm:col-span-3">
+          <label
+            htmlFor="category"
+            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
+          >
+            Category (optional)
+          </label>
+          <input
+            id="category"
+            name="category"
+            type="text"
+            defaultValue={template.category ?? ""}
+            placeholder="e.g. Utilities, Subscriptions, Health"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
+          />
+        </div>
+
         <div>
           <label
             htmlFor="cadence"
@@ -107,7 +124,6 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
           </select>
         </div>
 
-        {/* Monthly: due day */}
         {cadence === "monthly" && (
           <div>
             <label
@@ -128,7 +144,6 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
           </div>
         )}
 
-        {/* Weekly / Biweekly: day of week */}
         {cadence !== "monthly" && (
           <div>
             <label
@@ -213,24 +228,17 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
         </div>
       )}
 
-      <label className="mt-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-        <input
-          type="checkbox"
-          name="cascade"
-          defaultChecked
-          className="mt-0.5"
-        />
-        <span>
-          Apply amount change to unpaid bill instances in the current and
-          future months. Past months are left untouched.
-        </span>
-      </label>
-
       {state.error && (
         <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
           {state.error}
         </p>
       )}
+
+      <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+        Changes to the default amount automatically flow to all unpaid
+        occurrences, since those are computed from the template at render
+        time. Already-overridden or paid entries keep their saved values.
+      </p>
 
       <div className="mt-4 flex justify-end gap-2">
         <Link

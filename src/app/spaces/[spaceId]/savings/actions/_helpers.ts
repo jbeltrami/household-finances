@@ -1,16 +1,11 @@
-// Shared helpers for the savings route's server actions. NOT a
+// Shared helpers for the savings route's server actions. Not a
 // "use server" file — only sync utilities and type exports live here.
-// The `_` prefix marks it as a non-routed internal module.
-
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type FundFields = {
   name: string;
   startingBalance: number;
 };
 
-// Parse and validate a fund-create/rename payload. Starting balance is
-// optional on the form and defaults to 0.
 export function parseFundFields(formData: FormData): FundFields {
   const name = formData.get("name")?.toString().trim();
   const startingBalanceRaw = formData.get("starting_balance")?.toString();
@@ -29,18 +24,22 @@ export function parseFundFields(formData: FormData): FundFields {
 }
 
 export type ContributionFields = {
-  // Already sign-flipped: positive for deposits, negative for withdrawals.
-  signedAmount: number;
-  year: number;
-  month: number;
+  signedAmount: number;           // positive = deposit, negative = withdraw
+  date: string;                   // "YYYY-MM-DD"
+  year: number;                   // derived from date for revalidation
+  month: number;                  // derived from date for revalidation
   notes: string | null;
 };
 
-// Parse a contribution payload. The UI offers two buttons — "Deposit" and
-// "Withdraw" — which set the `type` field; amount is always entered as a
-// positive number and we apply the sign here. Month comes from a native
-// <input type="month"> which yields "YYYY-MM".
-export function parseContributionFields(formData: FormData): ContributionFields {
+// Parse a contribution payload. The UI offers two buttons — "Deposit"
+// and "Withdraw" — which set the `type` field; amount is always a
+// positive number and we apply the sign here. The form includes a
+// native <input type="month"> which yields "YYYY-MM"; we canonicalize
+// to the first of that month since contributions aren't tied to a
+// specific calendar day.
+export function parseContributionFields(
+  formData: FormData
+): ContributionFields {
   const amountRaw = formData.get("amount")?.toString();
   const type = formData.get("type")?.toString();
   const monthRaw = formData.get("month")?.toString();
@@ -72,55 +71,9 @@ export function parseContributionFields(formData: FormData): ContributionFields 
 
   return {
     signedAmount,
+    date: `${monthRaw}-01`,
     year,
     month,
     notes: notesRaw ? notesRaw : null,
-  };
-}
-
-// Look up a contribution's fund and parent month. Used by update/delete
-// actions for lock enforcement: they need to know which month the
-// contribution lives in so they can reject edits to locked months.
-// Also returns spaceId (pulled from the parent months row) so callers
-// can build space-prefixed revalidatePath URLs without a second lookup.
-export async function fetchContributionContext(
-  supabase: SupabaseClient,
-  contributionId: string
-): Promise<{
-  fundId: string;
-  monthId: string;
-  spaceId: string;
-  year: number;
-  month: number;
-  unlock_reason: string | null;
-} | null> {
-  const { data } = await supabase
-    .from("savings_contributions")
-    .select(
-      "fund_id, month_id, months!inner(space_id, year, month, unlock_reason)"
-    )
-    .eq("id", contributionId)
-    .single();
-
-  if (!data) return null;
-
-  const m = (data as unknown as {
-    fund_id: string;
-    month_id: string;
-    months: {
-      space_id: string;
-      year: number;
-      month: number;
-      unlock_reason: string | null;
-    };
-  });
-
-  return {
-    fundId: m.fund_id,
-    monthId: m.month_id,
-    spaceId: m.months.space_id,
-    year: m.months.year,
-    month: m.months.month,
-    unlock_reason: m.months.unlock_reason,
   };
 }

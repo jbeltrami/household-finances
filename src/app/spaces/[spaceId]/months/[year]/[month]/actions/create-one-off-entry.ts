@@ -7,11 +7,11 @@ import { checkDateEditable } from "@/helpers/lock";
 import { todayYmd } from "@/helpers/date";
 import { type FormState } from "../form-state";
 
-// Create an income entry. Routes by `expected_date`, not the viewed
-// month — adding an April-viewed entry with a June date lands it in
-// June. The lock check runs against the target month, so adding to a
-// locked month is rejected even when the viewed page is unlocked.
-export async function createIncomeEntry(
+// Create a one-off entry (money-out event with no template). The
+// viewed year/month informs the default date, but the entry routes
+// by its `date` field, so a user adding an entry with a date in a
+// different month naturally lands it there.
+export async function createOneOffEntry(
   spaceId: string,
   viewedYear: number,
   viewedMonth: number,
@@ -30,7 +30,9 @@ export async function createIncomeEntry(
 
     const name = formData.get("name")?.toString().trim();
     const amountRaw = formData.get("amount")?.toString();
-    const expectedDateRaw = formData.get("expected_date")?.toString().trim();
+    const dateRaw = formData.get("date")?.toString().trim();
+    const categoryRaw = formData.get("category")?.toString().trim();
+    const notesRaw = formData.get("notes")?.toString().trim();
 
     if (!name) return { error: "Name is required" };
     if (!amountRaw) return { error: "Amount is required" };
@@ -40,24 +42,32 @@ export async function createIncomeEntry(
       return { error: "Amount must be a positive number" };
     }
 
-    const expectedDate = expectedDateRaw || todayYmd();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(expectedDate)) {
+    // Every entry must have a date. If the user leaves it blank, default
+    // to today — one-off entries represent real spending and "sometime
+    // this month" isn't useful for cash-flow math.
+    const date = dateRaw || todayYmd();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return { error: "Invalid date format" };
     }
 
-    const check = await checkDateEditable(supabase, spaceId, expectedDate);
+    const check = await checkDateEditable(supabase, spaceId, date);
     if (!check.ok) return { error: check.error };
 
-    const { error } = await supabase.from("income_entries").insert({
+    const { error } = await supabase.from("entries").insert({
       space_id: spaceId,
-      expected_date: expectedDate,
+      date,
       name,
       amount,
       currency: "BRL",
-      received: false,
+      category: categoryRaw || null,
+      notes: notesRaw || null,
+      paid: false,
+      skipped: false,
+      template_id: null,
+      installments_covered: 1,
     });
 
-    if (error) return { error: `Failed to create income: ${error.message}` };
+    if (error) return { error: `Failed to create entry: ${error.message}` };
 
     revalidatePath(spaceMonthUrl(spaceId, viewedYear, viewedMonth));
     if (check.year !== viewedYear || check.month !== viewedMonth) {

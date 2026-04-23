@@ -18,3 +18,80 @@ export function currentYearMonth(): string {
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   return `${yyyy}-${mm}`;
 }
+
+// Format a local Date as "YYYY-MM-DD" without going through UTC.
+export function formatDateYmd(d: Date): string {
+  const yyyy = String(d.getFullYear()).padStart(4, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Parse the year and month out of a "YYYY-MM-DD" string without timezone
+// shifts. Returns null if the string isn't shaped right.
+export function parseYearMonthFromYmd(
+  ymd: string
+): { year: number; month: number; day: number } | null {
+  const parts = ymd.split("-");
+  if (parts.length !== 3) return null;
+  const [y, m, d] = parts.map(Number);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || !Number.isInteger(d)) {
+    return null;
+  }
+  return { year: y, month: m, day: d };
+}
+
+// Return the inclusive "YYYY-MM-DD" bounds for the given calendar month.
+// Example: getMonthRange(2026, 4) → { start: "2026-04-01", end: "2026-04-30" }.
+// The end clamps to the actual last day of the month, handling leap years.
+export function getMonthRange(
+  year: number,
+  month: number
+): { start: string; end: string } {
+  const lastDay = new Date(year, month, 0).getDate();
+  const yyyy = String(year).padStart(4, "0");
+  const mm = String(month).padStart(2, "0");
+  return {
+    start: `${yyyy}-${mm}-01`,
+    end: `${yyyy}-${mm}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
+// Offset a "YYYY-MM" string by N months, returning a "YYYY-MM" string.
+// Kept string-based to avoid timezone pitfalls with Postgres `date`
+// columns.
+export function addMonthsYm(ym: string, offset: number): string {
+  const [y, m] = ym.split("-").map(Number);
+  const absolute = y * 12 + (m - 1) + offset;
+  const year = Math.floor(absolute / 12);
+  const month = (absolute % 12) + 1;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+}
+
+// "YYYY-MM" string for a given year/month.
+export function yearMonthKey(year: number, month: number): string {
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+}
+
+// Format a year/month as a human-readable Brazilian Portuguese label,
+// e.g. (2026, 4) → "abril de 2026".
+export function formatMonthLabel(year: number, month: number): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(year, month - 1, 1));
+}
+
+// Format a year/month into a "YYYY-MM-DD" string, clamping the day to
+// the last day of the month when it's larger (e.g. dueDay 31 in February
+// becomes the 28th or 29th).
+export function dueDateFor(
+  year: number,
+  month: number,
+  dueDay: number | null
+): string | null {
+  if (dueDay == null) return null;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const day = Math.min(dueDay, daysInMonth);
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}

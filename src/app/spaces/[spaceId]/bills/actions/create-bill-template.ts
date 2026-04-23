@@ -24,15 +24,13 @@ export async function createBillTemplate(
     } = await supabase.auth.getUser();
     if (!user) return { error: "Not authenticated" };
 
-    // spaceId comes from a hidden field rendered by the form. RLS is what
-    // actually gates access — a forged or stale spaceId will just get
-    // rejected by the insert policy, not bypass it.
     const spaceId = formData.get("space_id")?.toString();
     if (!spaceId) return { error: "Missing space context" };
 
     const {
       name,
       defaultAmount,
+      category,
       cadence,
       dueDay,
       dayOfWeek,
@@ -47,6 +45,7 @@ export async function createBillTemplate(
         name,
         default_amount: defaultAmount,
         currency: "BRL",
+        category,
         cadence,
         due_day: cadence === "monthly" ? dueDay : null,
         day_of_week: cadence !== "monthly" ? dayOfWeek : null,

@@ -4,28 +4,26 @@ import { useRef, useState, useTransition } from "react";
 import { createIncomeEntry } from "../../actions";
 
 type Props = {
-  monthId: string;
+  spaceId: string;
   year: number;
   month: number;
   onSuccess?: () => void;
 };
 
 export default function CreateIncomeEntryForm({
-  monthId,
+  spaceId,
   year,
   month,
   onSuccess,
 }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startSubmit] = useTransition();
-
-  // Ref to the <form> so we can reset the inputs after a successful submit.
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = (formData: FormData) => {
     startSubmit(async () => {
       const result = await createIncomeEntry(
-        monthId,
+        spaceId,
         year,
         month,
         { error: null },
@@ -40,6 +38,12 @@ export default function CreateIncomeEntryForm({
       }
     });
   };
+
+  // Default the expected-date to the first of the currently viewed
+  // month so the entry lands here unless the user picks something else.
+  const defaultDate = `${year.toString().padStart(4, "0")}-${month
+    .toString()
+    .padStart(2, "0")}-01`;
 
   return (
     <form
@@ -90,12 +94,14 @@ export default function CreateIncomeEntryForm({
             htmlFor="income_expected_date"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Expected date (optional)
+            Expected date
           </label>
           <input
             id="income_expected_date"
             name="expected_date"
             type="date"
+            required
+            defaultValue={defaultDate}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>

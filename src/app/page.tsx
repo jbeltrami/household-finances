@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { brlFormatter } from "@/helpers/format";
+import { getMonthRange, todayYmd } from "@/helpers/date";
+import { getEntriesForMonth } from "@/helpers/ledger";
 import {
   spaceBillsUrl,
   spaceMonthUrl,
@@ -28,8 +30,6 @@ type SpaceSummary = SpaceRow & {
   totalSavings: number;
 };
 
-// Compute the current-month snapshot for a single space (or its
-// aggregate, for shared spaces). Runs 5 small queries in parallel.
 async function computeSummary(
   supabase: Awaited<ReturnType<typeof createClient>>,
   space: SpaceRow,
@@ -38,19 +38,6 @@ async function computeSummary(
 ): Promise<SpaceSummary> {
   const spaceIds = await getAggregateSpaceIds(supabase, space.id);
 
-  // Month rows for the current period across aggregate spaces.
-  const { data: months } = await supabase
-    .from("months")
-    .select("id")
-    .in("space_id", spaceIds)
-    .eq("year", currentYear)
-    .eq("month", currentMonth);
-
-  const monthIds = (months ?? []).map((m) => m.id);
-
-  // Member count (only meaningful for shared spaces, but cheap either way).
-  // Savings funds — query independently of months since funds live outside
-  // the monthly cycle. starting_balance + all contributions = running total.
   const [{ count: memberCount }, fundsRes] = await Promise.all([
     supabase
       .from("space_members")
@@ -69,7 +56,6 @@ async function computeSummary(
     0
   );
 
-  // All contributions across all funds (not month-scoped).
   let allContributionsSum = 0;
   if (funds.length > 0) {
     const fundIds = funds.map((f) => f.id);
@@ -84,59 +70,63 @@ async function computeSummary(
   }
   const totalSavings = startingBalanceSum + allContributionsSum;
 
-  if (monthIds.length === 0) {
-    return {
-      ...space,
-      memberCount: memberCount ?? 1,
-      netSoFar: 0,
-      stillToPay: 0,
-      savingsNet: 0,
-      totalSavings,
-    };
-  }
+  // Resolved entries for the current month (virtual + materialized).
+  const entries = await getEntriesForMonth(
+    supabase,
+    spaceIds,
+    currentYear,
+    currentMonth
+  );
 
-  // Four entity queries in parallel.
-  const [billsRes, incomeRes, expensesRes, savingsRes] = await Promise.all([
-    supabase
-      .from("bill_instances")
-      .select("amount, paid")
-      .in("month_id", monthIds),
-    supabase
-      .from("income_entries")
-      .select("amount, received")
-      .in("month_id", monthIds),
-    supabase
-      .from("one_off_expenses")
-      .select("amount")
-      .in("month_id", monthIds),
-    supabase
-      .from("savings_contributions")
-      .select("amount")
-      .in("month_id", monthIds),
-  ]);
+  const today = todayYmd();
+  const billEntries = entries.filter((e) => e.template_id != null);
+  const expenseEntries = entries.filter((e) => e.template_id == null);
 
-  const bills = billsRes.data ?? [];
-  const paidBills = bills
-    .filter((b) => b.paid)
-    .reduce((s, b) => s + Number(b.amount), 0);
-  const totalBills = bills.reduce((s, b) => s + Number(b.amount), 0);
+  const totalBills = billEntries.reduce((s, e) => s + e.amount, 0);
+  const paidBills = billEntries
+    .filter((e) => e.paid)
+    .reduce((s, e) => s + e.amount, 0);
+  const overdueUnpaidBills = billEntries
+    .filter((e) => !e.paid && e.date <= today)
+    .reduce((s, e) => s + e.amount, 0);
   const stillToPay = totalBills - paidBills;
 
-  const receivedIncome = (incomeRes.data ?? [])
+  // Income in the current month by date range.
+  const { start, end } = getMonthRange(currentYear, currentMonth);
+  const { data: rawIncome } = await supabase
+    .from("income_entries")
+    .select("amount, received")
+    .in("space_id", spaceIds)
+    .gte("expected_date", start)
+    .lte("expected_date", end);
+
+  const receivedIncome = (rawIncome ?? [])
     .filter((i) => i.received)
     .reduce((s, i) => s + Number(i.amount), 0);
 
-  const totalExpenses = (expensesRes.data ?? []).reduce(
-    (s, e) => s + Number(e.amount),
-    0
-  );
+  const totalExpenses = expenseEntries.reduce((s, e) => s + e.amount, 0);
 
-  const savingsNet = (savingsRes.data ?? []).reduce(
-    (s, c) => s + Number(c.amount),
-    0
-  );
+  let savingsNet = 0;
+  if (funds.length > 0) {
+    const fundIds = funds.map((f) => f.id);
+    const { data: monthContributions } = await supabase
+      .from("savings_contributions")
+      .select("amount")
+      .in("fund_id", fundIds)
+      .gte("date", start)
+      .lte("date", end);
+    savingsNet = (monthContributions ?? []).reduce(
+      (s, c) => s + Number(c.amount),
+      0
+    );
+  }
 
-  const netSoFar = receivedIncome - paidBills - totalExpenses - savingsNet;
+  const netSoFar =
+    receivedIncome -
+    paidBills -
+    overdueUnpaidBills -
+    totalExpenses -
+    savingsNet;
 
   return {
     ...space,
@@ -162,7 +152,6 @@ export default async function Dashboard() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // All spaces the user is an active member of.
   const { data: rawMemberships } = await supabase
     .from("space_members")
     .select("spaces!inner(id, name, type)")
@@ -178,7 +167,6 @@ export default async function Dashboard() {
       return a.name.localeCompare(b.name);
     });
 
-  // Compute current-month summaries in parallel across all spaces.
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -202,16 +190,12 @@ export default async function Dashboard() {
             key={s.id}
             className="relative rounded-lg border border-gray-200 bg-white p-5 transition-colors hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600 dark:hover:bg-gray-700"
           >
-            {/* Stretched link: clicking anywhere on the card navigates
-                to the current month. The deep links below sit above
-                this via z-10 so they capture their own clicks. */}
             <Link
               href={spaceMonthUrl(s.id, currentYear, currentMonth)}
               className="absolute inset-0 z-0"
               aria-label={`Open ${s.type === "personal" ? "Personal Space" : s.name}`}
             />
 
-            {/* Header: name + badge */}
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {s.type === "personal" ? "Personal Space" : s.name}
@@ -232,7 +216,6 @@ export default async function Dashboard() {
               )}
             </div>
 
-            {/* Summary numbers */}
             <dl className="mt-3 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
               <div>
                 <dt className="text-xs text-gray-500 dark:text-gray-400">
@@ -280,7 +263,6 @@ export default async function Dashboard() {
               </div>
             </dl>
 
-            {/* Deep links — z-10 so they sit above the stretched card link */}
             <div className="relative z-10 mt-4 flex items-center gap-4 text-xs font-medium">
               <Link
                 href={spaceMonthUrl(s.id, currentYear, currentMonth)}

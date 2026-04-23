@@ -7,11 +7,16 @@ import { spaceBillsUrl } from "@/helpers/paths";
 import { type FormState } from "../form-state";
 import {
   UNIQUE_VIOLATION,
-  cascadeAmountToFutureInstances,
   computeBiweeklyAnchor,
   parseTemplateFields,
 } from "./_helpers";
 
+// Update a template. No cascade step — in the ledger model, virtual
+// occurrences always reflect the template's current default_amount,
+// so changing the template automatically updates every unpaid
+// occurrence that hasn't been explicitly overridden. Existing
+// materialized exception rows (overrides, paid rows) stay frozen
+// on purpose; editing them is a per-entry concern.
 export async function updateBillTemplate(
   id: string,
   prevState: FormState,
@@ -35,17 +40,18 @@ export async function updateBillTemplate(
     const {
       name,
       defaultAmount,
+      category,
       cadence,
       dueDay,
       dayOfWeek,
       installmentsTotal,
       installmentsStartMonth,
     } = parseTemplateFields(formData);
-    const cascade = formData.get("cascade") === "on";
 
-    // For biweekly: if the template already has an anchor AND the
-    // day_of_week hasn't changed, keep the existing anchor to preserve
-    // the phase. Otherwise compute a new one from today.
+    // Preserve the existing biweekly anchor when the user stays on
+    // biweekly and doesn't change day_of_week. This keeps the phase
+    // stable so existing materialized rows don't suddenly fall on
+    // "different" virtual occurrences after an edit.
     let biweeklyAnchor: string | null = null;
     if (cadence === "biweekly" && dayOfWeek != null) {
       const { data: existing } = await supabase
@@ -69,6 +75,7 @@ export async function updateBillTemplate(
       .update({
         name,
         default_amount: defaultAmount,
+        category,
         cadence,
         due_day: cadence === "monthly" ? dueDay : null,
         day_of_week: cadence !== "monthly" ? dayOfWeek : null,
@@ -85,18 +92,10 @@ export async function updateBillTemplate(
       return { error: `Failed to update template: ${updateError.message}` };
     }
 
-    if (cascade) {
-      await cascadeAmountToFutureInstances(supabase, id, defaultAmount);
-    }
-
     revalidatePath(spaceBillsUrl(spaceId));
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Something went wrong" };
   }
 
-  // redirect() must be outside the try/catch because it works by throwing
-  // a special Next.js sentinel error that the framework catches; if we
-  // caught it ourselves we'd mistake the redirect for a failure. spaceId
-  // is assigned inside the try but TypeScript's narrowing tracks it here.
   redirect(spaceBillsUrl(spaceId));
 }

@@ -5,15 +5,16 @@ import { unlockMonth } from "../../actions";
 import { initialFormState } from "../../form-state";
 
 type Props = {
-  monthId: string;
+  spaceId: string;
   year: number;
   month: number;
 };
 
-export default function UnlockBanner({ monthId, year, month }: Props) {
+export default function UnlockBanner({ spaceId, year, month }: Props) {
   const [showForm, setShowForm] = useState(false);
 
-  const boundAction = unlockMonth.bind(null, monthId, year, month);
+  // Bind space + year + month; unlockMonth inserts a month_unlocks row.
+  const boundAction = unlockMonth.bind(null, spaceId, year, month);
   const [state, formAction, isPending] = useActionState(
     boundAction,
     initialFormState
