@@ -22,50 +22,13 @@ import {
   getMonthRange,
   yearMonthKey,
 } from "./date";
-
-// ============================================================
-// TYPES
-// ============================================================
-
-export type TemplateRecurrence = {
-  id: string;
-  space_id: string;
-  name: string;
-  default_amount: number;
-  currency: string;
-  category: string | null;
-  cadence: "monthly" | "weekly" | "biweekly";
-  due_day: number | null;
-  day_of_week: number | null;
-  biweekly_anchor: string | null;
-  installments_total: number | null;
-  installments_start_month: string | null;
-};
-
-export type InstallmentProgress = {
-  paid: number;        // sum of installments_covered on paid entries
-  total: number;       // installments_total
-  remaining: number;   // total - paid
-  defaultAmount: number;
-};
-
-// Unified shape the UI consumes. When `id` is null, this is a virtual
-// occurrence with no materialized row yet; any mutation on it has to
-// insert a row first. When `id` is set, it's a real row in `entries`.
-export type ResolvedEntry = {
-  id: string | null;
-  space_id: string;
-  template_id: string | null;
-  date: string;                  // "YYYY-MM-DD"
-  name: string;
-  amount: number;
-  currency: string;
-  category: string | null;
-  notes: string | null;
-  paid: boolean;
-  installments_covered: number;
-  installmentProgress: InstallmentProgress | null;
-};
+import type {
+  EntryRow,
+  InstallmentProgress,
+  ResolvedEntry,
+  TemplateRecurrence,
+  TemplateRow,
+} from "./types";
 
 // ============================================================
 // CADENCE EXPANSION
@@ -203,41 +166,6 @@ export function computeInstallmentProgress(
     defaultAmount: template.default_amount,
   };
 }
-
-// ============================================================
-// DB SHAPES
-// ============================================================
-
-type EntryRow = {
-  id: string;
-  space_id: string;
-  template_id: string | null;
-  date: string;
-  name: string;
-  amount: number | string;
-  currency: string;
-  category: string | null;
-  notes: string | null;
-  paid: boolean;
-  skipped: boolean;
-  installments_covered: number;
-};
-
-type TemplateRow = {
-  id: string;
-  space_id: string;
-  name: string;
-  default_amount: number | string;
-  currency: string;
-  category: string | null;
-  active: boolean;
-  cadence: string;
-  due_day: number | null;
-  day_of_week: number | null;
-  biweekly_anchor: string | null;
-  installments_total: number | null;
-  installments_start_month: string | null;
-};
 
 function normalizeTemplate(row: TemplateRow): TemplateRecurrence {
   return {

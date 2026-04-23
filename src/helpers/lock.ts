@@ -13,6 +13,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { parseYearMonthFromYmd } from "./date";
+import type { EditCheckResult } from "./types";
 
 export function isMonthLocked(args: {
   year: number;
@@ -45,10 +46,6 @@ export async function fetchMonthUnlock(
     .maybeSingle();
   return data ?? null;
 }
-
-export type EditCheckResult =
-  | { ok: false; error: string }
-  | { ok: true; spaceId: string; year: number; month: number };
 
 // Given a space and a date, check whether mutating a row scoped to
 // that (space, date) would hit a locked month. Used for virtual-

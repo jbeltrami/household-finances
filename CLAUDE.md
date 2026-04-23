@@ -255,9 +255,10 @@ Every route follows the same structure. Apply this pattern when adding new route
 **Create forms** — each create form is its own component. Forms own their submission state and call `onSuccess` to notify the parent.
 
 **Shared utilities** — cross-route helpers live in `src/helpers/`. Key files:
+- `types.ts` — exported type vocabulary: `ResolvedEntry`, `TemplateRecurrence`, `InstallmentProgress`, `EditCheckResult`. Helper files import their types from here rather than declaring them inline, so the type surface stays grep-able
 - `date.ts` — formatters, range builders, Postgres-date string utilities
 - `lock.ts` — `isMonthLocked`, `checkDateEditable`, `checkEntryEditable`, `fetchMonthUnlock`
-- `ledger.ts` — `ResolvedEntry`, `getEntriesForMonth`, `expandTemplateForMonth`, installment math
+- `ledger.ts` — `getEntriesForMonth`, `expandTemplateForMonth`, installment math
 - `paths.ts`, `format.ts`, `spaces.ts` — URL builders, currency/date formatters, space-lookup helpers
 
 Route-specific helpers live in the route's `_helpers.ts`. Third-party integrations (Supabase clients, etc.) live in `src/lib/`.
