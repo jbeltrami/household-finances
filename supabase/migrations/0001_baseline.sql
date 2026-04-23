@@ -1,59 +1,25 @@
 -- ============================================================
--- HOME FINANCES APP — LEDGER-MODEL REWRITE
--- Migration: 0015_ledger_rewrite.sql
+-- HOME FINANCES APP — DATABASE BASELINE
+-- Migration: 0001_baseline.sql
 -- ============================================================
--- This is a nuclear reset that drops the entire schema from
--- 0001-0014 and rebuilds it around the ledger model:
+-- Single consolidated migration that defines the entire schema
+-- after the ledger-model rewrite. This file replaced the
+-- original 0001-0014 sequence, which evolved a prior
+-- months/bill_instances/one_off_expenses model. The prose
+-- record of that evolution lives in history.md; the schema
+-- itself lives here.
 --
---   - A single `entries` table replaces `bill_instances` +
---     `one_off_expenses`. Recurring templates expand virtually
---     at query time; `entries` only stores exceptions (paid,
---     overridden, skipped) plus one-offs (template_id NULL).
---   - `months` is gone. A tiny `month_unlocks` side table holds
---     past-month unlock reasons; lock state is computed from
---     the current date and the presence of a row.
---   - `income_entries` and `savings_contributions` drop their
---     `month_id` in favor of a plain `date` column; the monthly
---     view filters by date range.
---   - Templates gain an optional `category` column for default
---     categorization of generated entries.
---
--- The "wipe data" decision makes this safe: no migration of
--- rows, just drop-and-recreate. The prose history of the 0001-
--- 0014 evolution lives in history.md.
---
--- In the follow-up cleanup commit, this file will be renamed
--- `0001_baseline.sql`, the DROP block will be removed (there's
--- nothing to drop on a fresh database), and 0001-0014 will be
--- deleted. For now, this coexists with them so `supabase db
--- reset` remains runnable.
+-- Data model (see CLAUDE.md for full context):
+--   spaces                      — personal or shared budget contexts
+--   space_members               — membership with left_at (never deleted)
+--   invitations                 — email-based invites to shared spaces
+--   recurring_bill_templates    — recurrence rules (virtual expansion)
+--   entries                     — unified ledger: one-offs + bill exceptions
+--   month_unlocks               — side table for past-month unlock reasons
+--   income_entries              — date-keyed income
+--   savings_funds               — named savings pots
+--   savings_contributions       — date-keyed signed deposits/withdrawals
 -- ============================================================
-
-
--- ============================================================
--- SECTION 0 — DROP EVERYTHING FROM THE PRIOR MODEL
--- Order: dependents first, then the tables they reference.
--- CASCADE handles policies, indexes, and FK dependents.
--- ============================================================
-drop trigger if exists on_auth_user_created on auth.users;
-drop function if exists public.handle_new_user() cascade;
-
-drop table if exists public.savings_contributions cascade;
-drop table if exists public.savings_funds          cascade;
-drop table if exists public.one_off_expenses       cascade;
-drop table if exists public.bill_instances         cascade;
-drop table if exists public.income_entries         cascade;
-drop table if exists public.months                 cascade;
-drop table if exists public.recurring_bill_templates cascade;
-drop table if exists public.invitations            cascade;
-drop table if exists public.space_members          cascade;
-drop table if exists public.spaces                 cascade;
-
-drop function if exists public.is_active_member(uuid)        cascade;
-drop function if exists public.is_space_owner(uuid)          cascade;
-drop function if exists public.can_read_space(uuid)          cascade;
-drop function if exists public.is_space_creator(uuid)        cascade;
-drop function if exists public.has_accepted_invitation(uuid) cascade;
 
 
 -- ============================================================
