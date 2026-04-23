@@ -17,7 +17,8 @@ Historical record of shipped work. `CLAUDE.md` holds the load-bearing context fo
 | 6     | One-off expenses + monthly balance calculation                                   | ✅ Done |
 | 7     | Savings funds — create fund, log contributions, running total                    | ✅ Done |
 | 8     | Shared spaces — URL refactor, invite flow, aggregate view, dashboard             | ✅ Done |
-| 9     | Recurring income templates — biweekly / monthly cadence, instance generation     | ⬜      |
+| —     | Ledger-model rewrite — merge bill_instances/one_off_expenses into entries        | ✅ Done |
+| 9     | Recurring income templates — biweekly / monthly cadence, virtual expansion       | ⬜      |
 
 ---
 
@@ -232,30 +233,106 @@ Piece 8 shipped in small, check-in-able steps:
 
 ---
 
+## Ledger-model rewrite
+
+After Piece 8, the data model was reworked from "months-as-rows" to "ledger" while preserving the monthly UI. This sat between Pieces 8 and 9 because the old model made recurring-income a bigger lift than it should have been, and the cracks in bill-instance materialization (sync-on-read, "cascade to future unpaid", installment-row deletion) were only going to multiply.
+
+### Motivating tension
+
+The prior schema had three tables for "money-out events":
+- `bill_instances` (template-generated, one row per template per month)
+- `one_off_expenses` (free-form)
+- `months` (per-space container with `unlock_reason`)
+
+Every bill visible in the monthly view was a real row. When a user visited a month, `getOrCreateMonth` created the `months` row if missing and `syncBillInstances` backfilled any bill instances the templates should have produced. Template changes required a cascade step. Installment prepayments required deleting unpaid future rows so the next visit would regenerate them correctly.
+
+The core realization: the *only* reason bills were materialized was to hold per-month state (amount overrides, paid, installments_covered). If that state could be held in a single "exceptions" table and everything else computed from the templates, the sync / cascade / installment-deletion logic all disappeared.
+
+### Target model
+
+A single `entries` table carries one-offs (`template_id IS NULL`) and template exceptions (`template_id IS NOT NULL`). Recurring occurrences that haven't been touched by the user don't exist in the database — they're expanded at query time by `expandTemplateForMonth` in `src/helpers/ledger.ts`. The monthly view calls `getEntriesForMonth`, which merges virtual occurrences with materialized exceptions and hands the UI a unified `ResolvedEntry[]`.
+
+Ancillary changes:
+- `months` → `month_unlocks` (tiny side table, row only exists when a past month is explicitly unlocked)
+- `income_entries.month_id` → `expected_date` (date-range queries instead of month joins)
+- `savings_contributions.month_id` → `date` (same)
+- `recurring_bill_templates.category` (optional, inherited by generated/materialized entries)
+- `entries.skipped` boolean for the per-occurrence skip feature
+
+### Decisions made during the rewrite
+
+- **Wipe data, don't migrate.** This is a personal app; the cost of a data transform script was higher than the cost of re-entering data. A single baseline migration drops the old schema and creates the new one.
+- **Squash migrations into one baseline.** `history.md` preserves the evolution story in prose; the file-level history of 0001-0014 became redundant once the schema was replaced wholesale. The rewrite shipped as `0015_ledger_rewrite.sql` (with DROPs at the top, coexisting with the old migrations during development), then the cleanup commit renamed it to `0001_baseline.sql` and deleted the old files.
+- **Virtual + exceptions, not eager materialization.** The Google Calendar recurring-event model. A row only appears in `entries` when the user pays, overrides, or skips an occurrence. Template changes automatically flow into every untouched occurrence since those are computed at query time.
+- **No cascade checkbox on template edits.** The prior "apply amount change to future unpaid instances" checkbox became redundant — untouched occurrences ARE the template. Only materialized exceptions stay frozen, which is usually what the user wants anyway.
+- **Skip feature added in the same rollout.** Schema supports it (`skipped` boolean + CHECK), UI exposes a per-row "Skip" button next to the paid/pending toggle.
+- **Installment math simplified.** Effective-end shift stays the same formula (`paidExtra = sum(covered - 1) across paid entries`), but now it's applied at expansion time rather than by deleting unpaid future rows. The "prepayment" flow is a single INSERT instead of an INSERT + DELETE.
+- **One big-bang rollout, no dual-schema phase.** For a personal app the extra work to handle both schemas in code wasn't worth it.
+
+### Scope
+
+- New migration `0015_ledger_rewrite.sql` (later renamed `0001_baseline.sql`) that drops the prior schema and recreates everything from scratch.
+- New helpers `src/helpers/ledger.ts`, `src/helpers/lock.ts`; expanded `src/helpers/date.ts`.
+- All bill/expense/income/savings server actions rewritten.
+- All monthly-view, bills, dashboard, and savings pages rewired.
+- All row/section/form components updated for the `EntryRow` + virtual-target shape.
+- `CLAUDE.md` rewritten to describe the ledger model.
+- Migration files 0001-0014 deleted in the cleanup commit; the baseline lives alone.
+
+### Build steps
+
+1. ✅ Schema — new baseline migration (`0015_ledger_rewrite.sql` initially, later `0001_baseline.sql`)
+2. ✅ Shared helpers — `ledger.ts`, `lock.ts`, expanded `date.ts`
+3. ✅ Server actions — unified `entries`-oriented action layer with materialized/virtual target union
+4. ✅ Monthly view rewire — page, components, calendar strip use `getEntriesForMonth`
+5. ✅ Bills page + templates — `category` field, virtual-expansion installment progress, no cascade checkbox
+6. ✅ Dashboard + savings + income — consistent date-range querying
+7. ✅ Docs — `CLAUDE.md` rewritten, this `history.md` section added
+8. ✅ Cleanup — dead-code removal, migration file squash, rename to `0001_baseline.sql`
+
+### What didn't change
+
+- Route structure (still `/spaces/[spaceId]/months/[year]/[month]`)
+- RLS strategy (SELECT via `can_read_space`, writes via `is_active_member`)
+- Auth flow, invitation flow, space-linking model
+- Monthly view layout, calendar strip, navbar/dashboard UI chrome
+- Brazilian-Portuguese conventions (currency formatting, weekday labels)
+
+---
+
 ## Migration history
 
-Detailed per-migration descriptions. The short form lives in `CLAUDE.md`.
+The repository now holds a single `0001_baseline.sql` — the consolidated, post-rewrite schema. The prior 0001-0014 files were deleted in the ledger-rewrite cleanup commit; their content is captured in prose below so the evolution is still legible.
 
-- `0001_initial_schema.sql` — initial tables and trigger
-- `0002_rls_policies.sql` — RLS enabled on all tables; SELECT/INSERT/UPDATE/DELETE policies for `spaces`, `space_members`, and `recurring_bill_templates`
-- `0003_bill_templates_unique_active_name.sql` — partial unique index preventing two active templates with the same name in a space
-- `0004_months_locking_and_rls.sql` — dropped `locked` / `locked_at` columns from `months` (check-on-read locking); added SELECT/INSERT/UPDATE policies for `months` and `bill_instances`
-- `0005_income_entries_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `income_entries` (Piece 5)
-- `0006_one_off_expenses_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `one_off_expenses` (Piece 6)
-- `0007_savings_rls.sql` — SELECT/INSERT/UPDATE/DELETE policies for `savings_funds` and `savings_contributions` (Piece 7). Contribution policies walk the FK to the parent fund and reuse `is_active_member(space_id)` there, so funds in shared spaces inherit access automatically
-- `0008_drop_household_type.sql` — drops `household` from the `spaces.type` CHECK constraint, leaving `personal | shared`. Cleanup for Piece 8's terminology alignment — "household" was one motivating use case, not a distinct type
-- `0009_invitations_rls.sql` — introduces `is_space_owner(space_id)` helper (mirrors `is_active_member` but filters by `role = 'owner'`) and adds SELECT/INSERT/UPDATE/DELETE policies for `invitations`. SELECT is visible to active members of the space OR the invitee (email-matched via `auth.jwt() ->> 'email'`); INSERT/DELETE are owner-only; UPDATE is restricted to the invitee (accept / decline flow). Owner "revoke" uses DELETE rather than a 4th status value
-- `0010_cross_space_reads.sql` — introduces `can_read_space(space_id)` helper (direct active membership OR indirect via `parent_space_id` pointing at a shared space I'm in) and swaps every existing SELECT policy on domain tables (`spaces`, `recurring_bill_templates`, `months`, `bill_instances`, `income_entries`, `one_off_expenses`, `savings_funds`, `savings_contributions`) from `is_active_member` to `can_read_space`. INSERT/UPDATE/DELETE policies are deliberately **not** touched — writes stay narrow so shared-space members can't mutate other members' personal-space entries from the shared view. This is what makes the shared-space aggregate query work end-to-end without silently dropping rows
-- `0011_spaces_mutation_policies.sql` — INSERT on `spaces` (type must be `'shared'`, `created_by = auth.uid()`), UPDATE on `spaces` (`created_by = auth.uid()` — covers linking personal spaces and renaming shared spaces you created), INSERT on `space_members` via `is_space_creator` SECURITY DEFINER helper (`user_id = auth.uid()` AND space's `created_by = auth.uid()` — bootstrap: the creator adds themselves as the first member)
-- `0012_invitee_join_policy.sql` — INSERT on `space_members` for invitees via `has_accepted_invitation` SECURITY DEFINER helper. The invitee must have an accepted invitation (status = 'accepted') matching their JWT email for the target space before they can insert a membership row. This companion to 0011's creator policy completes the two-path membership creation model: creators bootstrap via `is_space_creator`, invitees join via `has_accepted_invitation`
-- `0013_bill_recurrence.sql` — adds `cadence` ('monthly' | 'weekly' | 'biweekly'), `day_of_week`, and `biweekly_anchor` columns to `recurring_bill_templates` with a CHECK constraint enforcing valid combinations (monthly requires no weekday/anchor; weekly requires a weekday; biweekly requires both). Also replaces the `(month_id, template_id)` unique constraint on `bill_instances` with two partial unique indexes, one for rows with a `due_date` and one for rows without, so weekly/biweekly templates can have multiple instances per month (one per due date)
-- `0014_bill_installments.sql` — adds `installments_total` (nullable int) and `installments_start_month` (nullable date, day must be 1) to `recurring_bill_templates` with a CHECK enforcing "both null OR both set AND total > 0 AND cadence = 'monthly'". Also adds `installments_covered` (int, default 1, > 0) to `bill_instances` so a single payment can represent multiple installments (prepayment). Non-installment bills keep covered = 1 and are unaffected
+### Current
+
+- `0001_baseline.sql` — the whole schema after the ledger-model rewrite. Defines `spaces`, `space_members`, `invitations`, `recurring_bill_templates` (with `category`, cadence, installments), `entries` (unified ledger — one-offs + exceptions), `month_unlocks`, `income_entries` (date-keyed), `savings_funds`, `savings_contributions` (date-keyed). RLS helpers `is_active_member`, `is_space_owner`, `can_read_space`, `is_space_creator`, `has_accepted_invitation`. Policies follow the same pattern: SELECT via `can_read_space`, writes via `is_active_member`. The `on_auth_user_created` trigger still auto-creates a personal space on first Google login.
+
+### Historical (pre-rewrite — files deleted)
+
+These migrations built up the "months-as-rows" schema. They're gone from the repo but retained here for the narrative:
+
+- `0001_initial_schema.sql` — initial tables and the `on_auth_user_created` trigger
+- `0002_rls_policies.sql` — RLS enabled everywhere; SELECT/INSERT/UPDATE/DELETE policies for `spaces`, `space_members`, and `recurring_bill_templates`
+- `0003_bill_templates_unique_active_name.sql` — partial unique index preventing duplicate active template names per space
+- `0004_months_locking_and_rls.sql` — dropped `locked` / `locked_at` from `months` (check-on-read locking); added policies for `months` and `bill_instances`
+- `0005_income_entries_rls.sql` — SELECT/INSERT/UPDATE/DELETE for `income_entries`
+- `0006_one_off_expenses_rls.sql` — SELECT/INSERT/UPDATE/DELETE for `one_off_expenses`
+- `0007_savings_rls.sql` — policies for `savings_funds` and `savings_contributions` (the latter walks the fund FK for access inheritance)
+- `0008_drop_household_type.sql` — tightened `spaces.type` CHECK to `personal | shared` (dropping `household`)
+- `0009_invitations_rls.sql` — introduced `is_space_owner`; added SELECT/INSERT/UPDATE/DELETE for `invitations`
+- `0010_cross_space_reads.sql` — introduced `can_read_space`; widened SELECT on domain tables to include child personal spaces of shared spaces the user is in
+- `0011_spaces_mutation_policies.sql` — INSERT/UPDATE on `spaces`, bootstrap INSERT on `space_members` via `is_space_creator`
+- `0012_invitee_join_policy.sql` — invitee INSERT on `space_members` via `has_accepted_invitation`
+- `0013_bill_recurrence.sql` — added `cadence`, `day_of_week`, `biweekly_anchor` to templates; replaced the `(month_id, template_id)` unique constraint on `bill_instances` with two partial unique indexes to support weekly/biweekly
+- `0014_bill_installments.sql` — added `installments_total`, `installments_start_month` on templates; added `installments_covered` on `bill_instances`
+- `0015_ledger_rewrite.sql` — the transitional rewrite migration that shipped with the code changes. It dropped the whole prior schema and recreated it in the ledger shape. Lived alongside 0001-0014 during development, then got renamed to `0001_baseline.sql` and had its DROP block removed in the cleanup commit that deleted 0001-0014.
 
 ---
 
 ## Repo structure (snapshot)
 
-Point-in-time tree as of Piece 8 completion. Drifts as new files are added — refer to the working tree, not this snapshot.
+Point-in-time tree as of the ledger-rewrite cleanup. Drifts as new files are added — refer to the working tree, not this snapshot.
 
 ```
 home-finances-app/
@@ -264,18 +341,7 @@ home-finances-app/
 ├── .env.local                             ← never commit (in .gitignore)
 ├── supabase/
 │   └── migrations/
-│       ├── 0001_initial_schema.sql
-│       ├── 0002_rls_policies.sql
-│       ├── 0003_bill_templates_unique_active_name.sql
-│       ├── 0004_months_locking_and_rls.sql
-│       ├── 0005_income_entries_rls.sql
-│       ├── 0006_one_off_expenses_rls.sql
-│       ├── 0007_savings_rls.sql
-│       ├── 0008_drop_household_type.sql
-│       ├── 0009_invitations_rls.sql
-│       ├── 0010_cross_space_reads.sql
-│       ├── 0011_spaces_mutation_policies.sql
-│       └── 0012_invitee_join_policy.sql
+│       └── 0001_baseline.sql              ← consolidated post-rewrite schema
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx                     ← root layout (HTML shell, fonts, navbar, invitation banner)
@@ -316,14 +382,25 @@ home-finances-app/
 │   │           │   ├── form-state.ts
 │   │           │   ├── _components/
 │   │           │   └── [id]/              ← fund detail page
-│   │           ├── months/                ← monthly view
+│   │           ├── months/                ← monthly view (UI lens over the date-keyed ledger)
 │   │           │   └── [year]/[month]/
-│   │           │       ├── page.tsx
-│   │           │       ├── _helpers.ts    ← getOrCreateMonth, syncBillInstances, isMonthLocked
-│   │           │       ├── actions.ts
+│   │           │       ├── page.tsx       ← calls getEntriesForMonth
+│   │           │       ├── _helpers.ts    ← buildMonthOptions, prevMonth/nextMonth, capitalize
+│   │           │       ├── actions.ts     ← barrel + target-type re-exports
 │   │           │       ├── actions/
+│   │           │       │   ├── toggle-entry-paid.ts       ← virtual or materialized
+│   │           │       │   ├── override-entry-amount.ts
+│   │           │       │   ├── skip-entry-occurrence.ts
+│   │           │       │   ├── create-one-off-entry.ts
+│   │           │       │   ├── update-entry.ts
+│   │           │       │   ├── delete-entry.ts
+│   │           │       │   ├── create-income-entry.ts
+│   │           │       │   ├── update-income-entry.ts
+│   │           │       │   ├── toggle-income-received.ts
+│   │           │       │   ├── delete-income-entry.ts
+│   │           │       │   └── unlock-month.ts            ← inserts into month_unlocks
 │   │           │       ├── form-state.ts
-│   │           │       ├── _types.ts
+│   │           │       ├── _types.ts                      ← EntryRow, BillsGroup, ExpensesGroup, etc.
 │   │           │       └── _components/
 │   │           └── settings/              ← shared-space settings
 │   │               ├── page.tsx
@@ -336,7 +413,14 @@ home-finances-app/
 │   │   └── SignOutButton.tsx
 │   ├── helpers/
 │   │   ├── format.ts                      ← brlFormatter, dateFormatter
-│   │   ├── date.ts                        ← todayYmd(), currentYearMonth()
+│   │   ├── date.ts                        ← todayYmd(), currentYearMonth(), getMonthRange,
+│   │   │                                    formatDateYmd, parseYearMonthFromYmd, addMonthsYm,
+│   │   │                                    formatMonthLabel, dueDateFor
+│   │   ├── lock.ts                        ← isMonthLocked, fetchMonthUnlock,
+│   │   │                                    checkDateEditable, checkEntryEditable,
+│   │   │                                    checkIncomeEntryEditable, checkSavingsContributionEditable
+│   │   ├── ledger.ts                      ← ResolvedEntry, getEntriesForMonth,
+│   │   │                                    expandTemplateForMonth, computeInstallmentProgress
 │   │   ├── paths.ts                       ← URL builders
 │   │   └── spaces.ts                      ← getPersonalSpaceId, getAggregateSpaceIds, getSpaceAttributions
 │   ├── lib/
