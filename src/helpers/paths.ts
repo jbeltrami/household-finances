@@ -35,3 +35,7 @@ export function spaceFundUrl(spaceId: string, fundId: string): string {
 export function spaceSettingsUrl(spaceId: string): string {
   return `/spaces/${spaceId}/settings`;
 }
+
+export function spaceReportsUrl(spaceId: string): string {
+  return `/spaces/${spaceId}/reports`;
+}

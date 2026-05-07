@@ -7,6 +7,7 @@ import { useState } from "react";
 import {
   spaceBillsUrl,
   spaceMonthUrl,
+  spaceReportsUrl,
   spaceSavingsUrl,
   spaceSettingsUrl,
 } from "@/helpers/paths";
@@ -150,6 +151,14 @@ export default function NavbarNav({ spaces, avatarUrl, initials }: Props) {
             <Link href={spaceSavingsUrl(currentSpaceId)} className={linkClass}>
               Savings
             </Link>
+            {currentSpace?.type === "personal" && (
+              <Link
+                href={spaceReportsUrl(currentSpaceId)}
+                className={linkClass}
+              >
+                Reports
+              </Link>
+            )}
             {currentSpace?.type === "shared" && (
               <Link
                 href={spaceSettingsUrl(currentSpaceId)}
@@ -229,6 +238,15 @@ export default function NavbarNav({ spaces, avatarUrl, initials }: Props) {
                 >
                   Savings
                 </Link>
+                {currentSpace?.type === "personal" && (
+                  <Link
+                    href={spaceReportsUrl(currentSpaceId)}
+                    onClick={closeMenu}
+                    className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                  >
+                    Reports
+                  </Link>
+                )}
                 {currentSpace?.type === "shared" && (
                   <Link
                     href={spaceSettingsUrl(currentSpaceId)}
