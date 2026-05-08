@@ -5,5 +5,6 @@
 export { generateReport } from "./actions/generate-report";
 export { generateMissingReports } from "./actions/generate-missing-reports";
 export { downloadReport } from "./actions/download-report";
+export { sendMonthlyReportEmail } from "./actions/send-monthly-report-email";
 
 export type { GenerateMissingResult } from "./actions/generate-missing-reports";

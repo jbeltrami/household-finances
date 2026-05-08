@@ -31,7 +31,7 @@ export default async function ReportsPage({
 
   const { data: existing } = await supabase
     .from("monthly_reports")
-    .select("id, year, month, generated_at")
+    .select("id, year, month, generated_at, sent_at")
     .eq("space_id", spaceId);
 
   const existingByKey = new Map(
@@ -49,6 +49,7 @@ export default async function ReportsPage({
         year: c.year,
         month: c.month,
         generatedAt: ex.generated_at as string,
+        sentAt: (ex.sent_at as string | null) ?? null,
       };
     }
     return {

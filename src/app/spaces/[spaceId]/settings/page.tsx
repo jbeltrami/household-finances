@@ -6,16 +6,12 @@ import RenameSpaceForm from "./_components/RenameSpaceForm";
 import InviteMemberForm from "./_components/InviteMemberForm";
 import MemberList from "./_components/MemberList";
 import PendingInvitations from "./_components/PendingInvitations";
+import MonthlyReportEmailToggle from "./_components/MonthlyReportEmailToggle";
 
 type MemberRow = {
   user_id: string;
   role: string;
   users: { raw_user_meta_data: Record<string, unknown> } | null;
-};
-
-type InvitationRow = {
-  id: string;
-  invited_email: string;
 };
 
 export default async function SpaceSettingsPage({
@@ -26,52 +22,76 @@ export default async function SpaceSettingsPage({
   const { spaceId } = await params;
   const supabase = await createClient();
 
-  // Fetch the space to verify it exists and is shared. Settings
-  // are only available for shared spaces; personal spaces have
-  // no meaningful settings surface yet.
   const { data: space } = await supabase
     .from("spaces")
-    .select("id, name, type")
+    .select("id, name, type, created_by")
     .eq("id", spaceId)
     .single();
 
   if (!space) notFound();
 
-  if (space.type !== "shared") {
-    const now = new Date();
+  const now = new Date();
+  const backHref = spaceMonthUrl(spaceId, now.getFullYear(), now.getMonth() + 1);
+
+  if (space.type === "personal") {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user || space.created_by !== user.id) notFound();
+
+    // Absence of a row = enabled (default-on behavior). The toggle
+    // creates the row on first interaction.
+    const { data: settings } = await supabase
+      .from("monthly_report_settings")
+      .select("enabled")
+      .eq("space_id", spaceId)
+      .maybeSingle();
+
+    const emailEnabled = settings?.enabled ?? true;
+
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Settings are only available for shared spaces.
-        </p>
         <Link
-          href={spaceMonthUrl(spaceId, now.getFullYear(), now.getMonth() + 1)}
-          className="mt-2 inline-block text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+          href={backHref}
+          className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
         >
           ← Back to this month
         </Link>
+
+        <h1 className="mt-4 text-2xl font-semibold text-gray-900 dark:text-gray-100">
+          Space settings
+        </h1>
+
+        <section className="mt-6">
+          <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
+            Email reports
+          </h2>
+          <div className="mt-3 rounded-md border border-gray-200 p-4 dark:border-gray-800">
+            <MonthlyReportEmailToggle
+              spaceId={spaceId}
+              initialEnabled={emailEnabled}
+            />
+          </div>
+        </section>
       </div>
     );
   }
 
-  // Active members with display names from auth.users metadata.
-  // Supabase exposes auth.users via a 1:1 FK on space_members.user_id.
+  // --- Shared space settings ---------------------------------------
+
   const { data: rawMembers } = await supabase
     .from("space_members")
     .select("user_id, role, users:user_id(raw_user_meta_data)")
     .eq("space_id", spaceId)
     .is("left_at", null);
 
-  const members = (
-    (rawMembers ?? []) as unknown as MemberRow[]
-  ).map((m) => ({
+  const members = ((rawMembers ?? []) as unknown as MemberRow[]).map((m) => ({
     userId: m.user_id,
     displayName:
       (m.users?.raw_user_meta_data?.full_name as string) ?? "Unknown",
     role: m.role,
   }));
 
-  // Pending invitations for this space.
   const { data: rawInvitations } = await supabase
     .from("invitations")
     .select("id, invited_email")
@@ -87,11 +107,7 @@ export default async function SpaceSettingsPage({
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <Link
-        href={spaceMonthUrl(
-          spaceId,
-          new Date().getFullYear(),
-          new Date().getMonth() + 1
-        )}
+        href={backHref}
         className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
       >
         ← Back to this month
@@ -101,12 +117,10 @@ export default async function SpaceSettingsPage({
         Space settings
       </h1>
 
-      {/* Rename */}
       <section className="mt-6">
         <RenameSpaceForm spaceId={spaceId} currentName={space.name} />
       </section>
 
-      {/* Members */}
       <section className="mt-8">
         <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
           Members
@@ -116,7 +130,6 @@ export default async function SpaceSettingsPage({
         </div>
       </section>
 
-      {/* Invite */}
       <section className="mt-8">
         <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
           Invite someone
@@ -130,7 +143,6 @@ export default async function SpaceSettingsPage({
         </div>
       </section>
 
-      {/* Pending invitations */}
       <section className="mt-8">
         <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
           Pending invitations

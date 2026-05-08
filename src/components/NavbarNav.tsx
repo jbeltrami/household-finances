@@ -159,14 +159,12 @@ export default function NavbarNav({ spaces, avatarUrl, initials }: Props) {
                 Reports
               </Link>
             )}
-            {currentSpace?.type === "shared" && (
-              <Link
-                href={spaceSettingsUrl(currentSpaceId)}
-                className={linkClass}
-              >
-                Settings
-              </Link>
-            )}
+            <Link
+              href={spaceSettingsUrl(currentSpaceId)}
+              className={linkClass}
+            >
+              Settings
+            </Link>
           </div>
         )}
 
@@ -247,15 +245,13 @@ export default function NavbarNav({ spaces, avatarUrl, initials }: Props) {
                     Reports
                   </Link>
                 )}
-                {currentSpace?.type === "shared" && (
-                  <Link
-                    href={spaceSettingsUrl(currentSpaceId)}
-                    onClick={closeMenu}
-                    className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    Settings
-                  </Link>
-                )}
+                <Link
+                  href={spaceSettingsUrl(currentSpaceId)}
+                  onClick={closeMenu}
+                  className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  Settings
+                </Link>
               </div>
             </div>
           </div>

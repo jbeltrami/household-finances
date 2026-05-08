@@ -9,6 +9,7 @@ export type GeneratedRow = {
   year: number;
   month: number;
   generatedAt: string;
+  sentAt: string | null;
 };
 
 export type MissingRow = {

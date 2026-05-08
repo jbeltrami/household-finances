@@ -94,6 +94,36 @@ export async function inviteMember(
   }
 }
 
+// --- Monthly report email toggle ----------------------------------
+
+// Personal-space-only setting. RLS (is_active_member) gates the
+// upsert; there's no extra app-layer ownership check because for a
+// personal space the only active member is the owner.
+export async function setMonthlyReportEmailEnabled(
+  spaceId: string,
+  enabled: boolean
+): Promise<void> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("monthly_report_settings")
+    .upsert(
+      { space_id: spaceId, enabled },
+      { onConflict: "space_id" }
+    );
+
+  if (error) {
+    throw new Error(`Failed to update setting: ${error.message}`);
+  }
+
+  revalidatePath(`/spaces/${spaceId}/settings`);
+}
+
 // --- Revoke invite ------------------------------------------------
 
 export async function revokeInvitation(

@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { downloadReport, generateReport } from "../../actions";
+import {
+  downloadReport,
+  generateReport,
+  sendMonthlyReportEmail,
+} from "../../actions";
 import { formatMonthLabel } from "@/helpers/date";
 import type { ReportListRow } from "../../_types";
 
@@ -49,6 +53,18 @@ export default function ReportRow({ row, spaceId }: Props) {
     });
   };
 
+  const handleSend = () => {
+    if (row.kind !== "generated") return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        await sendMonthlyReportEmail(row.reportId);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to send email");
+      }
+    });
+  };
+
   return (
     <li className="flex items-center justify-between gap-4 py-3">
       <div className="flex flex-col">
@@ -56,9 +72,16 @@ export default function ReportRow({ row, spaceId }: Props) {
           {monthLabel}
         </span>
         {row.kind === "generated" ? (
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            Generated {dateTimeFormatter.format(new Date(row.generatedAt))}
-          </span>
+          <>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Generated {dateTimeFormatter.format(new Date(row.generatedAt))}
+            </span>
+            {row.sentAt && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Sent {dateTimeFormatter.format(new Date(row.sentAt))}
+              </span>
+            )}
+          </>
         ) : (
           <span className="text-xs text-gray-500 dark:text-gray-400">
             Pending
@@ -80,6 +103,14 @@ export default function ReportRow({ row, spaceId }: Props) {
               className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
             >
               {pending ? "..." : "Regenerate"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={pending}
+              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              {pending ? "..." : row.sentAt ? "Resend" : "Send by email"}
             </button>
             <button
               type="button"
