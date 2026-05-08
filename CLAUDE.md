@@ -17,7 +17,10 @@ For historical build decisions (completed piece plans, migration narratives, rep
 | Layer           | Choice                                       |
 | --------------- | -------------------------------------------- |
 | Database + Auth | Supabase (region: South America — São Paulo) |
-| Frontend        | Next.js + Tailwind CSS + Recharts            |
+| Frontend        | Next.js + Tailwind CSS                       |
+| PDF rendering   | `@react-pdf/renderer` (server-side)          |
+| Email (Piece B) | Hostinger SMTP + `nodemailer` (`from: joao@jbeltrami.com`) |
+| Cron (Piece C)  | Vercel Cron                                  |
 | Hosting         | Vercel                                       |
 | Auth provider   | Google OAuth only (no email/password)        |
 
@@ -38,6 +41,7 @@ For historical build decisions (completed piece plans, migration narratives, rep
 - **Savings funds** — live outside the monthly cycle; contributions are date-keyed; total = starting_balance + sum of all contributions
 - **Google OAuth only** — first login auto-creates the user's personal space via a database trigger
 - **Invite by email** — shared-space owners invite by email; pending invites wait for the person to sign up if they don't have an account yet; accepted/declined via dashboard banner
+- **Monthly PDF reports** — at the end of each month, a PDF mirroring the monthly view is generated for each personal space and (Piece B) emailed to the owner; PDFs are also browseable at `/spaces/[id]/reports`. Personal spaces only — shared-space members do not get auto-emailed reports
 
 ---
 
@@ -107,6 +111,12 @@ savings_funds
 
 savings_contributions
   id, fund_id, date, amount (signed), notes, created_at
+
+monthly_reports
+  id, space_id, year, month
+  storage_path                          -- {space_id}/{year}-{month}.pdf
+  generated_at, sent_at (nullable)      -- sent_at null until Piece B emails it
+  unique (space_id, year, month)        -- idempotency lock for cron + regenerate
 ```
 
 ### How the monthly view works
@@ -185,35 +195,39 @@ Net so far (received - paid)   R$18.530
 
 ---
 
-## Next up — Piece 9: Recurring income templates
+## In flight — Monthly PDF reports
 
-Income recurrence was originally considered alongside Piece 5 but split out so Piece 5 could ship simple one-off entries first. Income recurrence is harder than bill recurrence for one reason: real-world paychecks often follow a **biweekly cycle** (every other Thursday) that doesn't align with month boundaries. A given calendar month can contain 0, 1, 2, or 3 paychecks depending on alignment.
+A PDF summary of each personal space's monthly data, downloadable from the app and (Piece B) auto-emailed at the end of each month.
 
-With the ledger model in place, this piece is a small extension:
+### Piece A — done
 
-**Data model sketch:**
+- **Schema** — `monthly_reports(id, space_id, year, month, storage_path, generated_at, sent_at)` with unique `(space_id, year, month)` and SELECT-only RLS via `is_active_member` (writes go through the admin client only). Migration `0002_monthly_reports.sql`.
+- **Storage** — private Supabase bucket `monthly-reports`, path layout `{space_id}/{year}-{month}.pdf`. No bucket policies — uploads use the admin client, downloads use signed URLs minted server-side (5-minute TTL).
+- **PDF component** — `src/lib/pdf/MonthlyReportPdf.tsx` using `@react-pdf/renderer`. Mirrors the monthly view (income / recurring bills / one-off expenses / balance / savings). Body in pt-BR; UI labels in English to match Bills/Savings.
+- **Helpers** — `src/helpers/reports.ts` exports `getMonthlyReportData`, `listNonEmptyPastMonths`, `performReportGeneration`, `reportStoragePath`. The orchestrator accepts both a data-source client and an admin client so the same helper drives manual generation (user-session for reads) and the cron loop (admin everywhere).
+- **Reports page** — `/spaces/[id]/reports`. One row per past month with data: download if a PDF exists, generate if not. "Generate missing reports" button at the top backfills in one click; per-row "Regenerate" is also exposed. Empty months are hidden entirely (the helper enumerates only months with data, including months covered by active recurring templates).
+- **Server actions** — `generateReport(spaceId, year, month)`, `generateMissingReports(spaceId)` (returns `{ generated, skipped, failed }`), `downloadReport(reportId)` (returns a signed URL string; client navigates with `window.location.href` so attachment-disposition triggers an in-place download). All validate ownership + past-only at the edge.
+- **Navbar** — `Reports` link surfaces on personal spaces only (`currentSpace?.type === "personal"`).
 
-```sql
-recurring_income_templates
-  id, space_id
-  name, default_amount, currency
-  cadence              -- 'biweekly' | 'monthly'
-  biweekly_anchor      -- date, only set when cadence='biweekly'
-  monthly_day          -- int 1-31, only set when cadence='monthly'
-  active, created_at
-  CHECK (
-    (cadence = 'biweekly' AND biweekly_anchor IS NOT NULL AND monthly_day IS NULL) OR
-    (cadence = 'monthly'  AND monthly_day IS NOT NULL AND biweekly_anchor IS NULL)
-  )
-```
+### Piece B — next
 
-`income_entries` will gain a nullable `template_id` and follow the same virtual-expansion + exception-row pattern as bills. The `expandTemplateForMonth` logic in `src/helpers/ledger.ts` already handles all three cadences and can be generalized for income.
+- **Settings page** at `/spaces/[id]/settings` (currently exists for shared spaces only). Add a per-space "Monthly report email" toggle, default ON.
+- **`monthly_report_settings`** table keyed by `space_id` with an `enabled` boolean. SELECT/INSERT/UPDATE via `is_active_member`.
+- **SMTP via Hostinger** — `jbeltrami.com` mail is hosted on Hostinger; sending uses `nodemailer` against `smtp.hostinger.com:465` with mailbox credentials. SPF/DKIM are already configured on the domain through Hostinger, so `from: joao@jbeltrami.com` works without new DNS records. Env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_NAME` (server-only — no `NEXT_PUBLIC_` prefix).
+- **`react-email`** template for the email body (link-only — points to the dashboard, where the existing download flow takes over). Keeps the email small and avoids re-sending the PDF every month. Vendor-agnostic — emits HTML that `nodemailer` consumes directly.
+- **`sendMonthlyReportEmail(reportId)`** action — looks up the report row, mints a signed URL, renders the `react-email` template, sends via the SMTP transport, sets `sent_at`. Reused by both the manual-send button (added in Piece B) and Piece C's cron.
 
-**UI surface:**
+### Piece C — after
 
-- New `/spaces/[spaceId]/income` page mirroring `/spaces/[spaceId]/bills` (list active templates, create, edit, deactivate)
-- Cadence picker in the create/edit form (Quinzenal / Mensal)
-- Monthly view continues to support both template-generated entries and free-form one-offs
+- **Vercel Cron** — `vercel.json` declares `0 11 1 * *` (08:00 São Paulo on the 1st of each month) → `POST /api/cron/monthly-reports`. Handler validates `Authorization: Bearer ${CRON_SECRET}`, then for every personal space with `enabled = true`: calls `performReportGeneration` (idempotency guard via the unique constraint), then `sendMonthlyReportEmail`. Per-space `try/catch` so one failure doesn't stop the loop.
+- **Idempotency** — the unique constraint on `monthly_reports(space_id, year, month)` plus the `sent_at` check is the lock. A retry naturally skips already-generated, already-sent months.
+
+---
+
+## Future improvements
+
+- **Removing shared spaces.** The shared-space concept (the `parent_space_id` linkage, shared-space aggregate views, the `can_read_space` cross-space SELECT pattern, the invitation flow) is slated for removal once the monthly-report feature lands. The app simplifies back to one personal space per user. New domain tables added in the meantime should prefer `is_active_member` over `can_read_space` for SELECT policies (already the case for `monthly_reports`).
+- **Recurring income templates.** Income recurrence was split out so Piece 5 could ship simple one-off entries first. Real-world paychecks often follow a **biweekly cycle** (every other Thursday) that doesn't align with month boundaries — a calendar month can contain 0–3 paychecks depending on alignment. With the ledger model in place this is a small extension: a `recurring_income_templates` table mirroring `recurring_bill_templates` (cadence: `biweekly | monthly`, anchor or due-day), `income_entries` gaining a nullable `template_id` and following the same virtual-expansion + exception-row pattern as bills, and a new `/spaces/[id]/income` page mirroring `/bills`. The `expandTemplateForMonth` helper in `src/helpers/ledger.ts` already handles all three cadences and can be generalized for income.
 
 ---
 
@@ -223,7 +237,7 @@ recurring_income_templates
 - RLS: enabled on all tables
 - Auth provider: Google OAuth only
 - Migrations live in `supabase/migrations/` (see `history.md` for the evolution story)
-- Current highest migration: `0001_baseline.sql` — next new migration should be `0002_*.sql`
+- Current highest migration: `0002_monthly_reports.sql` — next new migration should be `0003_*.sql`
 
 ### Environment variables
 
@@ -232,9 +246,10 @@ Create a `.env.local` file at the project root (never commit this file):
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<your-publishable-key>
+SUPABASE_SECRET_KEY=<your-secret-key>
 ```
 
-Both values are found in Supabase under **Project Settings → API**.
+All three values are found in Supabase under **Project Settings → API**. The secret key (`sb_secret_...`) is used by the admin client for service-role operations and must never be exposed to the browser bundle (no `NEXT_PUBLIC_` prefix).
 
 ---
 
@@ -302,3 +317,8 @@ Route-specific helpers live in the route's `_helpers.ts`. Third-party integratio
 - **RLS subqueries are subject to other tables' RLS** — a `WITH CHECK` expression that subqueries another table runs under the caller's RLS context. If the target table's SELECT policy blocks the lookup, the policy silently fails. Always wrap cross-table checks in SECURITY DEFINER helper functions (like `is_space_creator`, `has_accepted_invitation`) to bypass the other table's RLS. Convention: name them `is_X` / `has_X`, mark them `SECURITY DEFINER STABLE`, lock `search_path = public`
 - **Installment bills compress the schedule virtually** — a template with `installments_total` emits one virtual occurrence per month starting at `installments_start_month`. Paying an entry with `installments_covered > 1` is a prepayment — one payment absorbing multiple installments; amount auto-scales to `default × covered`. The expansion helper in `ledger.ts` shifts the effective end earlier by `sum(covered - 1) across paid entries`, so the total generated coverage always lands at `installments_total` with no row-deletion dance. Progress in the UI is `sum(covered for paid) / installments_total`. Installments are gated to monthly cadence; a CHECK constraint enforces this alongside `day(start_month) = 1`
 - **`revalidatePath("/", "layout")` for membership changes** — creating a shared space, accepting an invite, or declining one changes the user's membership list. The Navbar reads memberships server-side in the root layout, which Next.js caches across navigations. Call `revalidatePath("/", "layout")` in any action that modifies `space_members` to bust this cache and make the Navbar dropdown update immediately
+- **Admin client bypasses RLS** — `src/lib/supabase/admin.ts` uses `SUPABASE_SECRET_KEY` and skips every policy. Use it only for server-only operations (cron, storage uploads, privileged writes) and only after the user-session client has validated ownership. Never expose admin-client results directly in user-facing data without an upstream RLS-equivalent check
+- **`@react-pdf/renderer` is server-only** — pulls in Node Buffer and filesystem internals. The PDF component (`src/lib/pdf/MonthlyReportPdf.tsx`) and any helper that imports it (notably `src/helpers/reports.ts`) must never be reached from a client component's import chain. Bundler errors here are confusing — when you see one, trace the import chain first
+- **Private storage bucket → signed URLs** — the `monthly-reports` bucket is private with no policies (deny-all). Reads happen via `createSignedUrl(path, ttlSeconds)` minted by the admin client; the user-session SELECT on `monthly_reports` is what authorizes the user to obtain the URL in the first place. Default TTL is 5 minutes — short enough that a leaked URL expires before it matters
+- **Prefer `is_active_member` for new tables (transitional)** — the historical pattern in this codebase is `can_read_space` for SELECT policies on new domain tables (so shared-space aggregates Just Work). With shared-space removal coming, `is_active_member` is now the future-proof default and is what `monthly_reports` uses. Pattern-match to `is_active_member` for any new domain table during this transition
+- **Server actions can `redirect()` to external URLs but it's brittle** — for the report-download flow, the action returns the signed URL as a string and the client does `window.location.href = url`. This bypasses Next.js's external-redirect handling, which can be unreliable when invoked through `useTransition`, and lets the browser handle attachment-disposition cleanly. Prefer this pattern for any "navigate to a one-off external URL" action
