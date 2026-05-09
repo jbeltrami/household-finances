@@ -1,33 +1,26 @@
-// URL builders for space-scoped routes. Centralizing every
-// `/spaces/${spaceId}/...` template literal in one place means
-// future URL-shape changes happen in exactly one file, and the
-// type checker enforces that no call site forgets the spaceId.
-//
-// Convention: every builder starts with `space` to make it
-// obvious they produce space-prefixed paths. Plain (non-space)
-// paths like `/login`, `/auth/callback`, and `/` stay inline at
-// the call site — they're short and context-free.
+// URL builders for the app's routes. With one space per user the
+// `[id]` segment was redundant (always derivable from auth), so the
+// builders no longer take `spaceId`. Centralizing every template
+// literal here means future URL-shape changes happen in exactly
+// one file, and the type checker enforces that no call site
+// fabricates URLs by hand.
 
-export function spaceMonthUrl(
-  spaceId: string,
-  year: number,
-  month: number
-): string {
-  return `/spaces/${spaceId}/months/${year}/${String(month).padStart(2, "0")}`;
+export function monthUrl(year: number, month: number): string {
+  return `/months/${year}/${String(month).padStart(2, "0")}`;
 }
 
-export function spaceBillsUrl(spaceId: string): string {
-  return `/spaces/${spaceId}/bills`;
+export function billsUrl(): string {
+  return "/bills";
 }
 
-export function spaceBillEditUrl(spaceId: string, billId: string): string {
-  return `/spaces/${spaceId}/bills/${billId}/edit`;
+export function billEditUrl(billId: string): string {
+  return `/bills/${billId}/edit`;
 }
 
-export function spaceSettingsUrl(spaceId: string): string {
-  return `/spaces/${spaceId}/settings`;
+export function settingsUrl(): string {
+  return "/settings";
 }
 
-export function spaceReportsUrl(spaceId: string): string {
-  return `/spaces/${spaceId}/reports`;
+export function reportsUrl(): string {
+  return "/reports";
 }

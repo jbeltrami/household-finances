@@ -109,9 +109,10 @@ Open [http://localhost:3000](http://localhost:3000). All routes are protected �
 
 | Route | Purpose |
 |---|---|
-| `/spaces/[id]/months/[y]/[m]` | Monthly view — income, recurring bills, one-off expenses, balance |
-| `/spaces/[id]/bills` | Recurring bill templates (create / edit / deactivate) |
-| `/spaces/[id]/reports` | Monthly PDF reports — per-month generate, bulk backfill, download |
+| `/months/[y]/[m]` | Monthly view — income, recurring bills, one-off expenses, balance |
+| `/bills` | Recurring bill templates (create / edit / deactivate) |
+| `/reports` | Monthly PDF reports — per-month generate, bulk backfill, download |
+| `/settings` | Per-user settings — rename space, monthly-report email, WhatsApp alerts |
 
 ## Architecture and conventions
 
@@ -139,6 +140,6 @@ Never rely on the proxy to keep an API route private. RLS is the real security b
 | Monthly PDF reports — settings page + email delivery via Hostinger SMTP | ✅ |
 | Monthly PDF reports — Vercel cron job for end-of-month auto-send | ✅ |
 | WhatsApp overdue-bill alerts — opt-in, daily cron via Twilio sandbox | ✅ |
-| Drop `[id]` segment from URLs (now redundant) | ⏳ planned |
+| Drop `[id]` segment from URLs (routes collapsed to `/months/[y]/[m]`, `/bills`, `/reports`, `/settings`) | ✅ |
 | Recurring income templates (biweekly / monthly cadence) | ⏳ planned |
 | Language picker (pt-BR / en-US) | ⏳ planned |

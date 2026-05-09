@@ -35,14 +35,14 @@ For historical build decisions (completed piece plans, migration narratives, rep
 - **Past months auto-lock** — locked when a new month begins; unlocking requires a written reason stored in `month_unlocks`
 - **One personal space per user** — created automatically on first Google login via a database trigger; no other "create space" flow exists
 - **Google OAuth only** — sole auth provider
-- **Monthly PDF reports** — on the 1st of each month at 08:00 São Paulo, a Vercel Cron generates a PDF mirroring the monthly view for each opted-in space and emails it (with the PDF attached) to the owner. PDFs are also browseable at `/spaces/[id]/reports` with manual generate / regenerate / send / download. Per-space opt-out lives at `/spaces/[id]/settings`
-- **WhatsApp overdue alerts** — opt-in (default off). Per-space settings at `/spaces/[id]/settings` capture an E.164 phone and an enabled flag. A daily Vercel Cron (`0 11 * * *` — 08:00 São Paulo) finds bills whose `date <= yesterday AND paid=false AND template_id IS NOT NULL`, scoped to the current month (past months are locked, so out of scope), and sends a single pt-BR digest message via Twilio WhatsApp. One alert per bill, ever (idempotency log: `whatsapp_notifications_sent`). One-off entries (`template_id IS NULL`) are expenses, not obligations, and never trigger alerts. Currently uses Twilio's free sandbox number — recipients must send `join <code>` to `+1 415 523 8886` once before any message lands
+- **Monthly PDF reports** — on the 1st of each month at 08:00 São Paulo, a Vercel Cron generates a PDF mirroring the monthly view for each opted-in space and emails it (with the PDF attached) to the owner. PDFs are also browseable at `/reports` with manual generate / regenerate / send / download. Per-space opt-out lives at `/settings`
+- **WhatsApp overdue alerts** — opt-in (default off). Settings at `/settings` capture an E.164 phone and an enabled flag. A daily Vercel Cron (`0 11 * * *` — 08:00 São Paulo) finds bills whose `date <= yesterday AND paid=false AND template_id IS NOT NULL`, scoped to the current month (past months are locked, so out of scope), and sends a single pt-BR digest message via Twilio WhatsApp. One alert per overdue stretch per bill (idempotency log: `whatsapp_notifications_sent`; cleared when a bill flips to paid so a flip back to unpaid re-arms it). One-off entries (`template_id IS NULL`) are expenses, not obligations, and never trigger alerts. Currently uses Twilio's free sandbox number — recipients must send `join <code>` to `+1 415 523 8886` once before any message lands
 
 ---
 
 ## Core concept: Spaces
 
-A Space is a budget context. Every user has exactly one personal space, auto-created on first Google login by the `on_auth_user_created` trigger. The space is owned by the user (`spaces.created_by = auth.users.id`); ownership is the sole access concept. URLs are still space-prefixed (`/spaces/[id]/...`) — see Future improvements for the planned URL collapse.
+A Space is a budget context. Every user has exactly one personal space, auto-created on first Google login by the `on_auth_user_created` trigger. The space is owned by the user (`spaces.created_by = auth.users.id`); ownership is the sole access concept. URLs are space-less (`/months/[y]/[m]`, `/bills`, `/reports`, `/settings`) — server pages resolve the user's `spaceId` via `getPersonalSpaceId(supabase)` and pass it into queries and component props. The `space_id` FK on every domain table stays so the data model can grow back if needed.
 
 ---
 
@@ -96,7 +96,7 @@ monthly_report_settings
 
 ### How the monthly view works
 
-A month is purely a UI lens over the date-keyed data layer. The page at `/spaces/[spaceId]/months/[year]/[month]` does the following:
+A month is purely a UI lens over the date-keyed data layer. The page at `/months/[year]/[month]` does the following:
 
 1. Compute the date range `[first-of-month, last-of-month]`
 2. Call `getEntriesForMonth(supabase, spaceIds, year, month)` — see `src/helpers/ledger.ts`. This returns `ResolvedEntry[]` by:
@@ -116,7 +116,7 @@ Virtual entries have `id = null`. Mutations on a virtual entry materialize a new
 1. User lands on app → clicks "Sign in with Google"
 2. Google OAuth → Supabase handles the redirect
 3. On first login, a DB trigger (`on_auth_user_created`) fires and creates a personal space named after the user's Google display name. The space's owner is recorded in `spaces.created_by`
-4. The home route (`/`) redirects to the user's current month at `/spaces/[id]/months/[y]/[m]`
+4. The home route (`/`) redirects to the user's current month at `/months/[y]/[m]`
 
 ---
 
@@ -150,9 +150,9 @@ Net so far (received - paid)   R$18.530
 
 ## Future improvements
 
-- **Drop the `[id]` segment from URLs.** With one space per user, `/spaces/[id]/months/...`, `/spaces/[id]/bills`, `/spaces/[id]/reports`, `/spaces/[id]/settings`, etc. are noise — the `[id]` is always derivable from the user. Plan: collapse to `/months/[y]/[m]`, `/bills`, `/reports`, `/settings`, etc. Resolve the user's space ID server-side from `auth.uid()` and use it in DB queries. Touches every route definition + every URL builder in `src/helpers/paths.ts` + every `revalidatePath` call. Cleanup-only refactor — no functional change.
+- **Tighten action signatures (drop redundant `spaceId` params).** Many server actions still accept `spaceId` as a parameter, even though every action could resolve it internally via `getPersonalSpaceId(supabase)`. Keeping the param was the smallest path through the URL refactor; the cleanup is to drop `spaceId` from action signatures and the prop chains that feed them, and look it up server-side instead. Pure cleanup, no behavior change.
 - **Language picker (i18n).** UI labels are currently English-only; pt-BR appears only in user-facing artifacts (PDF body, email body, monthly view month labels). Future work: a per-user language preference (pt-BR / en-US) that flips both the UI surface and the document/email language consistently. Stored on the user (or per-space) and respected by both server-rendered text and the PDF/email templates.
-- **Recurring income templates.** Income recurrence was split out so Piece 5 could ship simple one-off entries first. Real-world paychecks often follow a **biweekly cycle** (every other Thursday) that doesn't align with month boundaries — a calendar month can contain 0–3 paychecks depending on alignment. With the ledger model in place this is a small extension: a `recurring_income_templates` table mirroring `recurring_bill_templates` (cadence: `biweekly | monthly`, anchor or due-day), `income_entries` gaining a nullable `template_id` and following the same virtual-expansion + exception-row pattern as bills, and a new `/spaces/[id]/income` page mirroring `/bills`. The `expandTemplateForMonth` helper in `src/helpers/ledger.ts` already handles all three cadences and can be generalized for income.
+- **Recurring income templates.** Income recurrence was split out so Piece 5 could ship simple one-off entries first. Real-world paychecks often follow a **biweekly cycle** (every other Thursday) that doesn't align with month boundaries — a calendar month can contain 0–3 paychecks depending on alignment. With the ledger model in place this is a small extension: a `recurring_income_templates` table mirroring `recurring_bill_templates` (cadence: `biweekly | monthly`, anchor or due-day), `income_entries` gaining a nullable `template_id` and following the same virtual-expansion + exception-row pattern as bills, and a new `/income` page mirroring `/bills`. The `expandTemplateForMonth` helper in `src/helpers/ledger.ts` already handles all three cadences and can be generalized for income.
 
 ---
 

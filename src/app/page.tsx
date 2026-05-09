@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
-import { spaceMonthUrl } from "@/helpers/paths";
+import { monthUrl } from "@/helpers/paths";
 
 // With one space per user, a "list of spaces" landing page is
 // noise — send the user straight to their current month.
@@ -21,5 +21,5 @@ export default async function HomePage() {
   }
 
   const now = new Date();
-  redirect(spaceMonthUrl(spaceId, now.getFullYear(), now.getMonth() + 1));
+  redirect(monthUrl(now.getFullYear(), now.getMonth() + 1));
 }

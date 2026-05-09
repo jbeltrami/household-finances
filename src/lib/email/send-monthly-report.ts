@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { spaceReportsUrl, spaceSettingsUrl } from "@/helpers/paths";
+import { reportsUrl, settingsUrl } from "@/helpers/paths";
 import { formatMonthLabel } from "@/helpers/date";
 import { getFromAddress, getTransport } from "./transport";
 import { renderMonthlyReportEmail } from "./MonthlyReportEmail";
@@ -45,8 +45,8 @@ export async function performMonthlyReportSend(
   const fullName = userResp.user.user_metadata?.full_name as string | undefined;
   const userName = fullName ?? userEmail.split("@")[0];
 
-  const dashboardUrl = `${baseUrl}${spaceReportsUrl(report.space_id)}`;
-  const settingsUrl = `${baseUrl}${spaceSettingsUrl(report.space_id)}`;
+  const dashboardUrl = `${baseUrl}${reportsUrl()}`;
+  const settingsLinkUrl = `${baseUrl}${settingsUrl()}`;
   const monthLabel = capitalize(formatMonthLabel(report.year, report.month));
 
   const { data: pdfBlob, error: dlError } = await admin.storage
@@ -61,7 +61,7 @@ export async function performMonthlyReportSend(
     userName,
     monthLabel,
     dashboardUrl,
-    settingsUrl,
+    settingsUrl: settingsLinkUrl,
   });
 
   const transport = getTransport();

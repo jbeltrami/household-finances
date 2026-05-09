@@ -4,9 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import {
-  spaceBillsUrl,
-  spaceReportsUrl,
-  spaceSettingsUrl,
+  billsUrl,
+  reportsUrl,
+  settingsUrl,
 } from "@/helpers/paths";
 import SignOutButton from "./SignOutButton";
 
@@ -84,13 +84,13 @@ export default function NavbarNav({
 
         {/* Center: desktop nav links (hidden on mobile) */}
         <div className="hidden items-center gap-6 md:flex">
-          <Link href={spaceBillsUrl(spaceId)} className={linkClass}>
+          <Link href={billsUrl()} className={linkClass}>
             Bills
           </Link>
-          <Link href={spaceReportsUrl(spaceId)} className={linkClass}>
+          <Link href={reportsUrl()} className={linkClass}>
             Reports
           </Link>
-          <Link href={spaceSettingsUrl(spaceId)} className={linkClass}>
+          <Link href={settingsUrl()} className={linkClass}>
             Settings
           </Link>
         </div>
@@ -121,21 +121,21 @@ export default function NavbarNav({
         <div className="border-t border-gray-200 bg-white px-4 pb-4 pt-3 dark:border-gray-800 dark:bg-gray-900 md:hidden">
           <div className="flex flex-col gap-2">
             <Link
-              href={spaceBillsUrl(spaceId)}
+              href={billsUrl()}
               onClick={closeMenu}
               className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               Bills
             </Link>
             <Link
-              href={spaceReportsUrl(spaceId)}
+              href={reportsUrl()}
               onClick={closeMenu}
               className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               Reports
             </Link>
             <Link
-              href={spaceSettingsUrl(spaceId)}
+              href={settingsUrl()}
               onClick={closeMenu}
               className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
