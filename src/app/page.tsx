@@ -7,7 +7,6 @@ import { getEntriesForMonth } from "@/helpers/ledger";
 import {
   spaceBillsUrl,
   spaceMonthUrl,
-  spaceSavingsUrl,
   spaceSettingsUrl,
 } from "@/helpers/paths";
 import { getAggregateSpaceIds } from "@/helpers/spaces";
@@ -26,8 +25,6 @@ type SpaceSummary = SpaceRow & {
   memberCount: number;
   netSoFar: number;
   stillToPay: number;
-  savingsNet: number;
-  totalSavings: number;
 };
 
 async function computeSummary(
@@ -38,37 +35,11 @@ async function computeSummary(
 ): Promise<SpaceSummary> {
   const spaceIds = await getAggregateSpaceIds(supabase, space.id);
 
-  const [{ count: memberCount }, fundsRes] = await Promise.all([
-    supabase
-      .from("space_members")
-      .select("*", { count: "exact", head: true })
-      .eq("space_id", space.id)
-      .is("left_at", null),
-    supabase
-      .from("savings_funds")
-      .select("id, starting_balance")
-      .in("space_id", spaceIds),
-  ]);
-
-  const funds = fundsRes.data ?? [];
-  const startingBalanceSum = funds.reduce(
-    (s, f) => s + Number(f.starting_balance),
-    0
-  );
-
-  let allContributionsSum = 0;
-  if (funds.length > 0) {
-    const fundIds = funds.map((f) => f.id);
-    const { data: allContributions } = await supabase
-      .from("savings_contributions")
-      .select("amount")
-      .in("fund_id", fundIds);
-    allContributionsSum = (allContributions ?? []).reduce(
-      (s, c) => s + Number(c.amount),
-      0
-    );
-  }
-  const totalSavings = startingBalanceSum + allContributionsSum;
+  const { count: memberCount } = await supabase
+    .from("space_members")
+    .select("*", { count: "exact", head: true })
+    .eq("space_id", space.id)
+    .is("left_at", null);
 
   // Resolved entries for the current month (virtual + materialized).
   const entries = await getEntriesForMonth(
@@ -106,35 +77,14 @@ async function computeSummary(
 
   const totalExpenses = expenseEntries.reduce((s, e) => s + e.amount, 0);
 
-  let savingsNet = 0;
-  if (funds.length > 0) {
-    const fundIds = funds.map((f) => f.id);
-    const { data: monthContributions } = await supabase
-      .from("savings_contributions")
-      .select("amount")
-      .in("fund_id", fundIds)
-      .gte("date", start)
-      .lte("date", end);
-    savingsNet = (monthContributions ?? []).reduce(
-      (s, c) => s + Number(c.amount),
-      0
-    );
-  }
-
   const netSoFar =
-    receivedIncome -
-    paidBills -
-    overdueUnpaidBills -
-    totalExpenses -
-    savingsNet;
+    receivedIncome - paidBills - overdueUnpaidBills - totalExpenses;
 
   return {
     ...space,
     memberCount: memberCount ?? 1,
     netSoFar,
     stillToPay,
-    savingsNet,
-    totalSavings,
   };
 }
 
@@ -216,7 +166,7 @@ export default async function Dashboard() {
               )}
             </div>
 
-            <dl className="mt-3 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+            <dl className="mt-3 grid grid-cols-2 gap-4 text-sm">
               <div>
                 <dt className="text-xs text-gray-500 dark:text-gray-400">
                   Net so far
@@ -235,32 +185,6 @@ export default async function Dashboard() {
                   {brlFormatter.format(s.stillToPay)}
                 </dd>
               </div>
-              <div>
-                <dt className="text-xs text-gray-500 dark:text-gray-400">
-                  Saved this month
-                </dt>
-                <dd
-                  className={`mt-0.5 font-semibold ${
-                    s.savingsNet > 0
-                      ? "text-gray-900 dark:text-gray-100"
-                      : s.savingsNet < 0
-                      ? "text-red-600 dark:text-red-400"
-                      : "text-gray-500 dark:text-gray-400"
-                  }`}
-                >
-                  {brlFormatter.format(s.savingsNet)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-gray-500 dark:text-gray-400">
-                  Total savings
-                </dt>
-                <dd
-                  className={`mt-0.5 font-semibold ${colorClass(s.totalSavings)}`}
-                >
-                  {brlFormatter.format(s.totalSavings)}
-                </dd>
-              </div>
             </dl>
 
             <div className="relative z-10 mt-4 flex items-center gap-4 text-xs font-medium">
@@ -275,12 +199,6 @@ export default async function Dashboard() {
                 className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
               >
                 Bills &rarr;
-              </Link>
-              <Link
-                href={spaceSavingsUrl(s.id)}
-                className="text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
-              >
-                Savings &rarr;
               </Link>
               {s.type === "shared" && (
                 <Link

@@ -24,14 +24,6 @@ export function spaceBillEditUrl(spaceId: string, billId: string): string {
   return `/spaces/${spaceId}/bills/${billId}/edit`;
 }
 
-export function spaceSavingsUrl(spaceId: string): string {
-  return `/spaces/${spaceId}/savings`;
-}
-
-export function spaceFundUrl(spaceId: string, fundId: string): string {
-  return `/spaces/${spaceId}/savings/${fundId}`;
-}
-
 export function spaceSettingsUrl(spaceId: string): string {
   return `/spaces/${spaceId}/settings`;
 }

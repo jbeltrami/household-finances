@@ -26,8 +26,7 @@ export default function MonthlyViewClient({
   const hasAnyData = !!(
     bills.entries.length ||
     income.entries.length ||
-    expenses.entries.length ||
-    balance.savingsNet
+    expenses.entries.length
   );
   const [highlightedDay, setHighlightedDay] = useState<number | null>(null);
 

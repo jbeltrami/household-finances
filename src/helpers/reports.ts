@@ -40,7 +40,6 @@ export type MonthlyReportData = {
     receivedIncome: number;
     stillToReceive: number;
     totalExpenses: number;
-    savingsNet: number;
     netExpected: number;
     netSoFar: number;
   };
@@ -48,8 +47,8 @@ export type MonthlyReportData = {
 
 // Fetch the full data needed to render a monthly report PDF for the
 // given personal space + month. Returns null when the month has no
-// data of any kind (no entries, income, or savings contributions),
-// which the caller treats as "skip — nothing to report".
+// data of any kind (no entries or income), which the caller treats
+// as "skip — nothing to report".
 export async function getMonthlyReportData(
   supabase: SupabaseClient,
   spaceId: string,
@@ -86,32 +85,7 @@ export async function getMonthlyReportData(
     received: i.received as boolean,
   }));
 
-  const { data: funds } = await supabase
-    .from("savings_funds")
-    .select("id")
-    .eq("space_id", spaceId);
-  const fundIds = (funds ?? []).map((f) => f.id as string);
-
-  let savingsNet = 0;
-  if (fundIds.length > 0) {
-    const { data: contributions } = await supabase
-      .from("savings_contributions")
-      .select("amount")
-      .in("fund_id", fundIds)
-      .gte("date", start)
-      .lte("date", end);
-    savingsNet = (contributions ?? []).reduce(
-      (sum, c) => sum + Number(c.amount),
-      0
-    );
-  }
-
-  if (
-    bills.length === 0 &&
-    expenses.length === 0 &&
-    income.length === 0 &&
-    savingsNet === 0
-  ) {
+  if (bills.length === 0 && expenses.length === 0 && income.length === 0) {
     return null;
   }
 
@@ -130,20 +104,16 @@ export async function getMonthlyReportData(
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
   // Mirror the monthly view's netSoFar formula. For past months this
-  // collapses to received - totalBills - expenses - savings since
-  // every unpaid bill is overdue by definition.
+  // collapses to received - totalBills - expenses since every unpaid
+  // bill is overdue by definition.
   const today = todayYmd();
   const overdueUnpaidBills = bills
     .filter((e) => !e.paid && e.date <= today)
     .reduce((s, e) => s + e.amount, 0);
 
-  const netExpected = totalIncome - totalBills - totalExpenses - savingsNet;
+  const netExpected = totalIncome - totalBills - totalExpenses;
   const netSoFar =
-    receivedIncome -
-    paidBills -
-    overdueUnpaidBills -
-    totalExpenses -
-    savingsNet;
+    receivedIncome - paidBills - overdueUnpaidBills - totalExpenses;
 
   return {
     spaceName: space.name as string,
@@ -160,7 +130,6 @@ export async function getMonthlyReportData(
       receivedIncome,
       stillToReceive,
       totalExpenses,
-      savingsNet,
       netExpected,
       netSoFar,
     },
@@ -168,10 +137,10 @@ export async function getMonthlyReportData(
 }
 
 // Enumerate past calendar months that contain any data for the given
-// personal space. "Data" = at least one materialized entry, income
-// row, or savings contribution in the month, OR an active recurring
-// template whose virtual expansion covers the month. Sorted newest
-// first so the reports page can render directly.
+// personal space. "Data" = at least one materialized entry or income
+// row in the month, OR an active recurring template whose virtual
+// expansion covers the month. Sorted newest first so the reports
+// page can render directly.
 export async function listNonEmptyPastMonths(
   supabase: SupabaseClient,
   spaceId: string
@@ -211,21 +180,6 @@ export async function listNonEmptyPastMonths(
     .lt("expected_date", currentMonthFirst);
   for (const r of income ?? [])
     yms.add((r.expected_date as string).slice(0, 7));
-
-  const { data: funds } = await supabase
-    .from("savings_funds")
-    .select("id")
-    .eq("space_id", spaceId);
-  const fundIds = (funds ?? []).map((f) => f.id as string);
-  if (fundIds.length > 0) {
-    const { data: contribs } = await supabase
-      .from("savings_contributions")
-      .select("date")
-      .in("fund_id", fundIds)
-      .gte("date", startDate)
-      .lt("date", currentMonthFirst);
-    for (const r of contribs ?? []) yms.add((r.date as string).slice(0, 7));
-  }
 
   // Active templates: every month their virtual expansion covers
   // counts as non-empty, since the report would include those rows.

@@ -39,7 +39,6 @@ For historical build decisions (completed piece plans, migration narratives, rep
 - **Data flows one way** — personal → shared only; a personal-space entry seen in the shared view is read-only there; the shared space can have its *own* entries (joint expenses), which are writable only from within the shared view; entries always belong to the space they were created in
 - **Historical participation preserved** — when someone leaves a shared space, their past entries remain visible in historical months with correct attribution
 - **Shared-space entries** — the shared space can also have its own entries (joint expenses not belonging to any specific member)
-- **Savings funds** — live outside the monthly cycle; contributions are date-keyed; total = starting_balance + sum of all contributions
 - **Google OAuth only** — first login auto-creates the user's personal space via a database trigger
 - **Invite by email** — shared-space owners invite by email; pending invites wait for the person to sign up if they don't have an account yet; accepted/declined via dashboard banner
 - **Monthly PDF reports** — on the 1st of each month at 08:00 São Paulo, a Vercel Cron generates a PDF mirroring the monthly view for each opted-in personal space and emails it (with the PDF attached) to the owner. PDFs are also browseable at `/spaces/[id]/reports` with manual generate / regenerate / send / download. Per-space opt-out lives at `/spaces/[id]/settings`. Personal spaces only — shared-space members do not get auto-emailed reports
@@ -108,12 +107,6 @@ month_unlocks
 income_entries
   id, space_id, expected_date, name, amount, currency, received, created_at
 
-savings_funds
-  id, space_id, name, currency, starting_balance, created_at
-
-savings_contributions
-  id, fund_id, date, amount (signed), notes, created_at
-
 monthly_reports
   id, space_id, year, month
   storage_path                          -- {space_id}/{year}-{month}.pdf
@@ -136,7 +129,7 @@ A month is purely a UI lens over the date-keyed data layer. The page at `/spaces
    - Walking each active template and expanding virtual occurrences in the range (monthly/weekly/biweekly)
    - Dropping virtual occurrences that already have a materialized exception
    - Filtering out `skipped` materialized rows
-3. Fetch income and savings contributions by date range directly
+3. Fetch income by date range directly
 4. Compute lock state: `(year, month)` strictly past AND no row in `month_unlocks` → locked
 
 Virtual entries have `id = null`. Mutations on a virtual entry materialize a new row in `entries` first; mutations on materialized rows update/delete them directly.
@@ -216,7 +209,7 @@ Net so far (received - paid)   R$18.530
 - RLS: enabled on all tables
 - Auth provider: Google OAuth only
 - Migrations live in `supabase/migrations/` (see `history.md` for the evolution story)
-- Current highest migration: `0004_whatsapp_notifications.sql` — next new migration should be `0005_*.sql`
+- Current highest migration: `0005_drop_savings.sql` — next new migration should be `0006_*.sql`
 
 ### Environment variables
 
@@ -290,9 +283,6 @@ Route-specific helpers live in the route's `_helpers.ts`. Third-party integratio
 - **"Net so far" subtracts overdue unpaid bills** — `netSoFar` subtracts `paidBills` **and** `overdueUnpaidBills` (unpaid entries whose `date <= today`). The rationale: those bills represent money that should already be gone from the account, even if the user hasn't ticked them paid yet. If you ever refactor this math, keep the two filters separate — one by `paid`, one by `date` — so paid future-dated bills don't get double-counted
 - **Calendar dot color encodes urgency** — `CalendarStrip` renders a **blue** dot for days with bills/expenses and a **red** dot when at least one bill due that day is overdue and unpaid. The page computes `daysWithOverdueBills` server-side using `todayYmd()` string comparison against each entry's `date`, so no client-side date math is needed
 - **Date string helpers live in `src/helpers/date.ts`** — use `todayYmd()` (`"YYYY-MM-DD"`) for comparison against Postgres `date` columns and `currentYearMonth()` (`"YYYY-MM"`) as the default value for native `<input type="month">`. `getMonthRange(year, month)` returns inclusive `{start, end}` strings for date-range queries. All plain string formatters — no timezone parsing involved
-- **Savings contributions use signed amounts** — the form has two buttons ("Deposit" / "Withdraw") but a single `amount` column. `parseContributionFields` returns `signedAmount` (positive for deposits, negative for withdrawals). Downstream sums, balance math, and display logic all treat `amount` as pure algebra — never re-flip the sign based on the UI button
-- **Savings contributions inherit access from their parent fund** — `savings_contributions` has no `space_id`. Its RLS policies walk the FK to `savings_funds` and call `is_active_member(f.space_id)` or `can_read_space(f.space_id)` there. This is what makes shared-space funds work automatically — no extra wiring needed when fund ownership spans multiple users
-- **Monthly view's savings row is read-only** — `BalanceSection` shows "Saved this month" as a derived sum from `savings_contributions` scoped to the current month (date range, not `month_id`). There's no inline add/edit on the monthly page; all savings CRUD happens under `/spaces/[spaceId]/savings`. The page does still pass `savingsNet` into both `netExpected` and `netSoFar` so the balance totals reflect the cash reality after deposits/withdrawals
 - **Supabase INSERT + `.select()` + RLS chicken-and-egg** — if you create a row and immediately need its ID via `.select().single()`, PostgREST evaluates the RETURNING clause against the SELECT RLS policy. If the SELECT policy requires membership that doesn't exist yet (e.g. creating a space before adding yourself as a member), the RETURNING is blocked and Supabase surfaces an RLS error. Fix: generate the UUID client-side with `crypto.randomUUID()` and pass it in the insert, bypassing the need for `.select().single()` entirely
 - **RLS subqueries are subject to other tables' RLS** — a `WITH CHECK` expression that subqueries another table runs under the caller's RLS context. If the target table's SELECT policy blocks the lookup, the policy silently fails. Always wrap cross-table checks in SECURITY DEFINER helper functions (like `is_space_creator`, `has_accepted_invitation`) to bypass the other table's RLS. Convention: name them `is_X` / `has_X`, mark them `SECURITY DEFINER STABLE`, lock `search_path = public`
 - **Installment bills compress the schedule virtually** — a template with `installments_total` emits one virtual occurrence per month starting at `installments_start_month`. Paying an entry with `installments_covered > 1` is a prepayment — one payment absorbing multiple installments; amount auto-scales to `default × covered`. The expansion helper in `ledger.ts` shifts the effective end earlier by `sum(covered - 1) across paid entries`, so the total generated coverage always lands at `installments_total` with no row-deletion dance. Progress in the UI is `sum(covered for paid) / installments_total`. Installments are gated to monthly cadence; a CHECK constraint enforces this alongside `day(start_month) = 1`

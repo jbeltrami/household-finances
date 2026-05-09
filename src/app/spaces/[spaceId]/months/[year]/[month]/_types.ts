@@ -64,7 +64,6 @@ export type ExpensesGroup = {
 };
 
 export type BalanceGroup = {
-  savingsNet: number;
   netExpected: number;
   netSoFar: number;
 };

@@ -21,22 +21,6 @@ export default function BalanceSection({ balance }: Props) {
       </h2>
       <dl className="mt-4 space-y-2 rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="flex items-baseline justify-between">
-          <dt className="text-gray-600 dark:text-gray-400">
-            Saved this month
-          </dt>
-          <dd
-            className={`text-sm font-medium ${
-              balance.savingsNet > 0
-                ? "text-gray-900 dark:text-gray-100"
-                : balance.savingsNet < 0
-                ? "text-red-600 dark:text-red-400"
-                : "text-gray-500 dark:text-gray-400"
-            }`}
-          >
-            {brlFormatter.format(balance.savingsNet)}
-          </dd>
-        </div>
-        <div className="flex items-baseline justify-between">
           <dt className="text-gray-600 dark:text-gray-400">Expected net</dt>
           <dd className={`text-lg font-semibold ${colorClass(balance.netExpected)}`}>
             {brlFormatter.format(balance.netExpected)}

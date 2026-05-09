@@ -1,6 +1,6 @@
 # Home Finances App
 
-A personal finance planner. Each user manages their own monthly finances — income, recurring bills, one-off expenses, savings — and can download a PDF summary of any past month.
+A personal finance planner. Each user manages their own monthly finances — income, recurring bills, one-off expenses — and can download a PDF summary of any past month.
 
 > Built on Supabase + Next.js + Vercel. Personal-only spaces; shared-space functionality is being phased out (see [`CLAUDE.md`](./CLAUDE.md) → Future improvements).
 
@@ -109,9 +109,8 @@ Open [http://localhost:3000](http://localhost:3000). All routes are protected �
 
 | Route | Purpose |
 |---|---|
-| `/spaces/[id]/months/[y]/[m]` | Monthly view — income, recurring bills, one-off expenses, savings, balance |
+| `/spaces/[id]/months/[y]/[m]` | Monthly view — income, recurring bills, one-off expenses, balance |
 | `/spaces/[id]/bills` | Recurring bill templates (create / edit / deactivate) |
-| `/spaces/[id]/savings` | Savings funds and contributions |
 | `/spaces/[id]/reports` | Monthly PDF reports — per-month generate, bulk backfill, download |
 
 ## Architecture and conventions
@@ -136,7 +135,6 @@ Never rely on the proxy to keep an API route private. RLS is the real security b
 | Supabase schema + Google OAuth + personal-space trigger | ✅ |
 | Recurring bill templates | ✅ |
 | Monthly view (income, bills, expenses, balance) | ✅ |
-| Savings funds + contributions | ✅ |
 | Shared spaces (parent linking, invite flow, aggregate view) | ✅ (slated for removal) |
 | Monthly PDF reports — generation, storage, download | ✅ |
 | Monthly PDF reports — settings page + email delivery via Hostinger SMTP | ✅ |

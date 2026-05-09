@@ -115,24 +115,3 @@ export async function checkIncomeEntryEditable(
 
   return checkDateEditable(supabase, data.space_id, data.expected_date);
 }
-
-// For savings contributions — walk the FK to the fund to get space_id.
-export async function checkSavingsContributionEditable(
-  supabase: SupabaseClient,
-  contributionId: string
-): Promise<EditCheckResult> {
-  const { data } = await supabase
-    .from("savings_contributions")
-    .select("date, savings_funds!inner(space_id)")
-    .eq("id", contributionId)
-    .maybeSingle();
-
-  if (!data) return { ok: false, error: "Contribution not found" };
-
-  const row = data as unknown as {
-    date: string;
-    savings_funds: { space_id: string };
-  };
-
-  return checkDateEditable(supabase, row.savings_funds.space_id, row.date);
-}

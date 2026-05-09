@@ -60,8 +60,7 @@ export default async function MonthlyViewPage({
     (e) => e.template_id == null
   );
 
-  // Income and savings are queried directly since they have no
-  // virtual-expansion layer.
+  // Income is queried directly since it has no virtual-expansion layer.
   const { start, end } = getMonthRange(year, month);
 
   const { data: rawIncome } = await supabase
@@ -80,31 +79,6 @@ export default async function MonthlyViewPage({
     expected_date: i.expected_date,
     received: i.received,
   }));
-
-  // Savings contributions scoped by fund → space via FK walk. We
-  // fetch every fund in the aggregate spaces and sum this month's
-  // contributions for the balance row.
-  const { data: funds } = await supabase
-    .from("savings_funds")
-    .select("id")
-    .in("space_id", spaceIds);
-
-  const fundIds = (funds ?? []).map((f) => f.id);
-
-  let savingsNet = 0;
-  if (fundIds.length > 0) {
-    const { data: contributions } = await supabase
-      .from("savings_contributions")
-      .select("amount")
-      .in("fund_id", fundIds)
-      .gte("date", start)
-      .lte("date", end);
-
-    savingsNet = (contributions ?? []).reduce(
-      (sum, c) => sum + Number(c.amount),
-      0
-    );
-  }
 
   const today = todayYmd();
 
@@ -160,13 +134,9 @@ export default async function MonthlyViewPage({
 
   const totalExpenses = expenseEntries.reduce((s, e) => s + e.amount, 0);
 
-  const netExpected = totalIncome - totalBills - totalExpenses - savingsNet;
+  const netExpected = totalIncome - totalBills - totalExpenses;
   const netSoFar =
-    receivedIncome -
-    paidBills -
-    overdueUnpaidBills -
-    totalExpenses -
-    savingsNet;
+    receivedIncome - paidBills - overdueUnpaidBills - totalExpenses;
 
   const attributions =
     spaceIds.length > 1
@@ -204,7 +174,7 @@ export default async function MonthlyViewPage({
           stillExpected: stillToReceive,
         }}
         expenses={{ entries: expenseEntries, total: totalExpenses }}
-        balance={{ savingsNet, netExpected, netSoFar }}
+        balance={{ netExpected, netSoFar }}
         attributions={attributions}
       />
     </div>

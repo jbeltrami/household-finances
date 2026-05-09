@@ -258,12 +258,6 @@ function MonthlyReportPdf({ data, generatedAt }: Props) {
                 {brlFormatter.format(totals.netSoFar)}
               </Text>
             </View>
-            <View style={styles.balanceRow}>
-              <Text style={styles.balanceLabel}>Poupança no mês</Text>
-              <Text style={styles.balanceValue}>
-                {brlFormatter.format(totals.savingsNet)}
-              </Text>
-            </View>
           </View>
         </View>
 

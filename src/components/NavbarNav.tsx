@@ -8,7 +8,6 @@ import {
   spaceBillsUrl,
   spaceMonthUrl,
   spaceReportsUrl,
-  spaceSavingsUrl,
   spaceSettingsUrl,
 } from "@/helpers/paths";
 import SignOutButton from "./SignOutButton";
@@ -36,7 +35,7 @@ function displayLabel(space: NavbarSpace): string {
 }
 
 // Client half of the Navbar. Owns everything that depends on the
-// current URL — the space switcher dropdown and the Bills/Savings
+// current URL — the space switcher dropdown and the per-space
 // links both need to know which space the user is viewing to render
 // correctly. Also owns the mobile hamburger menu state.
 export default function NavbarNav({ spaces, avatarUrl, initials }: Props) {
@@ -148,9 +147,6 @@ export default function NavbarNav({ spaces, avatarUrl, initials }: Props) {
             <Link href={spaceBillsUrl(currentSpaceId)} className={linkClass}>
               Bills
             </Link>
-            <Link href={spaceSavingsUrl(currentSpaceId)} className={linkClass}>
-              Savings
-            </Link>
             {currentSpace?.type === "personal" && (
               <Link
                 href={spaceReportsUrl(currentSpaceId)}
@@ -228,13 +224,6 @@ export default function NavbarNav({ spaces, avatarUrl, initials }: Props) {
                   className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
                 >
                   Bills
-                </Link>
-                <Link
-                  href={spaceSavingsUrl(currentSpaceId)}
-                  onClick={closeMenu}
-                  className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                >
-                  Savings
                 </Link>
                 {currentSpace?.type === "personal" && (
                   <Link
