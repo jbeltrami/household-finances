@@ -29,14 +29,11 @@ export async function generateMissingReports(
 
   const { data: space } = await supabase
     .from("spaces")
-    .select("type, created_by")
+    .select("created_by")
     .eq("id", spaceId)
     .single();
 
   if (!space) throw new Error("Space not found");
-  if (space.type !== "personal") {
-    throw new Error("Reports are only available for personal spaces");
-  }
   if (space.created_by !== user.id) {
     throw new Error("Only the space owner can generate reports");
   }

@@ -3,10 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { todayYmd, getMonthRange } from "@/helpers/date";
 import { fetchMonthUnlock, isMonthLocked } from "@/helpers/lock";
 import { getEntriesForMonth } from "@/helpers/ledger";
-import {
-  getAggregateSpaceIds,
-  getSpaceAttributions,
-} from "@/helpers/spaces";
 import { buildMonthOptions } from "./_helpers";
 import MonthlyViewClient from "./_components/MonthlyViewClient/MonthlyViewClient";
 import type { EntryRow, IncomeRow } from "./_types";
@@ -26,7 +22,7 @@ export default async function MonthlyViewPage({
 
   const supabase = await createClient();
 
-  const spaceIds = await getAggregateSpaceIds(supabase, spaceId);
+  const spaceIds = [spaceId];
 
   // Lock state: unlocked if there's a row in month_unlocks for this
   // (space, year, month) OR if the month is current/future.
@@ -138,11 +134,6 @@ export default async function MonthlyViewPage({
   const netSoFar =
     receivedIncome - paidBills - overdueUnpaidBills - totalExpenses;
 
-  const attributions =
-    spaceIds.length > 1
-      ? await getSpaceAttributions(supabase, spaceIds)
-      : {};
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <MonthlyViewClient
@@ -175,7 +166,6 @@ export default async function MonthlyViewPage({
         }}
         expenses={{ entries: expenseEntries, total: totalExpenses }}
         balance={{ netExpected, netSoFar }}
-        attributions={attributions}
       />
     </div>
   );

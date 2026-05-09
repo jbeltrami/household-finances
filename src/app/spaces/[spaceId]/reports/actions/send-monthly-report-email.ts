@@ -29,13 +29,10 @@ export async function sendMonthlyReportEmail(reportId: string) {
 
   const { data: space } = await supabase
     .from("spaces")
-    .select("type, created_by")
+    .select("created_by")
     .eq("id", report.space_id)
     .single();
   if (!space) throw new Error("Space not found");
-  if (space.type !== "personal") {
-    throw new Error("Only personal-space reports can be emailed");
-  }
   if (space.created_by !== user.id) {
     throw new Error("Only the space owner can send reports");
   }

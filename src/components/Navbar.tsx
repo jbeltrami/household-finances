@@ -1,13 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import NavbarNav, { type NavbarSpace } from "./NavbarNav";
-
-type MembershipRow = {
-  spaces: {
-    id: string;
-    name: string;
-    type: "personal" | "shared";
-  };
-};
+import NavbarNav from "./NavbarNav";
 
 function getInitials(name: string): string {
   return name
@@ -24,36 +16,19 @@ export default async function Navbar() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // The middleware redirects unauthenticated users to /login before any page
-  // renders, so if there's no user we don't render the navbar at all.
+  // The proxy redirects unauthenticated users to /login before any
+  // page renders, so we don't render the navbar at all if absent.
   if (!user) return null;
 
-  // Every space the user is an *active* direct member of (left_at IS NULL).
-  // We query through space_members rather than spaces directly because the
-  // can_read_space RLS policy also returns linked personal spaces for
-  // shared-space members — those belong to other users and should not
-  // appear in the switcher.
-  const { data: rawMemberships } = await supabase
-    .from("space_members")
-    .select("spaces!inner(id, name, type)")
-    .eq("user_id", user.id)
-    .is("left_at", null);
+  // The user has exactly one personal space (created by the
+  // on_auth_user_created trigger at signup).
+  const { data: space } = await supabase
+    .from("spaces")
+    .select("id, name")
+    .eq("created_by", user.id)
+    .single();
 
-  const memberships = (rawMemberships ?? []) as unknown as MembershipRow[];
-
-  // Personal space first (it's your "home" context), shared spaces after
-  // sorted alphabetically. The server sort means the dropdown order is
-  // stable across renders without any client-side work.
-  const spaces: NavbarSpace[] = memberships
-    .map((m) => ({
-      id: m.spaces.id,
-      name: m.spaces.name,
-      type: m.spaces.type,
-    }))
-    .sort((a, b) => {
-      if (a.type !== b.type) return a.type === "personal" ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
+  if (!space) return null;
 
   const fullName = user.user_metadata?.full_name as string | undefined;
   const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
@@ -62,7 +37,8 @@ export default async function Navbar() {
 
   return (
     <NavbarNav
-      spaces={spaces}
+      spaceId={space.id}
+      spaceName={space.name}
       avatarUrl={avatarUrl}
       initials={initials}
     />

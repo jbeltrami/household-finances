@@ -13,7 +13,6 @@ type Props = {
   month: number;
   locked: boolean;
   highlightedDay: number | null;
-  attributions: Record<string, string>;
 };
 
 // Key helper: one-off entries always have an id (they're materialized
@@ -25,7 +24,6 @@ export default function ExpensesSection({
   month,
   locked,
   highlightedDay,
-  attributions,
 }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -72,8 +70,6 @@ export default function ExpensesSection({
                 month={month}
                 locked={locked}
                 highlightedDay={highlightedDay}
-                readOnly={expense.space_id !== spaceId}
-                attribution={attributions[expense.space_id]}
               />
             ))}
           </ul>

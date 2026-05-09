@@ -12,7 +12,6 @@ type Props = {
   month: number;
   locked: boolean;
   highlightedDay: number | null;
-  attributions: Record<string, string>;
 };
 
 // Key for React list rendering. Materialized entries use their id;
@@ -29,7 +28,6 @@ export default function BillsSection({
   month,
   locked,
   highlightedDay,
-  attributions,
 }: Props) {
   const pendingBills = bills.entries.filter((e) => !e.paid);
   const paidBills = [...bills.entries.filter((e) => e.paid)].sort(
@@ -65,8 +63,6 @@ export default function BillsSection({
                     month={month}
                     locked={locked}
                     highlightedDay={highlightedDay}
-                    readOnly={e.space_id !== spaceId}
-                    attribution={attributions[e.space_id]}
                   />
                 ))}
               </ul>
@@ -89,8 +85,6 @@ export default function BillsSection({
                     month={month}
                     locked={locked}
                     highlightedDay={highlightedDay}
-                    readOnly={e.space_id !== spaceId}
-                    attribution={attributions[e.space_id]}
                   />
                 ))}
               </ul>

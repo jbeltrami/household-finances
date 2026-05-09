@@ -19,12 +19,12 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Personal spaces minus opted-out ones (absence of a settings row
+  // All spaces minus opted-out ones (absence of a settings row
   // = enabled, so we only need to exclude rows where enabled=false).
+  // Every space is personal — there are no other kinds.
   const { data: allSpaces, error: spacesError } = await admin
     .from("spaces")
-    .select("id")
-    .eq("type", "personal");
+    .select("id");
   if (spacesError) {
     return Response.json(
       { error: `Failed to list spaces: ${spacesError.message}` },

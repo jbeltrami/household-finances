@@ -80,5 +80,4 @@ export type MonthlyViewProps = {
   income: IncomeGroup;
   expenses: ExpensesGroup;
   balance: BalanceGroup;
-  attributions: Record<string, string>;
 };

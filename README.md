@@ -2,7 +2,7 @@
 
 A personal finance planner. Each user manages their own monthly finances — income, recurring bills, one-off expenses — and can download a PDF summary of any past month.
 
-> Built on Supabase + Next.js + Vercel. Personal-only spaces; shared-space functionality is being phased out (see [`CLAUDE.md`](./CLAUDE.md) → Future improvements).
+> Built on Supabase + Next.js + Vercel. One personal space per user.
 
 ## Tech stack
 
@@ -124,7 +124,7 @@ Developer-facing details — the ledger data model, virtual template expansion, 
 The trade-off: middleware doesn't provide any safety net for API routes. **Every API route must authenticate itself in its handler.** Two patterns:
 
 - **Bearer token** (cron / machine-to-machine): check `Authorization: Bearer ${process.env.CRON_SECRET}` at the top of the handler and return `401` otherwise. See `src/app/api/cron/monthly-reports/route.ts` for the canonical shape.
-- **Session-based** (user-initiated): call `await supabase.auth.getUser()` via the server client, return `401` on null, and gate any space-scoped query on RLS (`is_active_member` / `can_read_space`).
+- **Session-based** (user-initiated): call `await supabase.auth.getUser()` via the server client, return `401` on null, and gate any space-scoped query on RLS (`is_active_member`).
 
 Never rely on the proxy to keep an API route private. RLS is the real security boundary; auth in the handler is what gates admin-client work and shapes useful error responses.
 
@@ -135,11 +135,10 @@ Never rely on the proxy to keep an API route private. RLS is the real security b
 | Supabase schema + Google OAuth + personal-space trigger | ✅ |
 | Recurring bill templates | ✅ |
 | Monthly view (income, bills, expenses, balance) | ✅ |
-| Shared spaces (parent linking, invite flow, aggregate view) | ✅ (slated for removal) |
 | Monthly PDF reports — generation, storage, download | ✅ |
 | Monthly PDF reports — settings page + email delivery via Hostinger SMTP | ✅ |
 | Monthly PDF reports — Vercel cron job for end-of-month auto-send | ✅ |
 | WhatsApp overdue-bill alerts — opt-in, daily cron via Twilio sandbox | ✅ |
-| Removing shared spaces | ⏳ planned |
+| Drop `[id]` segment from URLs (now redundant) | ⏳ planned |
 | Recurring income templates (biweekly / monthly cadence) | ⏳ planned |
 | Language picker (pt-BR / en-US) | ⏳ planned |

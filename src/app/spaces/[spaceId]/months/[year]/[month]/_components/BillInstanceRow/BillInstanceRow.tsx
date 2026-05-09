@@ -19,8 +19,6 @@ type Props = {
   month: number;
   locked: boolean;
   highlightedDay: number | null;
-  readOnly?: boolean;
-  attribution?: string;
 };
 
 // Compute the TogglePaidTarget for this entry. Virtual entries carry
@@ -62,13 +60,11 @@ export default function BillInstanceRow({
   month,
   locked,
   highlightedDay,
-  readOnly,
-  attribution,
 }: Props) {
   void year;
   void month;
 
-  const noEdit = locked || !!readOnly;
+  const noEdit = locked;
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
@@ -161,11 +157,6 @@ export default function BillInstanceRow({
     >
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-          {attribution && (
-            <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-              {attribution} —
-            </span>
-          )}
           <span>{entry.name}</span>
           {progressBadge && (
             <span

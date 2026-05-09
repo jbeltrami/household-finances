@@ -20,14 +20,12 @@ export default async function ReportsPage({
 
   const { data: space } = await supabase
     .from("spaces")
-    .select("type, created_by")
+    .select("created_by")
     .eq("id", spaceId)
     .single();
 
   if (!space) notFound();
-  if (space.type !== "personal" || space.created_by !== user.id) {
-    notFound();
-  }
+  if (space.created_by !== user.id) notFound();
 
   const { data: existing } = await supabase
     .from("monthly_reports")

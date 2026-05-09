@@ -11,8 +11,6 @@ type Props = {
   month: number;
   locked: boolean;
   highlightedDay: number | null;
-  readOnly?: boolean;
-  attribution?: string;
 };
 
 export default function ExpenseEntryRow({
@@ -21,13 +19,11 @@ export default function ExpenseEntryRow({
   month,
   locked,
   highlightedDay,
-  readOnly,
-  attribution,
 }: Props) {
   void year;
   void month;
 
-  const noEdit = locked || !!readOnly;
+  const noEdit = locked;
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
@@ -177,11 +173,6 @@ export default function ExpenseEntryRow({
     >
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {attribution && (
-            <span className="mr-1 text-xs font-normal text-gray-500 dark:text-gray-400">
-              {attribution} —
-            </span>
-          )}
           {expense.name}
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">

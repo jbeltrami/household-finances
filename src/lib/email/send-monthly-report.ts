@@ -25,13 +25,10 @@ export async function performMonthlyReportSend(
 
   const { data: space } = await admin
     .from("spaces")
-    .select("type, created_by")
+    .select("created_by")
     .eq("id", report.space_id)
     .single();
   if (!space) throw new Error("Space not found");
-  if (space.type !== "personal") {
-    throw new Error("Only personal-space reports can be emailed");
-  }
 
   // Look up the owner via Supabase's admin auth API so we can fetch
   // email + display name without a user session.
