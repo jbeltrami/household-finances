@@ -9,8 +9,8 @@ A personal finance planner. Each user manages their own monthly finances — inc
 - **Database + Auth**: Supabase (region: South America — São Paulo)
 - **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS
 - **PDF rendering**: `@react-pdf/renderer`
-- **Email** (Piece B): Hostinger SMTP via `nodemailer`
-- **Cron** (Piece C): Vercel Cron
+- **Email**: Hostinger SMTP via `nodemailer`
+- **Cron**: Vercel Cron (`0 11 1 * *` — 08:00 São Paulo on the 1st of each month)
 - **Hosting**: Vercel
 - **Auth**: Google OAuth only (no email/password)
 
@@ -32,12 +32,23 @@ npm install
 Create a `.env.local` file at the project root (gitignored — never commit):
 
 ```
+# Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://<your-project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_<your-key>
 SUPABASE_SECRET_KEY=sb_secret_<your-key>
+
+# Email (Hostinger SMTP)
+SMTP_HOST=smtp.hostinger.com
+SMTP_PORT=465
+SMTP_USER=<your-from-address>
+SMTP_PASSWORD=<your-mailbox-password>
+SMTP_FROM_NAME=Home Finances
+
+# Cron auth
+CRON_SECRET=<32+-char random string>
 ```
 
-All three values come from Supabase **Project Settings → API**:
+Where the Supabase values come from (**Project Settings → API**):
 
 | Var | Source | Notes |
 |---|---|---|
@@ -45,7 +56,9 @@ All three values come from Supabase **Project Settings → API**:
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable key (`sb_publishable_...`) | Public — RLS-bound |
 | `SUPABASE_SECRET_KEY` | Secret key (`sb_secret_...`) | **Server-only** — bypasses RLS, never exposed to the browser |
 
-For Vercel, set these same variables under **Project Settings → Environment Variables** (Production / Preview / Development).
+The SMTP values come from your Hostinger control panel under **Emails → [your domain] → Connect Apps & Devices**. Generate `CRON_SECRET` with e.g. `openssl rand -hex 32`.
+
+For Vercel, set all of these under **Project Settings → Environment Variables** (Production / Preview / Development).
 
 ### 3. Apply migrations
 
@@ -54,7 +67,7 @@ Migrations live in `supabase/migrations/` and apply in filename order. Either:
 - Paste each file's contents into Supabase **SQL Editor** in order, or
 - Run `supabase db push` if you have the Supabase CLI wired up.
 
-Current head: `0002_monthly_reports.sql`.
+Current head: `0003_monthly_report_settings.sql`.
 
 ### 4. Create the Storage bucket
 
@@ -106,8 +119,9 @@ Developer-facing details — the ledger data model, virtual template expansion, 
 | Monthly view (income, bills, expenses, balance) | ✅ |
 | Savings funds + contributions | ✅ |
 | Shared spaces (parent linking, invite flow, aggregate view) | ✅ (slated for removal) |
-| Monthly PDF reports — generation, storage, download (Piece A) | ✅ |
-| Monthly PDF reports — settings page + email delivery via Hostinger SMTP (Piece B) | ⏳ next |
-| Monthly PDF reports — Vercel cron job for end-of-month auto-send (Piece C) | ⏳ next |
-| Removing shared spaces | ⏳ planned (after report feature lands) |
+| Monthly PDF reports — generation, storage, download | ✅ |
+| Monthly PDF reports — settings page + email delivery via Hostinger SMTP | ✅ |
+| Monthly PDF reports — Vercel cron job for end-of-month auto-send | ✅ |
+| Removing shared spaces | ⏳ planned |
 | Recurring income templates (biweekly / monthly cadence) | ⏳ planned |
+| Language picker (pt-BR / en-US) | ⏳ planned |

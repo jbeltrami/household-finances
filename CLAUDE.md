@@ -19,8 +19,8 @@ For historical build decisions (completed piece plans, migration narratives, rep
 | Database + Auth | Supabase (region: South America — São Paulo) |
 | Frontend        | Next.js + Tailwind CSS                       |
 | PDF rendering   | `@react-pdf/renderer` (server-side)          |
-| Email (Piece B) | Hostinger SMTP + `nodemailer` (`from: joao@jbeltrami.com`) |
-| Cron (Piece C)  | Vercel Cron                                  |
+| Email           | Hostinger SMTP + `nodemailer` (`from: joao@jbeltrami.com`) |
+| Cron            | Vercel Cron (`0 11 1 * *` — 08:00 São Paulo) |
 | Hosting         | Vercel                                       |
 | Auth provider   | Google OAuth only (no email/password)        |
 
@@ -41,7 +41,7 @@ For historical build decisions (completed piece plans, migration narratives, rep
 - **Savings funds** — live outside the monthly cycle; contributions are date-keyed; total = starting_balance + sum of all contributions
 - **Google OAuth only** — first login auto-creates the user's personal space via a database trigger
 - **Invite by email** — shared-space owners invite by email; pending invites wait for the person to sign up if they don't have an account yet; accepted/declined via dashboard banner
-- **Monthly PDF reports** — at the end of each month, a PDF mirroring the monthly view is generated for each personal space and (Piece B) emailed to the owner; PDFs are also browseable at `/spaces/[id]/reports`. Personal spaces only — shared-space members do not get auto-emailed reports
+- **Monthly PDF reports** — on the 1st of each month at 08:00 São Paulo, a Vercel Cron generates a PDF mirroring the monthly view for each opted-in personal space and emails it (with the PDF attached) to the owner. PDFs are also browseable at `/spaces/[id]/reports` with manual generate / regenerate / send / download. Per-space opt-out lives at `/spaces/[id]/settings`. Personal spaces only — shared-space members do not get auto-emailed reports
 
 ---
 
@@ -115,8 +115,13 @@ savings_contributions
 monthly_reports
   id, space_id, year, month
   storage_path                          -- {space_id}/{year}-{month}.pdf
-  generated_at, sent_at (nullable)      -- sent_at null until Piece B emails it
+  generated_at, sent_at (nullable)      -- sent_at null until the email goes out
   unique (space_id, year, month)        -- idempotency lock for cron + regenerate
+
+monthly_report_settings
+  space_id PK, enabled (bool, default true)
+  -- Absence of a row = enabled (default-on). Cron filter is:
+  -- personal spaces MINUS rows where enabled = false.
 ```
 
 ### How the monthly view works
@@ -195,35 +200,6 @@ Net so far (received - paid)   R$18.530
 
 ---
 
-## In flight — Monthly PDF reports
-
-A PDF summary of each personal space's monthly data, downloadable from the app and (Piece B) auto-emailed at the end of each month.
-
-### Piece A — done
-
-- **Schema** — `monthly_reports(id, space_id, year, month, storage_path, generated_at, sent_at)` with unique `(space_id, year, month)` and SELECT-only RLS via `is_active_member` (writes go through the admin client only). Migration `0002_monthly_reports.sql`.
-- **Storage** — private Supabase bucket `monthly-reports`, path layout `{space_id}/{year}-{month}.pdf`. No bucket policies — uploads use the admin client, downloads use signed URLs minted server-side (5-minute TTL).
-- **PDF component** — `src/lib/pdf/MonthlyReportPdf.tsx` using `@react-pdf/renderer`. Mirrors the monthly view (income / recurring bills / one-off expenses / balance / savings). Body in pt-BR; UI labels in English to match Bills/Savings.
-- **Helpers** — `src/helpers/reports.ts` exports `getMonthlyReportData`, `listNonEmptyPastMonths`, `performReportGeneration`, `reportStoragePath`. The orchestrator accepts both a data-source client and an admin client so the same helper drives manual generation (user-session for reads) and the cron loop (admin everywhere).
-- **Reports page** — `/spaces/[id]/reports`. One row per past month with data: download if a PDF exists, generate if not. "Generate missing reports" button at the top backfills in one click; per-row "Regenerate" is also exposed. Empty months are hidden entirely (the helper enumerates only months with data, including months covered by active recurring templates).
-- **Server actions** — `generateReport(spaceId, year, month)`, `generateMissingReports(spaceId)` (returns `{ generated, skipped, failed }`), `downloadReport(reportId)` (returns a signed URL string; client navigates with `window.location.href` so attachment-disposition triggers an in-place download). All validate ownership + past-only at the edge.
-- **Navbar** — `Reports` link surfaces on personal spaces only (`currentSpace?.type === "personal"`).
-
-### Piece B — next
-
-- **Settings page** at `/spaces/[id]/settings` (currently exists for shared spaces only). Add a per-space "Monthly report email" toggle, default ON.
-- **`monthly_report_settings`** table keyed by `space_id` with an `enabled` boolean. SELECT/INSERT/UPDATE via `is_active_member`.
-- **SMTP via Hostinger** — `jbeltrami.com` mail is hosted on Hostinger; sending uses `nodemailer` against `smtp.hostinger.com:465` with mailbox credentials. SPF/DKIM are already configured on the domain through Hostinger, so `from: joao@jbeltrami.com` works without new DNS records. Env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_NAME` (server-only — no `NEXT_PUBLIC_` prefix).
-- **`react-email`** template for the email body (link-only — points to the dashboard, where the existing download flow takes over). Keeps the email small and avoids re-sending the PDF every month. Vendor-agnostic — emits HTML that `nodemailer` consumes directly.
-- **`sendMonthlyReportEmail(reportId)`** action — looks up the report row, mints a signed URL, renders the `react-email` template, sends via the SMTP transport, sets `sent_at`. Reused by both the manual-send button (added in Piece B) and Piece C's cron.
-
-### Piece C — after
-
-- **Vercel Cron** — `vercel.json` declares `0 11 1 * *` (08:00 São Paulo on the 1st of each month) → `POST /api/cron/monthly-reports`. Handler validates `Authorization: Bearer ${CRON_SECRET}`, then for every personal space with `enabled = true`: calls `performReportGeneration` (idempotency guard via the unique constraint), then `sendMonthlyReportEmail`. Per-space `try/catch` so one failure doesn't stop the loop.
-- **Idempotency** — the unique constraint on `monthly_reports(space_id, year, month)` plus the `sent_at` check is the lock. A retry naturally skips already-generated, already-sent months.
-
----
-
 ## Future improvements
 
 - **Removing shared spaces.** The shared-space concept (the `parent_space_id` linkage, shared-space aggregate views, the `can_read_space` cross-space SELECT pattern, the invitation flow) is slated for removal once the monthly-report feature lands. The app simplifies back to one personal space per user. New domain tables added in the meantime should prefer `is_active_member` over `can_read_space` for SELECT policies (already the case for `monthly_reports`).
@@ -238,7 +214,7 @@ A PDF summary of each personal space's monthly data, downloadable from the app a
 - RLS: enabled on all tables
 - Auth provider: Google OAuth only
 - Migrations live in `supabase/migrations/` (see `history.md` for the evolution story)
-- Current highest migration: `0002_monthly_reports.sql` — next new migration should be `0003_*.sql`
+- Current highest migration: `0003_monthly_report_settings.sql` — next new migration should be `0004_*.sql`
 
 ### Environment variables
 
