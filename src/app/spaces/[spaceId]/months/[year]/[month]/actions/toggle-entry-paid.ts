@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { spaceMonthUrl } from "@/helpers/paths";
 import {
   checkDateEditable,
@@ -50,7 +51,7 @@ export async function toggleEntryPaid(
     const { data: row } = await supabase
       .from("entries")
       .select(
-        "template_id, installments_covered, amount, recurring_bill_templates(default_amount, installments_total)"
+        "template_id, date, space_id, installments_covered, amount, recurring_bill_templates(default_amount, installments_total)"
       )
       .eq("id", target.entryId)
       .single();
@@ -59,6 +60,8 @@ export async function toggleEntryPaid(
 
     const joined = row as unknown as {
       template_id: string | null;
+      date: string;
+      space_id: string;
       installments_covered: number;
       amount: number | string;
       recurring_bill_templates: {
@@ -96,6 +99,30 @@ export async function toggleEntryPaid(
       .eq("id", target.entryId);
 
     if (error) throw new Error(`Failed to update entry: ${error.message}`);
+
+    // On unpaid → paid, clear any matching WhatsApp notification log
+    // rows so the bill is alert-eligible again if the user later flips
+    // it back to unpaid (typo, undo, etc.). Two key shapes to cover:
+    //   (1) entry_id = the materialized row's id
+    //   (2) (template_id, occurrence_date) = the row's logical key
+    //       when it was a virtual occurrence (logged before being
+    //       materialized). The cron checks both shapes too.
+    // Admin client because the log table has no user-write policies;
+    // ownership is already validated above via checkEntryEditable.
+    if (newPaid) {
+      const admin = createAdminClient();
+      await admin
+        .from("whatsapp_notifications_sent")
+        .delete()
+        .eq("entry_id", target.entryId);
+      if (joined.template_id) {
+        await admin
+          .from("whatsapp_notifications_sent")
+          .delete()
+          .eq("template_id", joined.template_id)
+          .eq("occurrence_date", joined.date);
+      }
+    }
 
     revalidatePath(spaceMonthUrl(check.spaceId, check.year, check.month));
     return;
@@ -141,6 +168,18 @@ export async function toggleEntryPaid(
   });
 
   if (error) throw new Error(`Failed to record payment: ${error.message}`);
+
+  // Same alert-eligibility reset as the materialized branch — but
+  // here only the (template_id, occurrence_date) key can have a log
+  // row, since the entry_id only just came into existence above.
+  if (newPaid) {
+    const admin = createAdminClient();
+    await admin
+      .from("whatsapp_notifications_sent")
+      .delete()
+      .eq("template_id", target.templateId)
+      .eq("occurrence_date", target.date);
+  }
 
   revalidatePath(spaceMonthUrl(check.spaceId, check.year, check.month));
 }
