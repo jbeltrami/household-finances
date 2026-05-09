@@ -7,6 +7,7 @@ import InviteMemberForm from "./_components/InviteMemberForm";
 import MemberList from "./_components/MemberList";
 import PendingInvitations from "./_components/PendingInvitations";
 import MonthlyReportEmailToggle from "./_components/MonthlyReportEmailToggle";
+import WhatsAppNotificationToggle from "./_components/WhatsAppNotificationToggle";
 
 type MemberRow = {
   user_id: string;
@@ -49,6 +50,17 @@ export default async function SpaceSettingsPage({
 
     const emailEnabled = settings?.enabled ?? true;
 
+    // WhatsApp settings: row may be absent (never set up). Default
+    // is enabled=false, phone=null in that case.
+    const { data: whatsappSettings } = await supabase
+      .from("whatsapp_notification_settings")
+      .select("enabled, phone_e164")
+      .eq("space_id", spaceId)
+      .maybeSingle();
+
+    const whatsappEnabled = whatsappSettings?.enabled ?? false;
+    const whatsappPhone = whatsappSettings?.phone_e164 ?? null;
+
     return (
       <div className="mx-auto max-w-3xl px-4 py-8">
         <Link
@@ -70,6 +82,19 @@ export default async function SpaceSettingsPage({
             <MonthlyReportEmailToggle
               spaceId={spaceId}
               initialEnabled={emailEnabled}
+            />
+          </div>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
+            WhatsApp notifications
+          </h2>
+          <div className="mt-3 rounded-md border border-gray-200 p-4 dark:border-gray-800">
+            <WhatsAppNotificationToggle
+              spaceId={spaceId}
+              initialPhone={whatsappPhone}
+              initialEnabled={whatsappEnabled}
             />
           </div>
         </section>

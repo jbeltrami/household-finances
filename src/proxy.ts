@@ -49,8 +49,14 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// `api|` is in the exclusion list so server-to-server endpoints
+// (Vercel Cron, webhooks, internal tools) aren't redirected to /login
+// when they have no session cookie. Every API route MUST authenticate
+// itself in its handler — Bearer token for cron-style routes, or an
+// explicit auth.getUser() check for session-style routes. See
+// README.md → "Adding a new API route" for the convention.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

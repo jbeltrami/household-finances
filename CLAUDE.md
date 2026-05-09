@@ -20,7 +20,8 @@ For historical build decisions (completed piece plans, migration narratives, rep
 | Frontend        | Next.js + Tailwind CSS                       |
 | PDF rendering   | `@react-pdf/renderer` (server-side)          |
 | Email           | Hostinger SMTP + `nodemailer` (`from: joao@jbeltrami.com`) |
-| Cron            | Vercel Cron (`0 11 1 * *` — 08:00 São Paulo) |
+| WhatsApp        | Twilio WhatsApp (sandbox, direct REST — no SDK)            |
+| Cron            | Vercel Cron — monthly reports (`0 11 1 * *`) + daily WhatsApp overdue check (`0 11 * * *`), both 08:00 São Paulo |
 | Hosting         | Vercel                                       |
 | Auth provider   | Google OAuth only (no email/password)        |
 
@@ -42,6 +43,7 @@ For historical build decisions (completed piece plans, migration narratives, rep
 - **Google OAuth only** — first login auto-creates the user's personal space via a database trigger
 - **Invite by email** — shared-space owners invite by email; pending invites wait for the person to sign up if they don't have an account yet; accepted/declined via dashboard banner
 - **Monthly PDF reports** — on the 1st of each month at 08:00 São Paulo, a Vercel Cron generates a PDF mirroring the monthly view for each opted-in personal space and emails it (with the PDF attached) to the owner. PDFs are also browseable at `/spaces/[id]/reports` with manual generate / regenerate / send / download. Per-space opt-out lives at `/spaces/[id]/settings`. Personal spaces only — shared-space members do not get auto-emailed reports
+- **WhatsApp overdue alerts** — opt-in (default off). Per-space settings at `/spaces/[id]/settings` capture an E.164 phone and an enabled flag. A daily Vercel Cron (`0 11 * * *` — 08:00 São Paulo) finds bills whose `date <= yesterday AND paid=false AND template_id IS NOT NULL`, scoped to the current month (past months are locked, so out of scope), and sends a single pt-BR digest message via Twilio WhatsApp. One alert per bill, ever (idempotency log: `whatsapp_notifications_sent`). One-off entries (`template_id IS NULL`) are expenses, not obligations, and never trigger alerts. Currently uses Twilio's free sandbox number — recipients must send `join <code>` to `+1 415 523 8886` once before any message lands
 
 ---
 
@@ -214,7 +216,7 @@ Net so far (received - paid)   R$18.530
 - RLS: enabled on all tables
 - Auth provider: Google OAuth only
 - Migrations live in `supabase/migrations/` (see `history.md` for the evolution story)
-- Current highest migration: `0003_monthly_report_settings.sql` — next new migration should be `0004_*.sql`
+- Current highest migration: `0004_whatsapp_notifications.sql` — next new migration should be `0005_*.sql`
 
 ### Environment variables
 
@@ -273,6 +275,7 @@ Route-specific helpers live in the route's `_helpers.ts`. Third-party integratio
 - **Never commit .env.local** — Supabase URL and publishable key must stay out of the repository
 - **Supabase client split** — use `@/lib/supabase/client` in Client Components (browser) and `@/lib/supabase/server` in Server Components / Route Handlers; never mix them
 - **Proxy runs on every request** — `src/proxy.ts` (formerly `middleware.ts`, renamed in Next.js 16+) refreshes the auth session and protects routes; `/login` and `/auth/callback` are public, everything else requires authentication
+- **API routes are exempt from the proxy** — the matcher in `src/proxy.ts` excludes `/api/*`. Server-to-server endpoints (Vercel Cron, the WhatsApp test endpoint, future webhooks) authenticate via Bearer token in the handler, not via session cookies, so a redirect to `/login` would silently break them. **Every new API route must auth itself** — either Bearer-token at the top of the handler (cron-style, see `src/app/api/cron/monthly-reports/route.ts`) or `auth.getUser()` + 401-on-null (session-style). Never lean on the proxy to gate `/api/*` — RLS is the real security boundary and the handler check is what protects admin-client code paths
 - **Publishable key (not anon key)** — Supabase deprecated legacy anon/service_role keys; use `sb_publishable_...` for the client and `sb_secret_...` for server-only operations
 - **Server actions return state, don't throw** — actions called via `useActionState` return `{ error: string | null }` so the form can render the error inline. Throwing causes Next.js to show the error boundary, which is wrong for predictable failures like validation errors. Reserve throws for true crashes. Toggle-style actions invoked via `useTransition` can throw because there's no action-state surface to render against
 - **`"use server"` files only export async functions** — types and constants must live in sibling files (e.g., `form-state.ts`). Internal sync helpers go in a non-`"use server"` file like `_helpers.ts`. The barrel `actions.ts` is also non-`"use server"` so it can re-export anything
@@ -299,3 +302,6 @@ Route-specific helpers live in the route's `_helpers.ts`. Third-party integratio
 - **Private storage bucket → signed URLs** — the `monthly-reports` bucket is private with no policies (deny-all). Reads happen via `createSignedUrl(path, ttlSeconds)` minted by the admin client; the user-session SELECT on `monthly_reports` is what authorizes the user to obtain the URL in the first place. Default TTL is 5 minutes — short enough that a leaked URL expires before it matters
 - **Prefer `is_active_member` for new tables (transitional)** — the historical pattern in this codebase is `can_read_space` for SELECT policies on new domain tables (so shared-space aggregates Just Work). With shared-space removal coming, `is_active_member` is now the future-proof default and is what `monthly_reports` uses. Pattern-match to `is_active_member` for any new domain table during this transition
 - **Server actions can `redirect()` to external URLs but it's brittle** — for the report-download flow, the action returns the signed URL as a string and the client does `window.location.href = url`. This bypasses Next.js's external-redirect handling, which can be unreliable when invoked through `useTransition`, and lets the browser handle attachment-disposition cleanly. Prefer this pattern for any "navigate to a one-off external URL" action
+- **WhatsApp overdue cron — `template_id IS NOT NULL` is mandatory** — the `entries` table mixes one-off expenses (`template_id IS NULL`) and recurring-bill exceptions/virtual occurrences (`template_id IS NOT NULL`). For "overdue alert" semantics, only the latter qualify — one-off entries are historical records of money already spent (or planned standalone purchases), not obligations needing a reminder. Any new "due-date" / "past-due" / "reminder" feature must inherit this filter. Note: the existing `netSoFar` balance math intentionally treats *all* unpaid past-dated entries as overdue (that's a cash-reality calculation, not an obligation reminder) — different question, different filter
+- **WhatsApp idempotency lives in `whatsapp_notifications_sent`** — one row per (notified bill). Materialized rows key by `(space_id, entry_id)`; virtual recurring occurrences key by `(space_id, template_id, occurrence_date)`. A CHECK enforces exactly-one-of, and two partial unique indexes enforce no-double-notify on each side. The cron also handles the cross-case where a virtual occurrence we already notified gets materialized later — by checking the template-key set against materialized entries too, so we don't re-alert. All writes go through the admin client; SELECT is `is_active_member` for an eventual history UI
+- **Twilio WhatsApp uses direct REST, not the SDK** — `src/lib/whatsapp/client.ts` calls Twilio's Messages endpoint via `fetch` with HTTP Basic auth (Account SID + Auth Token). The full `twilio` SDK is ~5 MB for capabilities we don't use. Sandbox vs production: in sandbox we send free-form text bodies and the recipient must opt in via `join <code>`; in production we'd switch to a Meta-approved Content Template SID and remove the join step. The client function takes a body string today — when we graduate to production, refactor to take a template ID + variables instead
