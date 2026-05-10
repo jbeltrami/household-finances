@@ -37,13 +37,13 @@ export default function BillsSection({
   return (
     <section className="mt-6">
       <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-        Bills
+        Contas
       </h2>
       {bills.entries.length === 0 ? (
         <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-          No bills this month. Add a recurring template under{" "}
+          Sem contas neste mês. Cadastre uma conta recorrente em{" "}
           <a href={billsUrl()} className="underline">
-            Bills
+            Contas
           </a>
           .
         </p>
@@ -52,7 +52,7 @@ export default function BillsSection({
           {pendingBills.length > 0 && (
             <>
               <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-yellow-700 dark:text-yellow-400">
-                Pending ({pendingBills.length})
+                Pendentes ({pendingBills.length})
               </h3>
               <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
                 {pendingBills.map((e) => (
@@ -74,7 +74,7 @@ export default function BillsSection({
               <h3
                 className={`${pendingBills.length > 0 ? "mt-6" : "mt-4"} text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-400`}
               >
-                Paid ({paidBills.length})
+                Pagas ({paidBills.length})
               </h3>
               <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
                 {paidBills.map((e) => (
@@ -94,7 +94,7 @@ export default function BillsSection({
           <dl className="mt-4 grid grid-cols-3 gap-4 rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
             <div>
               <dt className="text-xs text-gray-500 dark:text-gray-400">
-                Total bills
+                Total de contas
               </dt>
               <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                 {brlFormatter.format(bills.total)}
@@ -102,7 +102,7 @@ export default function BillsSection({
             </div>
             <div>
               <dt className="text-xs text-gray-500 dark:text-gray-400">
-                Paid so far
+                Pago até o momento
               </dt>
               <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                 {brlFormatter.format(bills.paid)}
@@ -110,7 +110,7 @@ export default function BillsSection({
             </div>
             <div>
               <dt className="text-xs text-gray-500 dark:text-gray-400">
-                Still to pay
+                Falta pagar
               </dt>
               <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                 {brlFormatter.format(bills.remaining)}

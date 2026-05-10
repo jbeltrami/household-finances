@@ -115,7 +115,7 @@ export default function BillInstanceRow({
 
   const [isSkipping, startSkip] = useTransition();
   const handleSkip = () => {
-    if (!window.confirm(`Skip "${entry.name}" for this occurrence?`)) return;
+    if (!window.confirm(`Ignorar "${entry.name}" nesta ocorrência?`)) return;
     startSkip(async () => {
       await skipEntryOccurrence(skipTargetFor(entry), new FormData());
     });
@@ -126,7 +126,7 @@ export default function BillInstanceRow({
   const [isDeleting, startDelete] = useTransition();
   const handleDelete = () => {
     if (entry.id == null) return;
-    if (!window.confirm(`Remove override for "${entry.name}"?`)) return;
+    if (!window.confirm(`Reverter o valor sobrescrito de "${entry.name}"?`)) return;
     startDelete(async () => {
       await deleteEntry(entry.id!);
     });
@@ -161,19 +161,19 @@ export default function BillInstanceRow({
           {progressBadge && (
             <span
               className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200"
-              title="Installments paid / total"
+              title="Parcelas pagas / total"
             >
               {progressBadge}
             </span>
           )}
           {entry.paid && entry.installments_covered > 1 && (
             <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-              ×{entry.installments_covered} this month
+×{entry.installments_covered} parcelas neste mês
             </span>
           )}
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Due {dateFormatter.format(new Date(entry.date))}
+          Vence em {dateFormatter.format(new Date(entry.date))}
         </p>
       </div>
 
@@ -199,7 +199,7 @@ export default function BillInstanceRow({
                   : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
               }`}
             >
-              {isUpdating ? "Saving…" : "Save"}
+              {isUpdating ? "Salvando…" : "Salvar"}
             </button>
             <button
               type="button"
@@ -207,7 +207,7 @@ export default function BillInstanceRow({
               disabled={isUpdating}
               className="rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
             >
-              Cancel
+              Cancelar
             </button>
           </form>
         ) : (
@@ -221,7 +221,7 @@ export default function BillInstanceRow({
                 onClick={() => setEditing(true)}
                 className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
               >
-                Edit
+                Editar
               </button>
             )}
           </>
@@ -229,7 +229,7 @@ export default function BillInstanceRow({
 
         {showCoverInput && (
           <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
-            <span>covers</span>
+            <span>cobre</span>
             <input
               type="number"
               min={1}
@@ -249,9 +249,9 @@ export default function BillInstanceRow({
                 onClick={() => handleTogglePaid(maxCover)}
                 disabled={isToggling}
                 className="rounded-md px-1.5 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700"
-                title={`Pay off all ${maxCover} remaining`}
+                title={`Pagar todas as ${maxCover} restantes`}
               >
-                pay all
+                pagar todas
               </button>
             )}
           </div>
@@ -265,7 +265,7 @@ export default function BillInstanceRow({
                 : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"
             }`}
           >
-            {entry.paid ? "paid" : "pending"}
+            {entry.paid ? "pago" : "pendente"}
           </span>
         ) : (
           <button
@@ -279,9 +279,9 @@ export default function BillInstanceRow({
                   ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-200 dark:hover:bg-green-900/60"
                   : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-200 dark:hover:bg-yellow-900/60"
             }`}
-            title={entry.paid ? "Mark as pending" : "Mark as paid"}
+            title={entry.paid ? "Marcar como pendente" : "Marcar como pago"}
           >
-            {isToggling ? "…" : entry.paid ? "paid" : "pending"}
+            {isToggling ? "…" : entry.paid ? "pago" : "pendente"}
           </button>
         )}
 
@@ -295,9 +295,9 @@ export default function BillInstanceRow({
                 ? "animate-pulse text-gray-400 dark:text-gray-500"
                 : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
             }`}
-            title="Skip this occurrence"
+            title="Ignorar esta ocorrência"
           >
-            {isSkipping ? "…" : "Skip"}
+            {isSkipping ? "…" : "Ignorar"}
           </button>
         )}
 
@@ -311,9 +311,9 @@ export default function BillInstanceRow({
                 ? "animate-pulse text-red-400 dark:text-red-500"
                 : "text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
             }`}
-            title="Revert to template default"
+            title="Voltar ao valor padrão da conta"
           >
-            {isDeleting ? "…" : "Revert"}
+            {isDeleting ? "…" : "Reverter"}
           </button>
         )}
       </div>

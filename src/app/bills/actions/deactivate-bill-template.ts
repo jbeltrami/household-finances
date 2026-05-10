@@ -9,14 +9,14 @@ export async function deactivateBillTemplate(id: string, formData: FormData) {
   // still forwards FormData even though it's otherwise empty, which is
   // how we get access to the hidden space_id.
   const spaceId = formData.get("space_id")?.toString();
-  if (!spaceId) throw new Error("Missing space context");
+  if (!spaceId) throw new Error("Contexto de espaço ausente");
 
   const supabase = await createClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   const { error } = await supabase
     .from("recurring_bill_templates")
@@ -24,7 +24,7 @@ export async function deactivateBillTemplate(id: string, formData: FormData) {
     .eq("id", id);
 
   if (error) {
-    throw new Error(`Failed to deactivate template: ${error.message}`);
+    throw new Error(`Falha ao desativar a conta: ${error.message}`);
   }
 
   revalidatePath(billsUrl());

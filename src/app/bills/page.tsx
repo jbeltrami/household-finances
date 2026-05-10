@@ -76,11 +76,12 @@ export default async function BillsPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-        Recurring bills
+        Contas recorrentes
       </h1>
       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Templates expand virtually into monthly occurrences. Per-occurrence
-        edits only materialize when you pay, override, or skip.
+        Os modelos se expandem virtualmente em ocorrências mensais. Edições
+        em ocorrências específicas só são materializadas quando você paga,
+        sobrescreve ou ignora a conta.
       </p>
 
       <CreateBillTemplateForm spaceId={spaceId} />

@@ -142,4 +142,4 @@ Never rely on the proxy to keep an API route private. RLS is the real security b
 | WhatsApp overdue-bill alerts — opt-in, daily cron via Twilio sandbox | ✅ |
 | Drop `[id]` segment from URLs (routes collapsed to `/months/[y]/[m]`, `/bills`, `/reports`, `/settings`) | ✅ |
 | Recurring income templates (biweekly / monthly cadence) | ⏳ planned |
-| Language picker (pt-BR / en-US) | ⏳ planned |
+| UI translated to pt-BR (single-language app) | ✅ |

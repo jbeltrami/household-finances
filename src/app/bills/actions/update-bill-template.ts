@@ -32,10 +32,10 @@ export async function updateBillTemplate(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
+    if (!user) return { error: "Não autenticado" };
 
     spaceId = formData.get("space_id")?.toString();
-    if (!spaceId) return { error: "Missing space context" };
+    if (!spaceId) return { error: "Contexto de espaço ausente" };
 
     const {
       name,
@@ -87,14 +87,14 @@ export async function updateBillTemplate(
 
     if (updateError) {
       if (updateError.code === UNIQUE_VIOLATION) {
-        return { error: `An active template named "${name}" already exists` };
+        return { error: `Já existe uma conta ativa chamada "${name}"` };
       }
-      return { error: `Failed to update template: ${updateError.message}` };
+      return { error: `Falha ao atualizar a conta: ${updateError.message}` };
     }
 
     revalidatePath(billsUrl());
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Something went wrong" };
+    return { error: e instanceof Error ? e.message : "Algo deu errado" };
   }
 
   redirect(billsUrl());

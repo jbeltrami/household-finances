@@ -25,7 +25,7 @@ export default function MonthlyReportEmailToggle({
         await setMonthlyReportEmailEnabled(spaceId, newValue);
       } catch (err) {
         setEnabled(!newValue);
-        setError(err instanceof Error ? err.message : "Failed to update");
+        setError(err instanceof Error ? err.message : "Falha ao atualizar");
       }
     });
   };
@@ -35,11 +35,11 @@ export default function MonthlyReportEmailToggle({
       <label className="flex cursor-pointer items-start justify-between gap-4">
         <div>
           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-            Send monthly report by email
+            Enviar relatório mensal por e-mail
           </div>
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            On the 1st of each month, receive a PDF summary of the previous
-            month at your Google account email.
+            No dia 1º de cada mês, receba um PDF com o resumo do mês anterior
+            no e-mail da sua conta Google.
           </div>
         </div>
         <input

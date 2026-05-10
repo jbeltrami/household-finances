@@ -33,7 +33,7 @@ export async function skipEntryOccurrence(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   if (target.kind === "materialized") {
     const check = await checkEntryEditable(supabase, target.entryId);
@@ -48,10 +48,10 @@ export async function skipEntryOccurrence(
       .single();
 
     if (!row?.template_id) {
-      throw new Error("Only recurring occurrences can be skipped");
+      throw new Error("Só é possível ignorar ocorrências recorrentes");
     }
     if (row.paid) {
-      throw new Error("Unpay the entry before skipping it");
+      throw new Error("Desmarque o pagamento antes de ignorar");
     }
 
     const { error } = await supabase
@@ -59,7 +59,7 @@ export async function skipEntryOccurrence(
       .update({ skipped: true })
       .eq("id", target.entryId);
 
-    if (error) throw new Error(`Failed to skip occurrence: ${error.message}`);
+    if (error) throw new Error(`Falha ao ignorar a ocorrência: ${error.message}`);
 
     revalidatePath(monthUrl(check.year, check.month));
     return;
@@ -78,7 +78,7 @@ export async function skipEntryOccurrence(
     .eq("id", target.templateId)
     .single();
 
-  if (!template) throw new Error("Template not found");
+  if (!template) throw new Error("Conta recorrente não encontrada");
 
   const { error } = await supabase.from("entries").insert({
     space_id: target.spaceId,
@@ -93,7 +93,7 @@ export async function skipEntryOccurrence(
     installments_covered: 1,
   });
 
-  if (error) throw new Error(`Failed to skip occurrence: ${error.message}`);
+  if (error) throw new Error(`Falha ao ignorar a ocorrência: ${error.message}`);
 
   revalidatePath(monthUrl(check.year, check.month));
 }
@@ -112,7 +112,7 @@ export async function unskipEntryOccurrence(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   const check = await checkEntryEditable(supabase, entryId);
   if (!check.ok) throw new Error(check.error);
@@ -122,7 +122,7 @@ export async function unskipEntryOccurrence(
     .update({ skipped: false })
     .eq("id", entryId);
 
-  if (error) throw new Error(`Failed to unskip: ${error.message}`);
+  if (error) throw new Error(`Falha ao reverter o ignorar: ${error.message}`);
 
   revalidatePath(monthUrl(check.year, check.month));
 }

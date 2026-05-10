@@ -42,7 +42,7 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
     >
       <input type="hidden" name="space_id" value={spaceId} />
       <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-        Add a template
+        Adicionar conta recorrente
       </h2>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="sm:col-span-2">
@@ -50,14 +50,14 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
             htmlFor="name"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Name
+            Nome
           </label>
           <input
             id="name"
             name="name"
             type="text"
             required
-            placeholder="e.g. Claro"
+            placeholder="ex.: Claro"
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
@@ -66,7 +66,7 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
             htmlFor="default_amount"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Default amount (BRL)
+            Valor padrão (BRL)
           </label>
           <input
             id="default_amount"
@@ -85,13 +85,13 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
             htmlFor="category"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Category (optional)
+            Categoria (opcional)
           </label>
           <input
             id="category"
             name="category"
             type="text"
-            placeholder="e.g. Utilities, Subscriptions, Health"
+            placeholder="ex.: Contas básicas, Assinaturas, Saúde"
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
@@ -102,7 +102,7 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
             htmlFor="cadence"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Recurrence
+            Recorrência
           </label>
           <select
             id="cadence"
@@ -111,9 +111,9 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
             onChange={(e) => setCadence(e.target.value)}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           >
-            <option value="monthly">Monthly</option>
-            <option value="weekly">Weekly</option>
-            <option value="biweekly">Biweekly</option>
+            <option value="monthly">Mensal</option>
+            <option value="weekly">Semanal</option>
+            <option value="biweekly">Quinzenal</option>
           </select>
         </div>
 
@@ -124,7 +124,7 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
               htmlFor="due_day"
               className="block text-xs font-medium text-gray-700 dark:text-gray-300"
             >
-              Due day (optional)
+              Dia de vencimento (opcional)
             </label>
             <input
               id="due_day"
@@ -145,7 +145,7 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
               htmlFor="day_of_week"
               className="block text-xs font-medium text-gray-700 dark:text-gray-300"
             >
-              Day
+              Dia da semana
             </label>
             <select
               id="day_of_week"
@@ -172,7 +172,7 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
               checked={installmentsEnabled}
               onChange={(e) => setInstallmentsEnabled(e.target.checked)}
             />
-            <span>Parcelamento (bounded number of monthly installments)</span>
+            <span>Parcelamento (número limitado de parcelas mensais)</span>
           </label>
 
           {installmentsEnabled && (
@@ -182,7 +182,7 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
                   htmlFor="installments_total"
                   className="block text-xs font-medium text-gray-700 dark:text-gray-300"
                 >
-                  How many installments?
+                  Quantas parcelas?
                 </label>
                 <input
                   id="installments_total"
@@ -191,7 +191,7 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
                   min="1"
                   step="1"
                   required={installmentsEnabled}
-                  placeholder="e.g. 10"
+                  placeholder="ex.: 10"
                   className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
                 />
               </div>
@@ -200,7 +200,7 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
                   htmlFor="installments_start_month"
                   className="block text-xs font-medium text-gray-700 dark:text-gray-300"
                 >
-                  First installment month
+                  Mês da primeira parcela
                 </label>
                 <input
                   id="installments_start_month"
@@ -228,7 +228,7 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
           disabled={isPending}
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
         >
-          {isPending ? "Adding…" : "Add template"}
+          {isPending ? "Adicionando…" : "Adicionar"}
         </button>
       </div>
     </form>

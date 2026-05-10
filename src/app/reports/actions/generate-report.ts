@@ -19,21 +19,21 @@ export async function generateReport(
   month: number
 ) {
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
-    throw new Error("Invalid year");
+    throw new Error("Ano inválido");
   }
   if (!Number.isInteger(month) || month < 1 || month > 12) {
-    throw new Error("Invalid month");
+    throw new Error("Mês inválido");
   }
 
   if (yearMonthKey(year, month) >= currentYearMonth()) {
-    throw new Error("Reports can only be generated for past months");
+    throw new Error("Só é possível gerar relatórios de meses passados");
   }
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   const { data: space } = await supabase
     .from("spaces")
@@ -41,9 +41,9 @@ export async function generateReport(
     .eq("id", spaceId)
     .single();
 
-  if (!space) throw new Error("Space not found");
+  if (!space) throw new Error("Espaço não encontrado");
   if (space.created_by !== user.id) {
-    throw new Error("Only the space owner can generate reports");
+    throw new Error("Apenas o dono do espaço pode gerar relatórios");
   }
 
   const admin = createAdminClient();
@@ -56,7 +56,7 @@ export async function generateReport(
   );
 
   if (!result.generated) {
-    throw new Error("No data to report for this month");
+    throw new Error("Sem dados para esse mês");
   }
 
   revalidatePath(reportsUrl());

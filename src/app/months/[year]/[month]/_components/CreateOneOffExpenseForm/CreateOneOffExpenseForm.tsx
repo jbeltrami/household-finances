@@ -51,7 +51,7 @@ export default function CreateOneOffExpenseForm({
       className="mt-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
     >
       <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-        Add expense
+        Adicionar despesa
       </h3>
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="sm:col-span-2">
@@ -59,14 +59,14 @@ export default function CreateOneOffExpenseForm({
             htmlFor="expense_name"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Name
+            Nome
           </label>
           <input
             id="expense_name"
             name="name"
             type="text"
             required
-            placeholder="e.g. Restaurant, Gas station"
+            placeholder="ex.: Restaurante, Posto de gasolina"
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
@@ -75,7 +75,7 @@ export default function CreateOneOffExpenseForm({
             htmlFor="expense_amount"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Amount (BRL)
+            Valor (BRL)
           </label>
           <input
             id="expense_amount"
@@ -93,7 +93,7 @@ export default function CreateOneOffExpenseForm({
             htmlFor="expense_date"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Date
+            Data
           </label>
           <input
             id="expense_date"
@@ -109,13 +109,13 @@ export default function CreateOneOffExpenseForm({
             htmlFor="expense_category"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Category (optional)
+            Categoria (opcional)
           </label>
           <input
             id="expense_category"
             name="category"
             type="text"
-            placeholder="e.g. Food, Transport, Health"
+            placeholder="ex.: Alimentação, Transporte, Saúde"
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
@@ -124,13 +124,13 @@ export default function CreateOneOffExpenseForm({
             htmlFor="expense_notes"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Notes (optional)
+            Observações (opcional)
           </label>
           <textarea
             id="expense_notes"
             name="notes"
             rows={2}
-            placeholder="Anything worth remembering about this expense"
+            placeholder="Algo que valha a pena lembrar sobre essa despesa"
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
@@ -148,7 +148,7 @@ export default function CreateOneOffExpenseForm({
           disabled={isPending}
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
         >
-          {isPending ? "Adding…" : "Add expense"}
+          {isPending ? "Adicionando…" : "Adicionar"}
         </button>
       </div>
     </form>

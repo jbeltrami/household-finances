@@ -66,7 +66,7 @@ export default function IncomeEntryRow({
 
   const [isDeleting, startDelete] = useTransition();
   const handleDelete = () => {
-    if (!window.confirm(`Delete "${entry.name}"?`)) return;
+    if (!window.confirm(`Excluir "${entry.name}"?`)) return;
     startDelete(async () => {
       await deleteIncomeEntry(entry.id);
     });
@@ -83,7 +83,7 @@ export default function IncomeEntryRow({
           {entry.name}
         </p>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          Expected {dateFormatter.format(new Date(entry.expected_date))}
+          Esperado em {dateFormatter.format(new Date(entry.expected_date))}
         </p>
       </div>
 
@@ -116,7 +116,7 @@ export default function IncomeEntryRow({
                   : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
               }`}
             >
-              {isUpdating ? "Saving…" : "Save"}
+              {isUpdating ? "Salvando…" : "Salvar"}
             </button>
             <button
               type="button"
@@ -124,7 +124,7 @@ export default function IncomeEntryRow({
               disabled={isUpdating}
               className="rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
             >
-              Cancel
+              Cancelar
             </button>
           </form>
         ) : (
@@ -138,7 +138,7 @@ export default function IncomeEntryRow({
                 onClick={() => setEditing(true)}
                 className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
               >
-                Edit
+                Editar
               </button>
             )}
           </>
@@ -152,7 +152,7 @@ export default function IncomeEntryRow({
                 : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"
             }`}
           >
-            {entry.received ? "received" : "pending"}
+            {entry.received ? "recebido" : "pendente"}
           </span>
         ) : (
           <button
@@ -166,9 +166,9 @@ export default function IncomeEntryRow({
                   ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-200 dark:hover:bg-green-900/60"
                   : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-200 dark:hover:bg-yellow-900/60"
             }`}
-            title={entry.received ? "Mark as pending" : "Mark as received"}
+            title={entry.received ? "Marcar como pendente" : "Marcar como recebido"}
           >
-            {isToggling ? "…" : entry.received ? "received" : "pending"}
+            {isToggling ? "…" : entry.received ? "recebido" : "pendente"}
           </button>
         )}
 
@@ -183,7 +183,7 @@ export default function IncomeEntryRow({
                 : "text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
             }`}
           >
-            {isDeleting ? "Deleting…" : "Delete"}
+            {isDeleting ? "Excluindo…" : "Excluir"}
           </button>
         )}
       </div>

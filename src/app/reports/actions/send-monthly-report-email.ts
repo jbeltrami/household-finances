@@ -17,7 +17,7 @@ export async function sendMonthlyReportEmail(reportId: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   // RLS-gated lookup confirms the user has access to this report.
   const { data: report } = await supabase
@@ -25,22 +25,22 @@ export async function sendMonthlyReportEmail(reportId: string) {
     .select("id, space_id")
     .eq("id", reportId)
     .single();
-  if (!report) throw new Error("Report not found");
+  if (!report) throw new Error("Relatório não encontrado");
 
   const { data: space } = await supabase
     .from("spaces")
     .select("created_by")
     .eq("id", report.space_id)
     .single();
-  if (!space) throw new Error("Space not found");
+  if (!space) throw new Error("Espaço não encontrado");
   if (space.created_by !== user.id) {
-    throw new Error("Only the space owner can send reports");
+    throw new Error("Apenas o dono do espaço pode enviar relatórios");
   }
 
   // Derive absolute URLs from the inbound request's host header.
   const headersList = await headers();
   const host = headersList.get("host");
-  if (!host) throw new Error("Missing host header");
+  if (!host) throw new Error("Cabeçalho host ausente");
   const proto =
     headersList.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");

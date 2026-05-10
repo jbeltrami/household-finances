@@ -29,13 +29,13 @@ export default function IncomeSection({
     <section className="mt-6">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-          Income
+          Receitas
         </h2>
         {!locked && (
           <button
             type="button"
             onClick={() => setShowAddForm((s) => !s)}
-            aria-label={showAddForm ? "Cancel adding income" : "Add income"}
+            aria-label={showAddForm ? "Cancelar adição de receita" : "Adicionar receita"}
             aria-expanded={showAddForm}
             className="flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
           >
@@ -55,7 +55,7 @@ export default function IncomeSection({
 
       {income.entries.length === 0 ? (
         <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-          No income recorded for this month.
+          Nenhuma receita registrada neste mês.
         </p>
       ) : (
         <>
@@ -75,7 +75,7 @@ export default function IncomeSection({
           <dl className="mt-4 grid grid-cols-3 gap-4 rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
             <div>
               <dt className="text-xs text-gray-500 dark:text-gray-400">
-                Total income
+                Total de receitas
               </dt>
               <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                 {brlFormatter.format(income.total)}
@@ -83,7 +83,7 @@ export default function IncomeSection({
             </div>
             <div>
               <dt className="text-xs text-gray-500 dark:text-gray-400">
-                Received so far
+                Recebido até o momento
               </dt>
               <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                 {brlFormatter.format(income.received)}
@@ -91,7 +91,7 @@ export default function IncomeSection({
             </div>
             <div>
               <dt className="text-xs text-gray-500 dark:text-gray-400">
-                Still expected
+                Ainda a receber
               </dt>
               <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
                 {brlFormatter.format(income.stillExpected)}

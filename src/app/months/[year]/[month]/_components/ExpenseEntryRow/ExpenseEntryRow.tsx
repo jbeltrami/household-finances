@@ -57,7 +57,7 @@ export default function ExpenseEntryRow({
   const [isDeleting, startDelete] = useTransition();
   const handleDelete = () => {
     if (expense.id == null) return;
-    if (!window.confirm(`Delete "${expense.name}"?`)) return;
+    if (!window.confirm(`Excluir "${expense.name}"?`)) return;
     startDelete(async () => {
       await deleteEntry(expense.id!);
     });
@@ -70,7 +70,7 @@ export default function ExpenseEntryRow({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Name
+                Nome
               </label>
               <input
                 name="name"
@@ -83,7 +83,7 @@ export default function ExpenseEntryRow({
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Amount (BRL)
+                Valor (BRL)
               </label>
               <input
                 name="amount"
@@ -97,19 +97,19 @@ export default function ExpenseEntryRow({
             </div>
             <div className="sm:col-span-3">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Category
+                Categoria
               </label>
               <input
                 name="category"
                 type="text"
                 defaultValue={expense.category ?? ""}
-                placeholder="e.g. Food, Transport, Health"
+                placeholder="ex.: Alimentação, Transporte, Saúde"
                 className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
               />
             </div>
             <div className="sm:col-span-3">
               <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Notes
+                Observações
               </label>
               <textarea
                 name="notes"
@@ -136,7 +136,7 @@ export default function ExpenseEntryRow({
               disabled={isDeleting || isUpdating}
               className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
             >
-              {isDeleting ? "Deleting…" : "Delete"}
+              {isDeleting ? "Excluindo…" : "Excluir"}
             </button>
             <div className="flex items-center gap-2">
               <button
@@ -145,7 +145,7 @@ export default function ExpenseEntryRow({
                 disabled={isUpdating}
                 className="rounded-md px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
               >
-                Cancel
+                Cancelar
               </button>
               <button
                 type="submit"
@@ -156,7 +156,7 @@ export default function ExpenseEntryRow({
                     : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
                 }`}
               >
-                {isUpdating ? "Saving…" : "Save"}
+                {isUpdating ? "Salvando…" : "Salvar"}
               </button>
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function ExpenseEntryRow({
             onClick={() => setEditing(true)}
             className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
           >
-            Edit
+            Editar
           </button>
         )}
         {!noEdit && expense.id != null && (
@@ -210,7 +210,7 @@ export default function ExpenseEntryRow({
                 : "text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
             }`}
           >
-            {isDeleting ? "Deleting…" : "Delete"}
+            {isDeleting ? "Excluindo…" : "Excluir"}
           </button>
         )}
       </div>

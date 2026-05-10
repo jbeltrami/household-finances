@@ -52,10 +52,10 @@ export default async function ReportsPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-        Reports
+        Relatórios
       </h1>
       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Download a PDF summary of any past month.
+        Baixe um PDF com o resumo de qualquer mês anterior.
       </p>
 
       {hasMissing && (
@@ -66,8 +66,8 @@ export default async function ReportsPage() {
 
       {rows.length === 0 ? (
         <p className="mt-8 text-sm text-gray-500 dark:text-gray-400">
-          No past months with data yet. Come back here once you have recorded
-          entries in a previous month.
+          Nenhum mês anterior com lançamentos ainda. Volte aqui quando tiver
+          registrado lançamentos em um mês passado.
         </p>
       ) : (
         <ul className="mt-6 divide-y divide-gray-200 dark:divide-gray-800">

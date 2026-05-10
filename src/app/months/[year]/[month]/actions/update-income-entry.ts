@@ -22,7 +22,7 @@ export async function updateIncomeEntry(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
+    if (!user) return { error: "Não autenticado" };
 
     const check = await checkIncomeEntryEditable(supabase, entryId);
     if (!check.ok) return { error: check.error };
@@ -30,12 +30,12 @@ export async function updateIncomeEntry(
     const name = formData.get("name")?.toString().trim();
     const amountRaw = formData.get("amount")?.toString();
 
-    if (!name) return { error: "Name is required" };
-    if (!amountRaw) return { error: "Amount is required" };
+    if (!name) return { error: "O nome é obrigatório" };
+    if (!amountRaw) return { error: "O valor é obrigatório" };
 
     const amount = Number(amountRaw);
     if (!Number.isFinite(amount) || amount < 0) {
-      return { error: "Amount must be a positive number" };
+      return { error: "O valor precisa ser um número positivo" };
     }
 
     const { error } = await supabase
@@ -43,11 +43,11 @@ export async function updateIncomeEntry(
       .update({ name, amount })
       .eq("id", entryId);
 
-    if (error) return { error: `Failed to update income: ${error.message}` };
+    if (error) return { error: `Falha ao atualizar a receita: ${error.message}` };
 
     revalidatePath(monthUrl(check.year, check.month));
     return { error: null };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Something went wrong" };
+    return { error: e instanceof Error ? e.message : "Algo deu errado" };
   }
 }

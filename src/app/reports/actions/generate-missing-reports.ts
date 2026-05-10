@@ -25,7 +25,7 @@ export async function generateMissingReports(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   const { data: space } = await supabase
     .from("spaces")
@@ -33,9 +33,9 @@ export async function generateMissingReports(
     .eq("id", spaceId)
     .single();
 
-  if (!space) throw new Error("Space not found");
+  if (!space) throw new Error("Espaço não encontrado");
   if (space.created_by !== user.id) {
-    throw new Error("Only the space owner can generate reports");
+    throw new Error("Apenas o dono do espaço pode gerar relatórios");
   }
 
   const admin = createAdminClient();

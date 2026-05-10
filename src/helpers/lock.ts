@@ -56,7 +56,7 @@ export async function checkDateEditable(
   date: string
 ): Promise<EditCheckResult> {
   const parsed = parseYearMonthFromYmd(date);
-  if (!parsed) return { ok: false, error: "Invalid date" };
+  if (!parsed) return { ok: false, error: "Data inválida" };
 
   const unlock = await fetchMonthUnlock(
     supabase,
@@ -74,7 +74,7 @@ export async function checkDateEditable(
   ) {
     return {
       ok: false,
-      error: "This month is locked. Unlock it before editing.",
+      error: "Este mês está bloqueado. Desbloqueie antes de editar.",
     };
   }
 
@@ -95,7 +95,7 @@ export async function checkEntryEditable(
     .eq("id", entryId)
     .maybeSingle();
 
-  if (!data) return { ok: false, error: "Entry not found" };
+  if (!data) return { ok: false, error: "Lançamento não encontrado" };
 
   return checkDateEditable(supabase, data.space_id, data.date);
 }
@@ -111,7 +111,7 @@ export async function checkIncomeEntryEditable(
     .eq("id", entryId)
     .maybeSingle();
 
-  if (!data) return { ok: false, error: "Income entry not found" };
+  if (!data) return { ok: false, error: "Receita não encontrada" };
 
   return checkDateEditable(supabase, data.space_id, data.expected_date);
 }

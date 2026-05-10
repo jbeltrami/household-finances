@@ -85,13 +85,13 @@ export default function NavbarNav({
         {/* Center: desktop nav links (hidden on mobile) */}
         <div className="hidden items-center gap-6 md:flex">
           <Link href={billsUrl()} className={linkClass}>
-            Bills
+            Contas
           </Link>
           <Link href={reportsUrl()} className={linkClass}>
-            Reports
+            Relatórios
           </Link>
           <Link href={settingsUrl()} className={linkClass}>
-            Settings
+            Configurações
           </Link>
         </div>
 
@@ -125,21 +125,21 @@ export default function NavbarNav({
               onClick={closeMenu}
               className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              Bills
+              Contas
             </Link>
             <Link
               href={reportsUrl()}
               onClick={closeMenu}
               className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              Reports
+              Relatórios
             </Link>
             <Link
               href={settingsUrl()}
               onClick={closeMenu}
               className="rounded-md px-2 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             >
-              Settings
+              Configurações
             </Link>
           </div>
         </div>

@@ -17,7 +17,7 @@ export async function toggleIncomeReceived(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   const check = await checkIncomeEntryEditable(supabase, entryId);
   if (!check.ok) throw new Error(check.error);
@@ -27,7 +27,7 @@ export async function toggleIncomeReceived(
     .update({ received: newReceived })
     .eq("id", entryId);
 
-  if (error) throw new Error(`Failed to update income: ${error.message}`);
+  if (error) throw new Error(`Falha ao atualizar a receita: ${error.message}`);
 
   revalidatePath(monthUrl(check.year, check.month));
 }

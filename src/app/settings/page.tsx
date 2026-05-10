@@ -56,11 +56,11 @@ export default async function SpaceSettingsPage() {
         href={backHref}
         className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
       >
-        ← Back to this month
+        ← Voltar para este mês
       </Link>
 
       <h1 className="mt-4 text-2xl font-semibold text-gray-900 dark:text-gray-100">
-        Settings
+        Configurações
       </h1>
 
       <section className="mt-6">
@@ -69,7 +69,7 @@ export default async function SpaceSettingsPage() {
 
       <section className="mt-8">
         <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-          Email reports
+          Relatórios por e-mail
         </h2>
         <div className="mt-3 rounded-md border border-gray-200 p-4 dark:border-gray-800">
           <MonthlyReportEmailToggle
@@ -81,7 +81,7 @@ export default async function SpaceSettingsPage() {
 
       <section className="mt-8">
         <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-          WhatsApp notifications
+          Notificações por WhatsApp
         </h2>
         <div className="mt-3 rounded-md border border-gray-200 p-4 dark:border-gray-800">
           <WhatsAppNotificationToggle

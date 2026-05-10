@@ -35,7 +35,7 @@ export default function ReportRow({ row, spaceId }: Props) {
       try {
         await generateReport(spaceId, row.year, row.month);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to generate report");
+        setError(e instanceof Error ? e.message : "Falha ao gerar o relatório");
       }
     });
   };
@@ -48,7 +48,7 @@ export default function ReportRow({ row, spaceId }: Props) {
         const url = await downloadReport(row.reportId);
         window.location.href = url;
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to download PDF");
+        setError(e instanceof Error ? e.message : "Falha ao baixar o PDF");
       }
     });
   };
@@ -60,7 +60,7 @@ export default function ReportRow({ row, spaceId }: Props) {
       try {
         await sendMonthlyReportEmail(row.reportId);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to send email");
+        setError(e instanceof Error ? e.message : "Falha ao enviar o e-mail");
       }
     });
   };
@@ -74,17 +74,17 @@ export default function ReportRow({ row, spaceId }: Props) {
         {row.kind === "generated" ? (
           <>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              Generated {dateTimeFormatter.format(new Date(row.generatedAt))}
+              Gerado em {dateTimeFormatter.format(new Date(row.generatedAt))}
             </span>
             {row.sentAt && (
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                Sent {dateTimeFormatter.format(new Date(row.sentAt))}
+                Enviado em {dateTimeFormatter.format(new Date(row.sentAt))}
               </span>
             )}
           </>
         ) : (
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            Pending
+            Pendente
           </span>
         )}
         {error && (
@@ -102,7 +102,7 @@ export default function ReportRow({ row, spaceId }: Props) {
               disabled={pending}
               className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
             >
-              {pending ? "..." : "Regenerate"}
+              {pending ? "..." : "Regenerar"}
             </button>
             <button
               type="button"
@@ -110,7 +110,7 @@ export default function ReportRow({ row, spaceId }: Props) {
               disabled={pending}
               className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
             >
-              {pending ? "..." : row.sentAt ? "Resend" : "Send by email"}
+              {pending ? "..." : row.sentAt ? "Reenviar" : "Enviar por e-mail"}
             </button>
             <button
               type="button"
@@ -118,7 +118,7 @@ export default function ReportRow({ row, spaceId }: Props) {
               disabled={pending}
               className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {pending ? "..." : "Download PDF"}
+              {pending ? "..." : "Baixar PDF"}
             </button>
           </>
         ) : (
@@ -128,7 +128,7 @@ export default function ReportRow({ row, spaceId }: Props) {
             disabled={pending}
             className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {pending ? "Generating..." : "Generate"}
+            {pending ? "Gerando…" : "Gerar"}
           </button>
         )}
       </div>

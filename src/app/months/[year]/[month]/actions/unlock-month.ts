@@ -27,10 +27,10 @@ export async function unlockMonth(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
+    if (!user) return { error: "Não autenticado" };
 
     const reason = formData.get("reason")?.toString().trim();
-    if (!reason) return { error: "A reason is required to unlock the month" };
+    if (!reason) return { error: "O motivo é obrigatório para desbloquear o mês" };
     if (reason.length < MIN_REASON_LENGTH) {
       return {
         error: `Reason must be at least ${MIN_REASON_LENGTH} characters`,
@@ -38,7 +38,7 @@ export async function unlockMonth(
     }
 
     if (!isMonthLocked({ year, month, hasUnlock: false })) {
-      return { error: "This month is not locked" };
+      return { error: "Este mês não está bloqueado" };
     }
 
     const { error } = await supabase.from("month_unlocks").upsert(
@@ -52,11 +52,11 @@ export async function unlockMonth(
       { onConflict: "space_id,year,month" }
     );
 
-    if (error) return { error: `Failed to unlock month: ${error.message}` };
+    if (error) return { error: `Falha ao desbloquear o mês: ${error.message}` };
 
     revalidatePath(monthUrl(year, month));
     return { error: null };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Something went wrong" };
+    return { error: e instanceof Error ? e.message : "Algo deu errado" };
   }
 }

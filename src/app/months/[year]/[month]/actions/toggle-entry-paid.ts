@@ -34,7 +34,7 @@ export async function toggleEntryPaid(
   void formData;
 
   if (!Number.isInteger(covered) || covered < 1) {
-    throw new Error("Covered must be a positive integer");
+    throw new Error("A quantidade de parcelas pagas precisa ser um inteiro positivo");
   }
 
   const supabase = await createClient();
@@ -42,7 +42,7 @@ export async function toggleEntryPaid(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   if (target.kind === "materialized") {
     const check = await checkEntryEditable(supabase, target.entryId);
@@ -56,7 +56,7 @@ export async function toggleEntryPaid(
       .eq("id", target.entryId)
       .single();
 
-    if (!row) throw new Error("Entry not found");
+    if (!row) throw new Error("Lançamento não encontrado");
 
     const joined = row as unknown as {
       template_id: string | null;
@@ -98,7 +98,7 @@ export async function toggleEntryPaid(
       .update(updates)
       .eq("id", target.entryId);
 
-    if (error) throw new Error(`Failed to update entry: ${error.message}`);
+    if (error) throw new Error(`Falha ao atualizar o lançamento: ${error.message}`);
 
     // On unpaid → paid, clear any matching WhatsApp notification log
     // rows so the bill is alert-eligible again if the user later flips
@@ -144,7 +144,7 @@ export async function toggleEntryPaid(
     .eq("id", target.templateId)
     .single();
 
-  if (!template) throw new Error("Template not found");
+  if (!template) throw new Error("Conta recorrente não encontrada");
 
   const isInstallment = template.installments_total != null;
   const defaultAmount = Number(template.default_amount);
@@ -167,7 +167,7 @@ export async function toggleEntryPaid(
     installments_covered: effectiveCovered,
   });
 
-  if (error) throw new Error(`Failed to record payment: ${error.message}`);
+  if (error) throw new Error(`Falha ao registrar o pagamento: ${error.message}`);
 
   // Same alert-eligibility reset as the materialized branch — but
   // here only the (template_id, occurrence_date) key can have a log

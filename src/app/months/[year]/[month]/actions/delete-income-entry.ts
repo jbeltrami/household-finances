@@ -11,7 +11,7 @@ export async function deleteIncomeEntry(entryId: string): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   const check = await checkIncomeEntryEditable(supabase, entryId);
   if (!check.ok) throw new Error(check.error);
@@ -21,7 +21,7 @@ export async function deleteIncomeEntry(entryId: string): Promise<void> {
     .delete()
     .eq("id", entryId);
 
-  if (error) throw new Error(`Failed to delete income: ${error.message}`);
+  if (error) throw new Error(`Falha ao excluir a receita: ${error.message}`);
 
   revalidatePath(monthUrl(check.year, check.month));
 }

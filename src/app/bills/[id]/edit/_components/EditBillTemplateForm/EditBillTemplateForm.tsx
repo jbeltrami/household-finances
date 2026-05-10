@@ -57,7 +57,7 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
             htmlFor="name"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Name
+            Nome
           </label>
           <input
             id="name"
@@ -73,7 +73,7 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
             htmlFor="default_amount"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Default amount (BRL)
+            Valor padrão (BRL)
           </label>
           <input
             id="default_amount"
@@ -92,14 +92,14 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
             htmlFor="category"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Category (optional)
+            Categoria (opcional)
           </label>
           <input
             id="category"
             name="category"
             type="text"
             defaultValue={template.category ?? ""}
-            placeholder="e.g. Utilities, Subscriptions, Health"
+            placeholder="ex.: Contas básicas, Assinaturas, Saúde"
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           />
         </div>
@@ -109,7 +109,7 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
             htmlFor="cadence"
             className="block text-xs font-medium text-gray-700 dark:text-gray-300"
           >
-            Recurrence
+            Recorrência
           </label>
           <select
             id="cadence"
@@ -118,9 +118,9 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
             onChange={(e) => setCadence(e.target.value)}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
           >
-            <option value="monthly">Monthly</option>
-            <option value="weekly">Weekly</option>
-            <option value="biweekly">Biweekly</option>
+            <option value="monthly">Mensal</option>
+            <option value="weekly">Semanal</option>
+            <option value="biweekly">Quinzenal</option>
           </select>
         </div>
 
@@ -130,7 +130,7 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
               htmlFor="due_day"
               className="block text-xs font-medium text-gray-700 dark:text-gray-300"
             >
-              Due day (optional)
+              Dia de vencimento (opcional)
             </label>
             <input
               id="due_day"
@@ -150,7 +150,7 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
               htmlFor="day_of_week"
               className="block text-xs font-medium text-gray-700 dark:text-gray-300"
             >
-              Day
+              Dia da semana
             </label>
             <select
               id="day_of_week"
@@ -182,7 +182,7 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
               checked={installmentsEnabled}
               onChange={(e) => setInstallmentsEnabled(e.target.checked)}
             />
-            <span>Parcelamento (bounded number of monthly installments)</span>
+            <span>Parcelamento (número limitado de parcelas mensais)</span>
           </label>
 
           {installmentsEnabled && (
@@ -192,7 +192,7 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
                   htmlFor="installments_total"
                   className="block text-xs font-medium text-gray-700 dark:text-gray-300"
                 >
-                  How many installments?
+                  Quantas parcelas?
                 </label>
                 <input
                   id="installments_total"
@@ -210,7 +210,7 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
                   htmlFor="installments_start_month"
                   className="block text-xs font-medium text-gray-700 dark:text-gray-300"
                 >
-                  First installment month
+                  Mês da primeira parcela
                 </label>
                 <input
                   id="installments_start_month"
@@ -235,9 +235,10 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
       )}
 
       <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-        Changes to the default amount automatically flow to all unpaid
-        occurrences, since those are computed from the template at render
-        time. Already-overridden or paid entries keep their saved values.
+        Alterações no valor padrão se aplicam automaticamente a todas as
+        ocorrências ainda não pagas, já que elas são calculadas a partir do
+        modelo em tempo real. Lançamentos já pagos ou com valor sobrescrito
+        mantêm os valores salvos.
       </p>
 
       <div className="mt-4 flex justify-end gap-2">
@@ -245,14 +246,14 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
           href={billsUrl()}
           className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
         >
-          Cancel
+          Cancelar
         </Link>
         <button
           type="submit"
           disabled={isPending}
           className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
         >
-          {isPending ? "Saving…" : "Save changes"}
+          {isPending ? "Salvando…" : "Salvar alterações"}
         </button>
       </div>
     </form>

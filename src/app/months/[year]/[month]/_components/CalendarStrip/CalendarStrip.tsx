@@ -72,7 +72,7 @@ export default function CalendarStrip({
       <div className="flex items-center gap-2">
         <Link
           href={monthUrl(prev.year, prev.month)}
-          aria-label="Previous month"
+          aria-label="Mês anterior"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
         >
           ←
@@ -81,7 +81,7 @@ export default function CalendarStrip({
         <select
           value={currentValue}
           onChange={handleChange}
-          aria-label="Jump to month"
+          aria-label="Ir para o mês"
           className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 hover:bg-gray-50 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
         >
           {monthOptions.map((opt) => {
@@ -96,7 +96,7 @@ export default function CalendarStrip({
 
         <Link
           href={monthUrl(next.year, next.month)}
-          aria-label="Next month"
+          aria-label="Próximo mês"
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
         >
           →
@@ -107,7 +107,7 @@ export default function CalendarStrip({
         href={monthUrl(now.getFullYear(), now.getMonth() + 1)}
         className="mt-2 block rounded-md py-1.5 text-center text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
       >
-        Today
+        Hoje
       </Link>
 
       {/* Calendar grid — desktop only */}
@@ -189,15 +189,15 @@ export default function CalendarStrip({
                       }`}
                       aria-label={
                         hasOverdue
-                          ? "Has overdue unpaid bills"
-                          : "Has bills or expenses"
+                          ? "Tem contas vencidas em aberto"
+                          : "Tem contas ou despesas"
                       }
                     />
                   )}
                   {hasIncome && (
                     <span
                       className="h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400"
-                      aria-label="Has income expected"
+                      aria-label="Tem receita esperada"
                     />
                   )}
                 </div>

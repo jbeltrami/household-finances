@@ -22,12 +22,12 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
   const categoryRaw = formData.get("category")?.toString().trim();
   const cadenceRaw = formData.get("cadence")?.toString() ?? "monthly";
 
-  if (!name) throw new Error("Name is required");
-  if (!defaultAmountRaw) throw new Error("Default amount is required");
+  if (!name) throw new Error("O nome é obrigatório");
+  if (!defaultAmountRaw) throw new Error("O valor padrão é obrigatório");
 
   const defaultAmount = Number(defaultAmountRaw);
   if (!Number.isFinite(defaultAmount) || defaultAmount < 0) {
-    throw new Error("Default amount must be a positive number");
+    throw new Error("O valor padrão precisa ser um número positivo");
   }
 
   if (
@@ -35,7 +35,7 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
     cadenceRaw !== "weekly" &&
     cadenceRaw !== "biweekly"
   ) {
-    throw new Error("Cadence must be monthly, weekly, or biweekly");
+    throw new Error("A recorrência precisa ser mensal, semanal ou quinzenal");
   }
   const cadence = cadenceRaw;
 
@@ -47,17 +47,17 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
     if (dueDayRaw) {
       dueDay = Number(dueDayRaw);
       if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
-        throw new Error("Due day must be an integer between 1 and 31");
+        throw new Error("O dia de vencimento precisa ser um número entre 1 e 31");
       }
     }
   } else {
     const dowRaw = formData.get("day_of_week")?.toString();
     if (dowRaw == null || dowRaw === "") {
-      throw new Error("Day of week is required for weekly/biweekly bills");
+      throw new Error("O dia da semana é obrigatório para contas semanais ou quinzenais");
     }
     dayOfWeek = Number(dowRaw);
     if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
-      throw new Error("Day of week must be 0 (Sun) through 6 (Sat)");
+      throw new Error("O dia da semana precisa ser de 0 (Dom) a 6 (Sáb)");
     }
   }
 
@@ -67,21 +67,21 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
   const installmentsEnabled = formData.get("installments_enabled") === "on";
   if (installmentsEnabled) {
     if (cadence !== "monthly") {
-      throw new Error("Installments are only supported for monthly bills");
+      throw new Error("Parcelamento só é suportado em contas mensais");
     }
     const totalRaw = formData.get("installments_total")?.toString();
     const startRaw = formData.get("installments_start_month")?.toString();
 
-    if (!totalRaw) throw new Error("Number of installments is required");
-    if (!startRaw) throw new Error("Start month is required");
+    if (!totalRaw) throw new Error("A quantidade de parcelas é obrigatória");
+    if (!startRaw) throw new Error("O mês inicial é obrigatório");
 
     installmentsTotal = Number(totalRaw);
     if (!Number.isInteger(installmentsTotal) || installmentsTotal <= 0) {
-      throw new Error("Number of installments must be a positive integer");
+      throw new Error("A quantidade de parcelas precisa ser um número inteiro positivo");
     }
 
     if (!/^\d{4}-\d{2}$/.test(startRaw)) {
-      throw new Error("Start month must be a valid YYYY-MM value");
+      throw new Error("O mês inicial precisa ser um valor YYYY-MM válido");
     }
     installmentsStartMonth = `${startRaw}-01`;
   }

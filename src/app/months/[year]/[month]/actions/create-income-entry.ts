@@ -26,23 +26,23 @@ export async function createIncomeEntry(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
+    if (!user) return { error: "Não autenticado" };
 
     const name = formData.get("name")?.toString().trim();
     const amountRaw = formData.get("amount")?.toString();
     const expectedDateRaw = formData.get("expected_date")?.toString().trim();
 
-    if (!name) return { error: "Name is required" };
-    if (!amountRaw) return { error: "Amount is required" };
+    if (!name) return { error: "O nome é obrigatório" };
+    if (!amountRaw) return { error: "O valor é obrigatório" };
 
     const amount = Number(amountRaw);
     if (!Number.isFinite(amount) || amount < 0) {
-      return { error: "Amount must be a positive number" };
+      return { error: "O valor precisa ser um número positivo" };
     }
 
     const expectedDate = expectedDateRaw || todayYmd();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(expectedDate)) {
-      return { error: "Invalid date format" };
+      return { error: "Formato de data inválido" };
     }
 
     const check = await checkDateEditable(supabase, spaceId, expectedDate);
@@ -57,7 +57,7 @@ export async function createIncomeEntry(
       received: false,
     });
 
-    if (error) return { error: `Failed to create income: ${error.message}` };
+    if (error) return { error: `Falha ao criar a receita: ${error.message}` };
 
     revalidatePath(monthUrl(viewedYear, viewedMonth));
     if (check.year !== viewedYear || check.month !== viewedMonth) {
@@ -65,6 +65,6 @@ export async function createIncomeEntry(
     }
     return { error: null };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Something went wrong" };
+    return { error: e instanceof Error ? e.message : "Algo deu errado" };
   }
 }

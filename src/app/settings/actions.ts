@@ -26,25 +26,25 @@ export async function renameSpace(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
+    if (!user) return { error: "Não autenticado" };
 
     const name = formData.get("name")?.toString().trim();
-    if (!name) return { error: "Name is required" };
-    if (name.length < 2) return { error: "Name must be at least 2 characters" };
+    if (!name) return { error: "O nome é obrigatório" };
+    if (name.length < 2) return { error: "O nome precisa ter pelo menos 2 caracteres" };
 
     const { error } = await supabase
       .from("spaces")
       .update({ name })
       .eq("id", spaceId);
 
-    if (error) return { error: `Failed to rename: ${error.message}` };
+    if (error) return { error: `Falha ao renomear: ${error.message}` };
 
     // Bust the layout cache so the Navbar dropdown picks up the new name.
     revalidatePath("/", "layout");
     revalidatePath(settingsUrl());
     return { error: null };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Something went wrong" };
+    return { error: e instanceof Error ? e.message : "Algo deu errado" };
   }
 }
 
@@ -62,7 +62,7 @@ export async function setMonthlyReportEmailEnabled(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   const { error } = await supabase
     .from("monthly_report_settings")
@@ -72,7 +72,7 @@ export async function setMonthlyReportEmailEnabled(
     );
 
   if (error) {
-    throw new Error(`Failed to update setting: ${error.message}`);
+    throw new Error(`Falha ao atualizar a configuração: ${error.message}`);
   }
 
   revalidatePath(settingsUrl());
@@ -96,10 +96,10 @@ export async function saveWhatsAppPhone(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated", phone: null };
+    if (!user) return { error: "Não autenticado", phone: null };
 
     const raw = formData.get("phone")?.toString().trim() ?? "";
-    if (!raw) return { error: "Phone number is required", phone: null };
+    if (!raw) return { error: "O número de telefone é obrigatório", phone: null };
 
     // Normalize: strip spaces/dashes the user might type, prepend
     // `+` if missing. Final shape must match the E.164 regex.
@@ -109,7 +109,7 @@ export async function saveWhatsAppPhone(
     if (!E164_REGEX.test(phone)) {
       return {
         error:
-          "Invalid phone format. Use international form (e.g. +5511987654321).",
+          "Formato de telefone inválido. Use o formato internacional (ex.: +5511987654321).",
         phone: null,
       };
     }
@@ -129,14 +129,14 @@ export async function saveWhatsAppPhone(
         .update({ phone_e164: phone, updated_at: new Date().toISOString() })
         .eq("space_id", spaceId);
       if (error) {
-        return { error: `Failed to save phone: ${error.message}`, phone: null };
+        return { error: `Falha ao salvar o telefone: ${error.message}`, phone: null };
       }
     } else {
       const { error } = await supabase
         .from("whatsapp_notification_settings")
         .insert({ space_id: spaceId, phone_e164: phone, enabled: false });
       if (error) {
-        return { error: `Failed to save phone: ${error.message}`, phone: null };
+        return { error: `Falha ao salvar o telefone: ${error.message}`, phone: null };
       }
     }
 
@@ -144,7 +144,7 @@ export async function saveWhatsAppPhone(
     return { error: null, phone };
   } catch (e) {
     return {
-      error: e instanceof Error ? e.message : "Something went wrong",
+      error: e instanceof Error ? e.message : "Algo deu errado",
       phone: null,
     };
   }
@@ -162,7 +162,7 @@ export async function setWhatsAppEnabled(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   if (enabled) {
     const { data: existing } = await supabase
@@ -172,7 +172,7 @@ export async function setWhatsAppEnabled(
       .maybeSingle();
 
     if (!existing?.phone_e164) {
-      throw new Error("Save a phone number before enabling alerts");
+      throw new Error("Salve um número de telefone antes de ativar os avisos");
     }
   }
 
@@ -181,7 +181,7 @@ export async function setWhatsAppEnabled(
     .update({ enabled, updated_at: new Date().toISOString() })
     .eq("space_id", spaceId);
 
-  if (error) throw new Error(`Failed to update: ${error.message}`);
+  if (error) throw new Error(`Falha ao atualizar: ${error.message}`);
 
   revalidatePath(settingsUrl());
 }
@@ -200,7 +200,7 @@ export async function sendWhatsAppTestMessage(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: "Not authenticated" };
+    if (!user) return { ok: false, error: "Não autenticado" };
 
     const { data: settings } = await supabase
       .from("whatsapp_notification_settings")
@@ -209,7 +209,7 @@ export async function sendWhatsAppTestMessage(
       .maybeSingle();
 
     if (!settings?.phone_e164) {
-      return { ok: false, error: "Save a phone number first" };
+      return { ok: false, error: "Salve um número de telefone primeiro" };
     }
 
     await sendWhatsAppText(
@@ -221,7 +221,7 @@ export async function sendWhatsAppTestMessage(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Failed to send test message",
+      error: e instanceof Error ? e.message : "Falha ao enviar mensagem de teste",
     };
   }
 }

@@ -57,7 +57,7 @@ export default function MonthlyViewClient({
 
         {!locked && unlockReason && (
           <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
-            Unlocked: {unlockReason}
+            Desbloqueado: {unlockReason}
           </p>
         )}
 

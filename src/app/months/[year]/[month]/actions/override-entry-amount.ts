@@ -33,14 +33,14 @@ export async function overrideEntryAmount(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { error: "Not authenticated" };
+    if (!user) return { error: "Não autenticado" };
 
     const amountRaw = formData.get("amount")?.toString();
-    if (!amountRaw) return { error: "Amount is required" };
+    if (!amountRaw) return { error: "O valor é obrigatório" };
 
     const amount = Number(amountRaw);
     if (!Number.isFinite(amount) || amount < 0) {
-      return { error: "Amount must be a positive number" };
+      return { error: "O valor precisa ser um número positivo" };
     }
 
     if (target.kind === "materialized") {
@@ -52,7 +52,7 @@ export async function overrideEntryAmount(
         .update({ amount })
         .eq("id", target.entryId);
 
-      if (error) return { error: `Failed to update amount: ${error.message}` };
+      if (error) return { error: `Falha ao atualizar o valor: ${error.message}` };
 
       revalidatePath(monthUrl(check.year, check.month));
       return { error: null };
@@ -71,7 +71,7 @@ export async function overrideEntryAmount(
       .eq("id", target.templateId)
       .single();
 
-    if (!template) return { error: "Template not found" };
+    if (!template) return { error: "Conta recorrente não encontrada" };
 
     const { error } = await supabase.from("entries").insert({
       space_id: target.spaceId,
@@ -86,11 +86,11 @@ export async function overrideEntryAmount(
       installments_covered: 1,
     });
 
-    if (error) return { error: `Failed to save override: ${error.message}` };
+    if (error) return { error: `Falha ao salvar a sobrescrita: ${error.message}` };
 
     revalidatePath(monthUrl(check.year, check.month));
     return { error: null };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Something went wrong" };
+    return { error: e instanceof Error ? e.message : "Algo deu errado" };
   }
 }

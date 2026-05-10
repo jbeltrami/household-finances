@@ -33,11 +33,11 @@ export default async function EditBillTemplatePage({
           href={billsUrl()}
           className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
         >
-          ← Back
+          ← Voltar
         </Link>
       </div>
       <h1 className="mt-4 text-2xl font-semibold text-gray-900 dark:text-gray-100">
-        Edit template
+        Editar conta recorrente
       </h1>
 
       <EditBillTemplateForm spaceId={spaceId} template={template} />

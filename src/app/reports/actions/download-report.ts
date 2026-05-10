@@ -16,7 +16,7 @@ export async function downloadReport(reportId: string): Promise<string> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) throw new Error("Não autenticado");
 
   const { data: report } = await supabase
     .from("monthly_reports")
@@ -24,7 +24,7 @@ export async function downloadReport(reportId: string): Promise<string> {
     .eq("id", reportId)
     .single();
 
-  if (!report) throw new Error("Report not found");
+  if (!report) throw new Error("Relatório não encontrado");
 
   const filename = `relatorio-${report.year}-${String(report.month).padStart(2, "0")}.pdf`;
 
