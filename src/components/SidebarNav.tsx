@@ -4,7 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Menu, Receipt, FileBarChart, Settings, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileBarChart,
+  Menu,
+  Receipt,
+  Settings,
+  X,
+} from "lucide-react";
 import { billsUrl, reportsUrl, settingsUrl } from "@/helpers/paths";
 import SignOutButton from "./SignOutButton";
 
@@ -12,6 +20,7 @@ type Props = {
   displayName: string;
   avatarUrl?: string;
   initials: string;
+  defaultCollapsed: boolean;
 };
 
 type NavItem = {
@@ -26,9 +35,8 @@ const NAV_ITEMS: NavItem[] = [
     href: billsUrl(),
     label: "Contas",
     icon: Receipt,
-    // The bills section starts on /bills and includes its edit pages,
-    // but we also want the monthly view (the user's "home") to light
-    // up this item, since Contas is conceptually the home of the app.
+    // Bills section + edit pages, plus the monthly view (the app's
+    // home) lights up this item.
     matches: (p) =>
       p === "/" || p.startsWith("/bills") || p.startsWith("/months"),
   },
@@ -46,10 +54,31 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
-export default function SidebarNav({ displayName, avatarUrl, initials }: Props) {
+// Persist the collapsed preference in a long-lived cookie so the
+// server-side Sidebar reads it on the next render — no flash of
+// mismatched UI when navigating between pages.
+function writeCollapsedCookie(collapsed: boolean) {
+  document.cookie = `sidebar_collapsed=${collapsed ? "1" : "0"}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+}
+
+export default function SidebarNav({
+  displayName,
+  avatarUrl,
+  initials,
+  defaultCollapsed,
+}: Props) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false);                       // mobile drawer
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);  // desktop rail
+
   const close = () => setOpen(false);
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      const next = !c;
+      writeCollapsedCookie(next);
+      return next;
+    });
+  };
 
   return (
     <>
@@ -79,27 +108,56 @@ export default function SidebarNav({ displayName, avatarUrl, initials }: Props) 
         />
       )}
 
-      {/* Sidebar — fixed drawer on mobile when open, sticky column on md+ */}
+      {/* Sidebar — drawer on mobile, sticky rail on md+.
+          On mobile the drawer is always w-64 (full width). On md+
+          width follows the `collapsed` preference. */}
       <aside
         className={
-          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-subtle bg-surface px-5 py-6 transition-transform duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 " +
-          (open ? "translate-x-0" : "-translate-x-full")
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-subtle bg-surface px-5 py-6 transition-[width,padding] duration-200 md:sticky md:top-0 md:h-screen md:translate-x-0 " +
+          (open ? "translate-x-0" : "-translate-x-full ") +
+          (collapsed ? "md:w-16 md:px-2" : "md:w-64 md:px-5")
         }
       >
-        {/* Brand + mobile close button */}
-        <div className="mb-8 flex items-center justify-between">
+        {/* Top section: brand (when expanded) + desktop collapse toggle + mobile close.
+            When collapsed on desktop, only the toggle is shown, centered. */}
+        <div
+          className={
+            "mb-8 flex items-center " +
+            (collapsed ? "md:justify-center" : "justify-between")
+          }
+        >
+          {/* Brand: hidden on md+ when collapsed; always visible on mobile drawer */}
           <Link
             href="/"
             onClick={close}
-            className="text-2xl font-light text-fg"
+            className={
+              "text-2xl font-light text-fg " + (collapsed ? "md:hidden" : "")
+            }
           >
             Home <span className="font-bold">Finances</span>
           </Link>
+
+          {/* Desktop collapse/expand toggle */}
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            aria-label={collapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
+            data-tooltip={collapsed ? "Expandir" : "Recolher"}
+            className="hidden h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-2 hover:text-fg md:flex"
+          >
+            {collapsed ? (
+              <ChevronRight className="h-5 w-5" strokeWidth={2} />
+            ) : (
+              <ChevronLeft className="h-5 w-5" strokeWidth={2} />
+            )}
+          </button>
+
+          {/* Mobile close button — only visible while the drawer is open on mobile */}
           <button
             type="button"
             aria-label="Fechar menu"
             onClick={close}
-            className="rounded-md p-1.5 text-fg hover:bg-surface-2 md:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-fg hover:bg-surface-2 md:hidden"
           >
             <X className="h-5 w-5" />
           </button>
@@ -116,23 +174,40 @@ export default function SidebarNav({ displayName, avatarUrl, initials }: Props) 
                 href={item.href}
                 onClick={close}
                 aria-current={active ? "page" : undefined}
+                aria-label={collapsed ? item.label : undefined}
+                data-tooltip={collapsed ? item.label : undefined}
                 className={
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors " +
+                  (collapsed ? "md:justify-center md:px-2" : "") +
+                  " " +
                   (active
                     ? "bg-surface-2 text-fg"
                     : "text-muted hover:bg-surface-2 hover:text-fg")
                 }
               >
-                <Icon className="h-5 w-5" strokeWidth={1.75} />
-                {item.label}
+                <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
+                {/* Label is always rendered (so mobile drawer shows it), but hidden on md+ when collapsed */}
+                <span className={collapsed ? "md:hidden" : ""}>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
         {/* User block pinned to the bottom */}
-        <div className="mt-6 flex flex-col gap-3 border-t border-subtle pt-5">
-          <div className="flex items-center gap-3">
+        <div
+          className={
+            "mt-6 flex border-t border-subtle pt-5 " +
+            (collapsed
+              ? "md:flex-col md:items-center md:gap-2 flex-col gap-3"
+              : "flex-col gap-3")
+          }
+        >
+          <div
+            className={
+              "flex items-center gap-3 " +
+              (collapsed ? "md:justify-center md:gap-0" : "")
+            }
+          >
             {avatarUrl ? (
               <Image
                 src={avatarUrl}
@@ -140,17 +215,37 @@ export default function SidebarNav({ displayName, avatarUrl, initials }: Props) 
                 width={36}
                 height={36}
                 className="rounded-full"
+                data-tooltip={collapsed ? displayName : undefined}
               />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-2 text-sm font-medium text-fg">
+              <div
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-2 text-sm font-medium text-fg"
+                data-tooltip={collapsed ? displayName : undefined}
+              >
                 {initials}
               </div>
             )}
-            <span className="truncate text-sm font-medium text-fg">
+            <span
+              className={
+                "truncate text-sm font-medium text-fg " +
+                (collapsed ? "md:hidden" : "")
+              }
+            >
               {displayName}
             </span>
           </div>
-          <SignOutButton />
+
+          {/* Full sign-out button: always visible on mobile drawer; on md+ only
+              when expanded. The compact (icon-only) sign-out renders separately
+              below for md+ collapsed view. */}
+          <div className={collapsed ? "md:hidden" : ""}>
+            <SignOutButton compact={false} />
+          </div>
+          {collapsed && (
+            <div className="hidden md:block">
+              <SignOutButton compact />
+            </div>
+          )}
         </div>
       </aside>
     </>

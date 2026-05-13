@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import SidebarNav from "./SidebarNav";
 
@@ -33,11 +34,18 @@ export default async function Sidebar() {
   const displayName = fullName ?? user.email ?? "Usuário";
   const initials = getInitials(displayName);
 
+  // Read the collapse preference here on the server so the initial
+  // render matches the user's saved state — no expand-to-collapse
+  // flash on every page load.
+  const cookieStore = await cookies();
+  const defaultCollapsed = cookieStore.get("sidebar_collapsed")?.value === "1";
+
   return (
     <SidebarNav
       displayName={displayName}
       avatarUrl={avatarUrl}
       initials={initials}
+      defaultCollapsed={defaultCollapsed}
     />
   );
 }
