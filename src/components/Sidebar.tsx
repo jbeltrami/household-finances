@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import NavbarNav from "./NavbarNav";
+import SidebarNav from "./SidebarNav";
 
 function getInitials(name: string): string {
   return name
@@ -10,18 +10,16 @@ function getInitials(name: string): string {
     .join("");
 }
 
-export default async function Navbar() {
+export default async function Sidebar() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // The proxy redirects unauthenticated users to /login before any
-  // page renders, so we don't render the navbar at all if absent.
+  // Proxy redirects unauthenticated users to /login before any page
+  // renders, so we don't show the sidebar at all if absent.
   if (!user) return null;
 
-  // The user has exactly one personal space (created by the
-  // on_auth_user_created trigger at signup).
   const { data: space } = await supabase
     .from("spaces")
     .select("id, name")
@@ -32,13 +30,12 @@ export default async function Navbar() {
 
   const fullName = user.user_metadata?.full_name as string | undefined;
   const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
-  const displayName = fullName ?? user.email ?? "User";
+  const displayName = fullName ?? user.email ?? "Usuário";
   const initials = getInitials(displayName);
 
   return (
-    <NavbarNav
-      spaceId={space.id}
-      spaceName={space.name}
+    <SidebarNav
+      displayName={displayName}
       avatarUrl={avatarUrl}
       initials={initials}
     />

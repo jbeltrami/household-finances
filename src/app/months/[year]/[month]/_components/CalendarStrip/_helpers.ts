@@ -11,26 +11,26 @@ export type CalendarCell = {
   inCurrentMonth: boolean;
 };
 
-// Build a 6×7 = 42-cell calendar grid for the given year/month, Sunday-first.
+// Build a 6×7 = 42-cell calendar grid for the given year/month, Monday-first.
 // Always returns 42 cells so the grid height is stable across months. Cells
 // from the previous and next month are marked `inCurrentMonth: false` so the
-// UI can show them in a faded color.
+// UI can fade them.
 export function buildCalendarGrid(
   year: number,
   month: number
 ): CalendarCell[] {
-  // First day of the month — getDay() returns 0=Sunday, 6=Saturday.
   const firstOfMonth = new Date(year, month - 1, 1);
-  const startDay = firstOfMonth.getDay();
+  // JS Date.getDay(): 0=Sunday..6=Saturday. Convert to 0=Monday..6=Sunday so
+  // Monday lands in column 1.
+  const startDay = (firstOfMonth.getDay() + 6) % 7;
 
   // Last day of THIS month: new Date(year, month, 0) gives the last day of
-  // (month - 1) in 1-indexed terms. Since our `month` is 1-indexed, passing
-  // it directly with day=0 gives us the last day of OUR month.
+  // (month - 1) in 1-indexed terms. Since `month` is 1-indexed, passing it
+  // directly with day=0 gives the last day of the current month.
   const daysInMonth = new Date(year, month, 0).getDate();
 
   const cells: CalendarCell[] = [];
 
-  // Leading pad: trailing days of the previous month.
   if (startDay > 0) {
     const prev = prevMonth(year, month);
     const daysInPrev = new Date(prev.year, prev.month, 0).getDate();
@@ -44,12 +44,10 @@ export function buildCalendarGrid(
     }
   }
 
-  // Current month.
   for (let d = 1; d <= daysInMonth; d++) {
     cells.push({ year, month, day: d, inCurrentMonth: true });
   }
 
-  // Trailing pad: leading days of the next month, filling to 42 cells total.
   const remaining = 42 - cells.length;
   const next = nextMonth(year, month);
   for (let d = 1; d <= remaining; d++) {

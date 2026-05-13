@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { CircleX, Pencil, Trash2 } from "lucide-react";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
 import { deleteEntry, updateEntry } from "../../actions";
 import type { EntryRow } from "../../_types";
@@ -65,26 +66,22 @@ export default function ExpenseEntryRow({
 
   if (editing && !noEdit) {
     return (
-      <li className="px-4 py-3">
+      <li className="px-3 py-3">
         <form action={handleUpdate}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Nome
-              </label>
+              <label className="field-label">Nome</label>
               <input
                 name="name"
                 type="text"
                 required
                 defaultValue={expense.name}
                 autoFocus
-                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                className="field-input"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Valor (BRL)
-              </label>
+              <label className="field-label">Valor (BRL)</label>
               <input
                 name="amount"
                 type="number"
@@ -92,39 +89,32 @@ export default function ExpenseEntryRow({
                 step="5"
                 required
                 defaultValue={String(expense.amount)}
-                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-right text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                className="field-input text-right"
               />
             </div>
             <div className="sm:col-span-3">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Categoria
-              </label>
+              <label className="field-label">Categoria</label>
               <input
                 name="category"
                 type="text"
                 defaultValue={expense.category ?? ""}
                 placeholder="ex.: Alimentação, Transporte, Saúde"
-                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                className="field-input"
               />
             </div>
             <div className="sm:col-span-3">
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                Observações
-              </label>
+              <label className="field-label">Observações</label>
               <textarea
                 name="notes"
                 rows={2}
                 defaultValue={expense.notes ?? ""}
-                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                className="field-input"
               />
             </div>
           </div>
 
           {updateError && (
-            <p
-              className="mt-2 text-xs text-red-600 dark:text-red-400"
-              role="alert"
-            >
+            <p className="mt-2 text-xs text-danger" role="alert">
               {updateError}
             </p>
           )}
@@ -134,7 +124,7 @@ export default function ExpenseEntryRow({
               type="button"
               onClick={handleDelete}
               disabled={isDeleting || isUpdating}
-              className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50 dark:text-red-400 dark:hover:text-red-300"
+              className="btn-danger-ghost py-1.5 text-xs"
             >
               {isDeleting ? "Excluindo…" : "Excluir"}
             </button>
@@ -143,18 +133,14 @@ export default function ExpenseEntryRow({
                 type="button"
                 onClick={handleCancel}
                 disabled={isUpdating}
-                className="rounded-md px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
+                className="btn-ghost py-1.5 text-xs"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isUpdating}
-                className={`rounded-md px-3 py-1.5 text-xs font-medium ${
-                  isUpdating
-                    ? "animate-pulse bg-gray-400 text-white dark:bg-gray-600"
-                    : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-                }`}
+                className="btn-primary py-1.5 text-xs"
               >
                 {isUpdating ? "Salvando…" : "Salvar"}
               </button>
@@ -167,53 +153,49 @@ export default function ExpenseEntryRow({
 
   return (
     <li
-      className={`flex items-start justify-between gap-4 px-4 py-3 transition-colors ${
-        isHighlighted ? "bg-blue-50 dark:bg-blue-900/20" : ""
-      }`}
+      className={
+        "flex items-center gap-3 px-3 py-2.5 " +
+        (isHighlighted ? "bg-accent-soft" : "")
+      }
     >
+      <CircleX className="h-5 w-5 shrink-0 text-danger" strokeWidth={2} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {expense.name}
+        <p className="truncate text-sm">
+          <span className="font-medium text-fg">{expense.name}</span>
+          <span className="text-muted">
+            {" "}— {brlFormatter.format(expense.amount)}
+          </span>
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-xs text-muted">
           {dateFormatter.format(new Date(expense.date))}
           {expense.category && ` · ${expense.category}`}
+          {expense.notes && ` · ${expense.notes}`}
         </p>
-        {expense.notes && (
-          <p className="mt-1 text-xs italic text-gray-500 dark:text-gray-400">
-            {expense.notes}
-          </p>
-        )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-3">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {brlFormatter.format(expense.amount)}
-        </p>
-        {!noEdit && (
+      {!noEdit && (
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+            className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-fg"
+            aria-label="Editar"
+            data-tooltip="Editar"
           >
-            Editar
+            <Pencil className="h-4 w-4" strokeWidth={2} />
           </button>
-        )}
-        {!noEdit && expense.id != null && (
           <button
             type="button"
             onClick={handleDelete}
             disabled={isDeleting}
-            className={`text-xs font-medium ${
-              isDeleting
-                ? "animate-pulse text-red-400 dark:text-red-500"
-                : "text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-            }`}
+            className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-danger disabled:opacity-50"
+            aria-label="Excluir"
+            data-tooltip="Excluir"
           >
-            {isDeleting ? "Excluindo…" : "Excluir"}
+            <Trash2 className="h-4 w-4" strokeWidth={2} />
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </li>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Plus, X } from "lucide-react";
+import Card from "@/components/Card";
 import CreateIncomeEntryForm from "../CreateIncomeEntryForm/CreateIncomeEntryForm";
 import IncomeEntryRow from "../IncomeEntryRow/IncomeEntryRow";
 import { brlFormatter } from "@/helpers/format";
@@ -26,80 +28,63 @@ export default function IncomeSection({
   const [showAddForm, setShowAddForm] = useState(false);
 
   return (
-    <section className="mt-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-          Receitas
-        </h2>
+    <Card className="p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-medium text-fg">Receitas</h2>
+          <p className="mt-1 text-3xl font-bold text-accent">
+            {brlFormatter.format(income.total)}
+          </p>
+        </div>
         {!locked && (
           <button
             type="button"
             onClick={() => setShowAddForm((s) => !s)}
-            aria-label={showAddForm ? "Cancelar adição de receita" : "Adicionar receita"}
+            aria-label={
+              showAddForm ? "Cancelar adição de receita" : "Adicionar receita"
+            }
+            data-tooltip={showAddForm ? "Cancelar" : "Adicionar receita"}
             aria-expanded={showAddForm}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-fg"
           >
-            {showAddForm ? "×" : "+"}
+            {showAddForm ? (
+              <X className="h-5 w-5" strokeWidth={2} />
+            ) : (
+              <Plus className="h-5 w-5" strokeWidth={2} />
+            )}
           </button>
         )}
       </div>
 
       {!locked && showAddForm && (
-        <CreateIncomeEntryForm
-          spaceId={spaceId}
-          year={year}
-          month={month}
-          onSuccess={() => setShowAddForm(false)}
-        />
+        <div className="mt-4">
+          <CreateIncomeEntryForm
+            spaceId={spaceId}
+            year={year}
+            month={month}
+            onSuccess={() => setShowAddForm(false)}
+          />
+        </div>
       )}
 
       {income.entries.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-4 text-sm text-muted">
           Nenhuma receita registrada neste mês.
         </p>
       ) : (
-        <>
-          <ul className="mt-2 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
-            {income.entries.map((entry) => (
-              <IncomeEntryRow
-                key={entry.id}
-                entry={entry}
-                year={year}
-                month={month}
-                locked={locked}
-                highlightedDay={highlightedDay}
-              />
-            ))}
-          </ul>
-
-          <dl className="mt-4 grid grid-cols-3 gap-4 rounded-lg border border-gray-200 bg-white p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
-            <div>
-              <dt className="text-xs text-gray-500 dark:text-gray-400">
-                Total de receitas
-              </dt>
-              <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
-                {brlFormatter.format(income.total)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-gray-500 dark:text-gray-400">
-                Recebido até o momento
-              </dt>
-              <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
-                {brlFormatter.format(income.received)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-gray-500 dark:text-gray-400">
-                Ainda a receber
-              </dt>
-              <dd className="mt-1 font-medium text-gray-900 dark:text-gray-100">
-                {brlFormatter.format(income.stillExpected)}
-              </dd>
-            </div>
-          </dl>
-        </>
+        <ul className="mt-4 divide-y divide-subtle">
+          {income.entries.map((entry) => (
+            <IncomeEntryRow
+              key={entry.id}
+              entry={entry}
+              year={year}
+              month={month}
+              locked={locked}
+              highlightedDay={highlightedDay}
+            />
+          ))}
+        </ul>
       )}
-    </section>
+    </Card>
   );
 }

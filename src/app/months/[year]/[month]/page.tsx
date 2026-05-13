@@ -139,7 +139,7 @@ export default async function MonthlyViewPage({
     receivedIncome - paidBills - overdueUnpaidBills - totalExpenses;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
       <MonthlyViewClient
         // Remount (reset highlighted-day state) whenever the URL
         // points at a different month.

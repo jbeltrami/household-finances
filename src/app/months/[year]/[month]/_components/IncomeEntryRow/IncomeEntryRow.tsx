@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Check, Clock, Pencil, TrendingUp, Trash2 } from "lucide-react";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
 import {
   deleteIncomeEntry,
@@ -59,11 +60,6 @@ export default function IncomeEntryRow({
     });
   };
 
-  const handleCancel = () => {
-    setEditing(false);
-    setUpdateError(null);
-  };
-
   const [isDeleting, startDelete] = useTransition();
   const handleDelete = () => {
     if (!window.confirm(`Excluir "${entry.name}"?`)) return;
@@ -72,129 +68,121 @@ export default function IncomeEntryRow({
     });
   };
 
+  if (editing && !noEdit) {
+    return (
+      <li className="px-3 py-2">
+        <form
+          action={handleUpdate}
+          className="flex flex-wrap items-center gap-2"
+        >
+          <input
+            type="text"
+            name="name"
+            required
+            defaultValue={entry.name}
+            className="field-input mt-0 min-w-32 flex-1"
+          />
+          <input
+            type="number"
+            name="amount"
+            min="0"
+            step="5"
+            required
+            defaultValue={String(entry.amount)}
+            autoFocus
+            className="field-input mt-0 w-28 text-right"
+          />
+          <button type="submit" disabled={isUpdating} className="btn-primary py-1.5 text-xs">
+            {isUpdating ? "Salvando…" : "Salvar"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(false);
+              setUpdateError(null);
+            }}
+            disabled={isUpdating}
+            className="btn-ghost py-1.5 text-xs"
+          >
+            Cancelar
+          </button>
+        </form>
+        {updateError && (
+          <p className="mt-2 text-xs text-danger" role="alert">
+            {updateError}
+          </p>
+        )}
+      </li>
+    );
+  }
+
+  const StatusIcon = entry.received ? Check : Clock;
+  const statusColor = entry.received ? "text-accent" : "text-muted";
+
   return (
     <li
-      className={`flex items-center justify-between px-4 py-3 transition-colors ${
-        isHighlighted ? "bg-blue-50 dark:bg-blue-900/20" : ""
-      }`}
+      className={
+        "flex items-center gap-3 px-3 py-2.5 " +
+        (isHighlighted ? "bg-accent-soft" : "")
+      }
     >
+      <StatusIcon className={`h-5 w-5 shrink-0 ${statusColor}`} strokeWidth={2} />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {entry.name}
+        <p className="truncate text-sm">
+          <span className="font-medium text-fg">{entry.name}</span>
+          <span className="text-muted">
+            {" "}— {brlFormatter.format(entry.amount)}
+          </span>
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-xs text-muted">
           Esperado em {dateFormatter.format(new Date(entry.expected_date))}
         </p>
       </div>
 
-      <div className="flex items-center gap-3">
-        {editing && !noEdit ? (
-          <form action={handleUpdate} className="flex items-center gap-2">
-            <input
-              type="text"
-              name="name"
-              required
-              defaultValue={entry.name}
-              className="w-32 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-            />
-            <input
-              type="number"
-              name="amount"
-              min="0"
-              step="5"
-              required
-              defaultValue={String(entry.amount)}
-              autoFocus
-              className="w-28 rounded-md border border-gray-300 bg-white px-2 py-1 text-right text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-            />
-            <button
-              type="submit"
-              disabled={isUpdating}
-              className={`rounded-md px-3 py-1 text-xs font-medium ${
-                isUpdating
-                  ? "animate-pulse bg-gray-400 text-white dark:bg-gray-600"
-                  : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-              }`}
-            >
-              {isUpdating ? "Salvando…" : "Salvar"}
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={isUpdating}
-              className="rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
-            >
-              Cancelar
-            </button>
-          </form>
-        ) : (
-          <>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {brlFormatter.format(entry.amount)}
-            </p>
-            {!noEdit && (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                Editar
-              </button>
-            )}
-          </>
-        )}
+      <button
+        type="button"
+        onClick={handleToggleReceived}
+        disabled={isToggling || noEdit}
+        className={
+          "flex items-center gap-1.5 text-xs font-medium " +
+          statusColor +
+          (!noEdit && !isToggling ? " hover:opacity-80" : "") +
+          " disabled:cursor-default"
+        }
+        title={
+          noEdit
+            ? undefined
+            : entry.received
+              ? "Marcar como pendente"
+              : "Marcar como recebido"
+        }
+      >
+        <TrendingUp className="h-4 w-4" strokeWidth={2} />
+        {isToggling ? "…" : entry.received ? "Recebido" : "Pendente"}
+      </button>
 
-        {noEdit ? (
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              entry.received
-                ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200"
-                : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"
-            }`}
-          >
-            {entry.received ? "recebido" : "pendente"}
-          </span>
-        ) : (
+      {!noEdit && (
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
-            onClick={handleToggleReceived}
-            disabled={isToggling}
-            className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
-              isToggling
-                ? "animate-pulse bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
-                : entry.received
-                  ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-200 dark:hover:bg-green-900/60"
-                  : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-200 dark:hover:bg-yellow-900/60"
-            }`}
-            title={entry.received ? "Marcar como pendente" : "Marcar como recebido"}
+            onClick={() => setEditing(true)}
+            className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-fg"
+            aria-label="Editar"
+            data-tooltip="Editar"
           >
-            {isToggling ? "…" : entry.received ? "recebido" : "pendente"}
+            <Pencil className="h-4 w-4" strokeWidth={2} />
           </button>
-        )}
-
-        {!noEdit && (
           <button
             type="button"
             onClick={handleDelete}
             disabled={isDeleting}
-            className={`text-xs font-medium ${
-              isDeleting
-                ? "animate-pulse text-red-400 dark:text-red-500"
-                : "text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-            }`}
+            className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-danger disabled:opacity-50"
+            aria-label="Excluir"
+            data-tooltip="Excluir"
           >
-            {isDeleting ? "Excluindo…" : "Excluir"}
+            <Trash2 className="h-4 w-4" strokeWidth={2} />
           </button>
-        )}
-      </div>
-
-      {updateError && editing && (
-        <p
-          className="absolute mt-12 text-xs text-red-600 dark:text-red-400"
-          role="alert"
-        >
-          {updateError}
-        </p>
+        </div>
       )}
     </li>
   );

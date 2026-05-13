@@ -1,26 +1,116 @@
 @import "tailwindcss";
 
+/* Design tokens — semantic colors that auto-switch with the OS theme.
+   Use them via Tailwind utilities: bg-canvas, bg-surface, text-fg,
+   text-muted, border-subtle, text-accent, text-danger, text-warn. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: #f8fafc;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f5f9;
+  --color-subtle: #e2e8f0;
+  --color-fg: #0f172a;
+  --color-muted: #64748b;
+  --color-accent: #059669;
+  --color-accent-soft: rgba(5, 150, 105, 0.12);
+  --color-danger: #dc2626;
+  --color-danger-soft: rgba(220, 38, 38, 0.10);
+  --color-warn: #d97706;
+  --color-warn-soft: rgba(217, 119, 6, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-canvas: #0c111a;
+    --color-surface: #161d2a;
+    --color-surface-2: #1d2535;
+    --color-subtle: #25304a;
+    --color-fg: #e6ebf2;
+    --color-muted: #8b94a8;
+    --color-accent: #34d399;
+    --color-accent-soft: rgba(52, 211, 153, 0.14);
+    --color-danger: #f87171;
+    --color-danger-soft: rgba(248, 113, 113, 0.14);
+    --color-warn: #fbbf24;
+    --color-warn-soft: rgba(251, 191, 36, 0.14);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@theme inline {
+  --color-canvas: var(--color-canvas);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-subtle: var(--color-subtle);
+  --color-fg: var(--color-fg);
+  --color-muted: var(--color-muted);
+  --color-accent: var(--color-accent);
+  --color-accent-soft: var(--color-accent-soft);
+  --color-danger: var(--color-danger);
+  --color-danger-soft: var(--color-danger-soft);
+  --color-warn: var(--color-warn);
+  --color-warn-soft: var(--color-warn-soft);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
+
+html,
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-fg);
+}
+
+body {
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Component-level shortcuts for elements repeated across many forms.
+   Keeps the per-component className lists short and the form styling
+   consistent across the app. */
+@layer components {
+  .field-label {
+    @apply block text-xs font-medium text-muted;
+  }
+  .field-input {
+    @apply mt-1 w-full rounded-lg border border-subtle bg-canvas px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none;
+  }
+  .btn-primary {
+    @apply rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply rounded-lg px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:opacity-50;
+  }
+  .btn-danger-ghost {
+    @apply rounded-lg px-3 py-2 text-sm font-medium text-danger transition-colors hover:bg-danger/10 disabled:opacity-50;
+  }
+  .pill-paid {
+    @apply rounded-full bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent;
+  }
+  .pill-pending {
+    @apply rounded-full bg-warn-soft px-2.5 py-1 text-xs font-medium text-warn;
+  }
+}
+
+/* CSS-only tooltips. Any element with `data-tooltip="…"` gets a small
+   label floated above it on hover or keyboard focus. Pair the attribute
+   with aria-label so screen readers keep working. */
+[data-tooltip] {
+  position: relative;
+}
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-fg);
+  color: var(--color-canvas);
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 50;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+

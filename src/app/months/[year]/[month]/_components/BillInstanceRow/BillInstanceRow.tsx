@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { brlFormatter, dateFormatter } from "@/helpers/format";
+import { Pencil, Receipt, RotateCcw, SkipForward } from "lucide-react";
+import { brlFormatter } from "@/helpers/format";
 import {
   overrideEntryAmount,
   skipEntryOccurrence,
@@ -21,9 +22,6 @@ type Props = {
   highlightedDay: number | null;
 };
 
-// Compute the TogglePaidTarget for this entry. Virtual entries carry
-// their template+date+space so the server action can materialize a
-// new row on first pay; materialized entries just reference their id.
 function togglePaidTargetFor(entry: EntryRow): TogglePaidTarget {
   if (entry.id != null) return { kind: "materialized", entryId: entry.id };
   return {
@@ -54,6 +52,13 @@ function skipTargetFor(entry: EntryRow): SkipTarget {
   };
 }
 
+// Render only the day-and-month portion of a YYYY-MM-DD string, e.g. "14/05".
+// Used for the compact "Vence em DD/MM" label.
+function formatShortDate(ymd: string): string {
+  const [, m, d] = ymd.split("-");
+  return `${d}/${m}`;
+}
+
 export default function BillInstanceRow({
   entry,
   year,
@@ -70,10 +75,8 @@ export default function BillInstanceRow({
 
   const progress = entry.installmentProgress;
   const isInstallment = progress != null;
-
   const [coverInput, setCoverInput] = useState(1);
 
-  // Parse the day from the YYYY-MM-DD string directly — no Date parsing.
   const dueDay = parseInt(entry.date.split("-")[2], 10);
   const isHighlighted =
     highlightedDay !== null && dueDay === highlightedDay;
@@ -121,20 +124,17 @@ export default function BillInstanceRow({
     });
   };
 
-  // Delete is only meaningful for materialized entries. For one-offs
-  // it removes the row; for exceptions it reverts to virtual state.
-  const [isDeleting, startDelete] = useTransition();
-  const handleDelete = () => {
+  const [isReverting, startRevert] = useTransition();
+  const handleRevert = () => {
     if (entry.id == null) return;
-    if (!window.confirm(`Reverter o valor sobrescrito de "${entry.name}"?`)) return;
-    startDelete(async () => {
+    if (!window.confirm(`Reverter o valor sobrescrito de "${entry.name}"?`))
+      return;
+    startRevert(async () => {
       await deleteEntry(entry.id!);
     });
   };
 
-  const progressBadge = progress
-    ? `${progress.paid}/${progress.total}`
-    : null;
+  const progressBadge = progress ? `${progress.paid}/${progress.total}` : null;
   const showCoverInput =
     isInstallment &&
     !entry.paid &&
@@ -149,86 +149,92 @@ export default function BillInstanceRow({
   const showRevert =
     entry.id != null && !entry.paid && entry.template_id != null && !noEdit;
 
+  if (editing && !noEdit) {
+    return (
+      <li className="px-3 py-3">
+        <form
+          action={handleUpdate}
+          className="flex flex-wrap items-center gap-2"
+        >
+          <input
+            type="number"
+            name="amount"
+            min="0"
+            step="5"
+            required
+            defaultValue={String(entry.amount)}
+            autoFocus
+            className="field-input mt-0 w-28 text-right"
+          />
+          <button
+            type="submit"
+            disabled={isUpdating}
+            className="btn-primary py-1.5 text-xs"
+          >
+            {isUpdating ? "Salvando…" : "Salvar"}
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={isUpdating}
+            className="btn-ghost py-1.5 text-xs"
+          >
+            Cancelar
+          </button>
+        </form>
+        {updateError && (
+          <p className="mt-2 text-xs text-danger" role="alert">
+            {updateError}
+          </p>
+        )}
+      </li>
+    );
+  }
+
   return (
     <li
-      className={`flex items-center justify-between px-4 py-3 transition-colors ${
-        isHighlighted ? "bg-blue-50 dark:bg-blue-900/20" : ""
-      }`}
+      className={
+        "grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-3 px-3 py-2.5 " +
+        (isHighlighted ? "bg-accent-soft" : "")
+      }
     >
-      <div className="min-w-0 flex-1">
-        <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+      <span
+        className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-muted"
+        aria-hidden="true"
+      >
+        <Receipt className="h-4 w-4" strokeWidth={2} />
+      </span>
+
+      <div className="min-w-0">
+        <p className="flex flex-wrap items-center gap-1.5 truncate text-sm font-medium text-fg">
           <span>{entry.name}</span>
           {progressBadge && (
             <span
-              className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+              className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-muted"
               title="Parcelas pagas / total"
             >
               {progressBadge}
             </span>
           )}
-          {entry.paid && entry.installments_covered > 1 && (
-            <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-×{entry.installments_covered} parcelas neste mês
-            </span>
-          )}
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Vence em {dateFormatter.format(new Date(entry.date))}
-        </p>
+        {entry.paid && entry.installments_covered > 1 && (
+          <p className="text-xs text-muted">
+            ×{entry.installments_covered} parcelas neste mês
+          </p>
+        )}
       </div>
 
-      <div className="flex items-center gap-3">
-        {editing && !noEdit ? (
-          <form action={handleUpdate} className="flex items-center gap-2">
-            <input
-              type="number"
-              name="amount"
-              min="0"
-              step="5"
-              required
-              defaultValue={String(entry.amount)}
-              autoFocus
-              className="w-28 rounded-md border border-gray-300 bg-white px-2 py-1 text-right text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-            />
-            <button
-              type="submit"
-              disabled={isUpdating}
-              className={`rounded-md px-3 py-1 text-xs font-medium ${
-                isUpdating
-                  ? "animate-pulse bg-gray-400 text-white dark:bg-gray-600"
-                  : "bg-gray-900 text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-              }`}
-            >
-              {isUpdating ? "Salvando…" : "Salvar"}
-            </button>
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={isUpdating}
-              className="rounded-md px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
-            >
-              Cancelar
-            </button>
-          </form>
-        ) : (
-          <>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              {brlFormatter.format(entry.amount)}
-            </p>
-            {!noEdit && (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                Editar
-              </button>
-            )}
-          </>
-        )}
+      <p className="hidden text-xs text-muted sm:block">
+        Vence em {formatShortDate(entry.date)}
+      </p>
 
+      <p className="text-sm font-medium text-fg">
+        {brlFormatter.format(entry.amount)}
+      </p>
+
+      <div className="flex items-center gap-2">
         {showCoverInput && (
-          <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
+          <div className="flex items-center gap-1 text-xs text-muted">
             <span>cobre</span>
             <input
               type="number"
@@ -241,91 +247,79 @@ export default function BillInstanceRow({
                   setCoverInput(n);
                 }
               }}
-              className="w-12 rounded-md border border-gray-300 bg-white px-1 py-0.5 text-center text-xs text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="w-12 rounded-md border border-subtle bg-canvas px-1 py-0.5 text-center text-xs text-fg focus:border-accent focus:outline-none"
             />
             {maxCover > 1 && coverInput < maxCover && (
               <button
                 type="button"
                 onClick={() => handleTogglePaid(maxCover)}
                 disabled={isToggling}
-                className="rounded-md px-1.5 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-gray-700"
+                className="btn-ghost px-1.5 py-0.5 text-xs"
                 title={`Pagar todas as ${maxCover} restantes`}
               >
-                pagar todas
+                todas
               </button>
             )}
           </div>
         )}
 
         {noEdit ? (
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              entry.paid
-                ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200"
-                : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"
-            }`}
-          >
-            {entry.paid ? "pago" : "pendente"}
+          <span className={entry.paid ? "pill-paid" : "pill-pending"}>
+            {entry.paid ? "Pago" : "Pendente"}
           </span>
         ) : (
           <button
             type="button"
             onClick={() => handleTogglePaid()}
             disabled={isToggling}
-            className={`rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
-              isToggling
-                ? "animate-pulse bg-gray-200 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
-                : entry.paid
-                  ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-200 dark:hover:bg-green-900/60"
-                  : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-200 dark:hover:bg-yellow-900/60"
-            }`}
+            className={
+              (entry.paid ? "pill-paid" : "pill-pending") +
+              " transition-opacity hover:opacity-80 disabled:animate-pulse"
+            }
             title={entry.paid ? "Marcar como pendente" : "Marcar como pago"}
           >
-            {isToggling ? "…" : entry.paid ? "pago" : "pendente"}
+            {isToggling ? "…" : entry.paid ? "Pago" : "Pendente"}
           </button>
         )}
 
-        {!noEdit && !entry.paid && (
-          <button
-            type="button"
-            onClick={handleSkip}
-            disabled={isSkipping}
-            className={`text-xs font-medium ${
-              isSkipping
-                ? "animate-pulse text-gray-400 dark:text-gray-500"
-                : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-            }`}
-            title="Ignorar esta ocorrência"
-          >
-            {isSkipping ? "…" : "Ignorar"}
-          </button>
-        )}
-
-        {showRevert && (
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className={`text-xs font-medium ${
-              isDeleting
-                ? "animate-pulse text-red-400 dark:text-red-500"
-                : "text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-            }`}
-            title="Voltar ao valor padrão da conta"
-          >
-            {isDeleting ? "…" : "Reverter"}
-          </button>
+        {!noEdit && (
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-fg"
+              aria-label="Editar valor"
+              data-tooltip="Editar valor"
+            >
+              <Pencil className="h-4 w-4" strokeWidth={2} />
+            </button>
+            {!entry.paid && (
+              <button
+                type="button"
+                onClick={handleSkip}
+                disabled={isSkipping}
+                className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-fg disabled:opacity-50"
+                aria-label="Ignorar esta ocorrência"
+                data-tooltip="Ignorar esta ocorrência"
+              >
+                <SkipForward className="h-4 w-4" strokeWidth={2} />
+              </button>
+            )}
+            {showRevert && (
+              <button
+                type="button"
+                onClick={handleRevert}
+                disabled={isReverting}
+                className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-danger disabled:opacity-50"
+                aria-label="Reverter valor sobrescrito"
+                data-tooltip="Voltar ao valor padrão"
+              >
+                <RotateCcw className="h-4 w-4" strokeWidth={2} />
+              </button>
+            )}
+          </div>
         )}
       </div>
-
-      {updateError && editing && (
-        <p
-          className="absolute mt-12 text-xs text-red-600 dark:text-red-400"
-          role="alert"
-        >
-          {updateError}
-        </p>
-      )}
     </li>
   );
 }
