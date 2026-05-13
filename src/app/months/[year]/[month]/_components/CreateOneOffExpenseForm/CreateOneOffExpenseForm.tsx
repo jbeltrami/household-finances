@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import IconPicker from "@/components/IconPicker/IconPicker";
 import { createOneOffEntry } from "../../actions";
 
 type Props = {
@@ -94,16 +95,8 @@ export default function CreateOneOffExpenseForm({
           />
         </div>
         <div className="sm:col-span-2">
-          <label htmlFor="expense_category" className="field-label">
-            Categoria (opcional)
-          </label>
-          <input
-            id="expense_category"
-            name="category"
-            type="text"
-            placeholder="ex.: Alimentação, Transporte, Saúde"
-            className="field-input"
-          />
+          <label className="field-label">Ícone (opcional)</label>
+          <IconPicker />
         </div>
         <div className="sm:col-span-3">
           <label htmlFor="expense_notes" className="field-label">

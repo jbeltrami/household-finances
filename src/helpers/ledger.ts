@@ -211,7 +211,7 @@ export async function getEntriesForMonth(
   const materializedRes = await supabase
     .from("entries")
     .select(
-      "id, space_id, template_id, date, name, amount, currency, category, notes, paid, skipped, installments_covered"
+      "id, space_id, template_id, date, name, amount, currency, category, notes, paid, skipped, installments_covered, icon"
     )
     .in("space_id", spaceIds)
     .gte("date", start)
@@ -365,7 +365,10 @@ export async function getEntriesForMonth(
             paidCoveredByTemplate.get(template.id) ?? 0
           )
         : null,
-      icon: template?.icon ?? null,
+      // For one-offs (no template) the row's own icon wins. For bill
+      // exceptions the row column is usually NULL, so we fall through to
+      // the template's icon — keeping bill icons centralized.
+      icon: row.icon ?? template?.icon ?? null,
     });
   }
 

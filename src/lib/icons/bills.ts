@@ -91,6 +91,16 @@ export function iconFor(key: string | null | undefined): LucideIcon {
   return Receipt;
 }
 
+// Returns the budget category an icon belongs to (e.g. "Moradia",
+// "Saúde"), or null when the key is missing/unknown. This is the
+// authoritative mapping the create/update actions use to populate
+// the `category` column on bills + one-off entries — keeping the
+// icon as the single source of truth for categorization.
+export function categoryFor(key: string | null | undefined): string | null {
+  if (key && key in BILL_ICONS) return BILL_ICONS[key as BillIconKey].category;
+  return null;
+}
+
 // Convenience grouping for the picker: orders categories by their
 // first appearance in BILL_ICONS, and items within a category by
 // insertion order.

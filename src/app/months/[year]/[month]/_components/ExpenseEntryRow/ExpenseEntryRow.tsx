@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CircleX, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
+import BillIcon from "@/components/BillIcon";
+import IconPicker from "@/components/IconPicker/IconPicker";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
 import { deleteEntry, updateEntry } from "../../actions";
 import type { EntryRow } from "../../_types";
@@ -93,14 +95,8 @@ export default function ExpenseEntryRow({
               />
             </div>
             <div className="sm:col-span-3">
-              <label className="field-label">Categoria</label>
-              <input
-                name="category"
-                type="text"
-                defaultValue={expense.category ?? ""}
-                placeholder="ex.: Alimentação, Transporte, Saúde"
-                className="field-input"
-              />
+              <label className="field-label">Ícone (opcional)</label>
+              <IconPicker defaultValue={expense.icon} />
             </div>
             <div className="sm:col-span-3">
               <label className="field-label">Observações</label>
@@ -158,7 +154,12 @@ export default function ExpenseEntryRow({
         (isHighlighted ? "bg-accent-soft" : "")
       }
     >
-      <CircleX className="h-5 w-5 shrink-0 text-danger" strokeWidth={2} />
+      <span
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg"
+        aria-hidden="true"
+      >
+        <BillIcon iconKey={expense.icon} className="h-4 w-4" />
+      </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">
           <span className="font-medium text-fg">{expense.name}</span>

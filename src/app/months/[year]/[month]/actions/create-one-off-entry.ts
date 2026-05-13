@@ -5,12 +5,17 @@ import { createClient } from "@/lib/supabase/server";
 import { monthUrl } from "@/helpers/paths";
 import { checkDateEditable } from "@/helpers/lock";
 import { todayYmd } from "@/helpers/date";
+import { categoryFor, isBillIconKey } from "@/lib/icons/bills";
 import { type FormState } from "../form-state";
 
 // Create a one-off entry (money-out event with no template). The
 // viewed year/month informs the default date, but the entry routes
 // by its `date` field, so a user adding an entry with a date in a
 // different month naturally lands it there.
+//
+// Category is derived from the picked icon (see src/lib/icons/bills.ts).
+// We don't accept a free-text category any more — the icon is the
+// single source of truth so reports can group reliably.
 export async function createOneOffEntry(
   spaceId: string,
   viewedYear: number,
@@ -31,7 +36,7 @@ export async function createOneOffEntry(
     const name = formData.get("name")?.toString().trim();
     const amountRaw = formData.get("amount")?.toString();
     const dateRaw = formData.get("date")?.toString().trim();
-    const categoryRaw = formData.get("category")?.toString().trim();
+    const iconRaw = formData.get("icon")?.toString().trim();
     const notesRaw = formData.get("notes")?.toString().trim();
 
     if (!name) return { error: "O nome é obrigatório" };
@@ -50,6 +55,13 @@ export async function createOneOffEntry(
       return { error: "Formato de data inválido" };
     }
 
+    let icon: string | null = null;
+    if (iconRaw) {
+      if (!isBillIconKey(iconRaw)) return { error: "Ícone inválido" };
+      icon = iconRaw;
+    }
+    const category = categoryFor(icon);
+
     const check = await checkDateEditable(supabase, spaceId, date);
     if (!check.ok) return { error: check.error };
 
@@ -59,7 +71,8 @@ export async function createOneOffEntry(
       name,
       amount,
       currency: "BRL",
-      category: categoryRaw || null,
+      category,
+      icon,
       notes: notesRaw || null,
       paid: false,
       skipped: false,

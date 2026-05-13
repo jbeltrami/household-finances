@@ -4,13 +4,14 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { monthUrl } from "@/helpers/paths";
 import { checkEntryEditable } from "@/helpers/lock";
+import { categoryFor, isBillIconKey } from "@/lib/icons/bills";
 import { type FormState } from "../form-state";
 
-// Update an existing entry row. Covers renames, category changes, and
-// notes edits. Amount overrides for template-exception rows also come
-// through here (overrideEntryAmount is a thin shim for the virtual
-// case). Date is intentionally not editable — changing it could move
-// the entry to a different month, which is clearer as delete + create.
+// Update an existing entry row. Covers renames, icon changes (which
+// re-derive the category), notes edits, and amount overrides for
+// template-exception rows (overrideEntryAmount is a thin shim for the
+// virtual case). Date is intentionally not editable — changing it could
+// move the entry to a different month, which is clearer as delete + create.
 export async function updateEntry(
   entryId: string,
   prevState: FormState,
@@ -31,7 +32,7 @@ export async function updateEntry(
 
     const name = formData.get("name")?.toString().trim();
     const amountRaw = formData.get("amount")?.toString();
-    const categoryRaw = formData.get("category")?.toString().trim();
+    const iconRaw = formData.get("icon")?.toString().trim();
     const notesRaw = formData.get("notes")?.toString().trim();
 
     if (!name) return { error: "O nome é obrigatório" };
@@ -42,12 +43,20 @@ export async function updateEntry(
       return { error: "O valor precisa ser um número positivo" };
     }
 
+    let icon: string | null = null;
+    if (iconRaw) {
+      if (!isBillIconKey(iconRaw)) return { error: "Ícone inválido" };
+      icon = iconRaw;
+    }
+    const category = categoryFor(icon);
+
     const { error } = await supabase
       .from("entries")
       .update({
         name,
         amount,
-        category: categoryRaw || null,
+        category,
+        icon,
         notes: notesRaw || null,
       })
       .eq("id", entryId);

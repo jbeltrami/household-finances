@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import Card from "@/components/Card";
 import { billsUrl } from "@/helpers/paths";
-import IconPicker from "../../../../_components/IconPicker/IconPicker";
+import IconPicker from "@/components/IconPicker/IconPicker";
 import { updateBillTemplate } from "../../../../actions";
 import { initialFormState } from "../../../../form-state";
 
@@ -80,23 +80,13 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
             />
           </div>
 
-          <div className="sm:col-span-2">
-            <label htmlFor="category" className="field-label">
-              Categoria (opcional)
-            </label>
-            <input
-              id="category"
-              name="category"
-              type="text"
-              defaultValue={template.category ?? ""}
-              placeholder="ex.: Contas básicas, Assinaturas, Saúde"
-              className="field-input"
-            />
-          </div>
-
-          <div>
+          <div className="sm:col-span-3">
             <label className="field-label">Ícone (opcional)</label>
             <IconPicker defaultValue={template.icon} />
+            <p className="mt-1 text-xs text-muted">
+              A categoria da conta é definida pelo ícone (Moradia, Saúde, etc.) —
+              usada para agrupar relatórios.
+            </p>
           </div>
 
           <div>

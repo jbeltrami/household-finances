@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import Card from "@/components/Card";
 import { createBillTemplate } from "../../actions";
 import { initialFormState } from "../../form-state";
-import IconPicker from "../IconPicker/IconPicker";
+import IconPicker from "@/components/IconPicker/IconPicker";
 
 const DAY_OPTIONS = [
   { value: "0", label: "Dom" },
@@ -70,22 +70,13 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
             />
           </div>
 
-          <div className="sm:col-span-2">
-            <label htmlFor="category" className="field-label">
-              Categoria (opcional)
-            </label>
-            <input
-              id="category"
-              name="category"
-              type="text"
-              placeholder="ex.: Contas básicas, Assinaturas, Saúde"
-              className="field-input"
-            />
-          </div>
-
-          <div>
+          <div className="sm:col-span-3">
             <label className="field-label">Ícone (opcional)</label>
             <IconPicker />
+            <p className="mt-1 text-xs text-muted">
+              A categoria da conta é definida pelo ícone (Moradia, Saúde, etc.) —
+              usada para agrupar relatórios.
+            </p>
           </div>
 
           {/* Cadence picker */}

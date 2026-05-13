@@ -72,6 +72,7 @@ export type EntryRow = {
   paid: boolean;
   skipped: boolean;
   installments_covered: number;
+  icon: string | null;       // one-off icon; bill exceptions usually leave null and inherit from template
 };
 
 export type TemplateRow = {

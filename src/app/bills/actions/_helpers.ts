@@ -1,7 +1,7 @@
 // Shared helpers for bill-template server actions. Not a "use server"
 // file — exports synchronous utilities and types.
 
-import { isBillIconKey } from "@/lib/icons/bills";
+import { categoryFor, isBillIconKey } from "@/lib/icons/bills";
 
 // Postgres error code for unique_violation (our partial unique index
 // on active template names).
@@ -22,7 +22,6 @@ export type TemplateFields = {
 export function parseTemplateFields(formData: FormData): TemplateFields {
   const name = formData.get("name")?.toString().trim();
   const defaultAmountRaw = formData.get("default_amount")?.toString();
-  const categoryRaw = formData.get("category")?.toString().trim();
   const cadenceRaw = formData.get("cadence")?.toString() ?? "monthly";
 
   if (!name) throw new Error("O nome é obrigatório");
@@ -91,7 +90,9 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
 
   // Icon: optional, must be a registered key when set. We reject any
   // unknown key so we don't end up storing junk that the renderer will
-  // silently fall back on.
+  // silently fall back on. The icon also drives `category` — categorizing
+  // is purely a function of the picked icon, so reports can group reliably
+  // without an extra free-text field.
   const iconRaw = formData.get("icon")?.toString().trim();
   let icon: string | null = null;
   if (iconRaw) {
@@ -100,11 +101,12 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
     }
     icon = iconRaw;
   }
+  const category = categoryFor(icon);
 
   return {
     name,
     defaultAmount,
-    category: categoryRaw || null,
+    category,
     icon,
     cadence,
     dueDay,
