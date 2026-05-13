@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Info } from "lucide-react";
+import Card from "@/components/Card";
 import {
   saveWhatsAppPhone,
   setWhatsAppEnabled,
@@ -42,7 +44,7 @@ export default function WhatsAppNotificationToggle({
     startSave(async () => {
       const result = await saveWhatsAppPhone(spaceId, formData);
       if (result.error || !result.phone) {
-        setPhoneError(result.error ?? "Failed to save");
+        setPhoneError(result.error ?? "Falha ao salvar");
         return;
       }
       setSavedPhone(result.phone);
@@ -59,7 +61,7 @@ export default function WhatsAppNotificationToggle({
         await setWhatsAppEnabled(spaceId, newValue);
       } catch (err) {
         setEnabled(!newValue);
-        setToggleError(err instanceof Error ? err.message : "Failed to update");
+        setToggleError(err instanceof Error ? err.message : "Falha ao atualizar");
       }
     });
   };
@@ -73,22 +75,23 @@ export default function WhatsAppNotificationToggle({
       } else {
         setTestResult({
           kind: "error",
-          message: result.error ?? "Failed to send",
+          message: result.error ?? "Falha ao enviar",
         });
       }
     });
   };
 
   return (
-    <div className="space-y-4">
-      <form action={handleSavePhone} className="space-y-2">
-        <label
-          htmlFor="whatsapp-phone"
-          className="block text-sm font-medium text-gray-900 dark:text-gray-100"
-        >
+    <Card className="p-5">
+      <h2 className="text-base font-medium text-fg">
+        Notificações por WhatsApp
+      </h2>
+
+      <form action={handleSavePhone} className="mt-4">
+        <label htmlFor="whatsapp-phone" className="field-label">
           Número de telefone
         </label>
-        <div className="flex gap-2">
+        <div className="mt-1 flex gap-2">
           <input
             id="whatsapp-phone"
             name="phone"
@@ -97,30 +100,33 @@ export default function WhatsAppNotificationToggle({
             placeholder="+5511987654321"
             value={phoneInput}
             onChange={(e) => setPhoneInput(e.target.value)}
-            className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            className="field-input mt-0 flex-1"
           />
           <button
             type="submit"
             disabled={savePending || phoneInput.trim() === ""}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="btn-primary"
           >
-            {savePending ? "Salvando…" : "Salvar telefone"}
+            {savePending ? "Salvando…" : "Salvar"}
           </button>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Formato internacional com código do país, ex.: <code>+5511987654321</code>.
+        <p className="mt-1 text-xs text-muted">
+          Formato internacional com código do país, ex.:{" "}
+          <code>+5511987654321</code>.
         </p>
         {phoneError && (
-          <p className="text-xs text-red-600 dark:text-red-400">{phoneError}</p>
+          <p className="mt-2 text-xs text-danger" role="alert">
+            {phoneError}
+          </p>
         )}
       </form>
 
-      <label className="flex cursor-pointer items-start justify-between gap-4">
+      <label className="mt-6 flex cursor-pointer items-start justify-between gap-4">
         <div>
-          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          <div className="text-sm font-medium text-fg">
             Avisar pelo WhatsApp quando uma conta vencer
           </div>
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-1 text-xs text-muted">
             {phoneIsValid
               ? "Uma verificação diária às 08:00 (São Paulo) envia uma mensagem por conta vencida."
               : "Salve um número de telefone acima para ativar os avisos."}
@@ -131,46 +137,50 @@ export default function WhatsAppNotificationToggle({
           checked={enabled}
           onChange={handleToggle}
           disabled={togglePending || !phoneIsValid}
-          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+          className="mt-0.5 h-4 w-4 rounded border-subtle accent-[--color-accent] disabled:opacity-50"
         />
       </label>
       {toggleError && (
-        <p className="text-xs text-red-600 dark:text-red-400">{toggleError}</p>
+        <p className="mt-2 text-xs text-danger" role="alert">
+          {toggleError}
+        </p>
       )}
 
-      <div>
+      <div className="mt-6">
         <button
           type="button"
           onClick={handleTest}
           disabled={testPending || !phoneIsValid}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+          className="rounded-lg border border-subtle px-3 py-2 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {testPending ? "Enviando…" : "Enviar mensagem de teste"}
         </button>
         {testResult?.kind === "ok" && (
-          <p className="mt-2 text-xs text-green-700 dark:text-green-400">
-            Enviado. Confira no WhatsApp.
-          </p>
+          <p className="mt-2 text-xs text-accent">Enviado. Confira no WhatsApp.</p>
         )}
         {testResult?.kind === "error" && (
-          <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+          <p className="mt-2 text-xs text-danger" role="alert">
             {testResult.message}
           </p>
         )}
       </div>
 
-      <div className="rounded-md bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-        <strong>Modo sandbox:</strong> na primeira vez, envie{" "}
-        <code className="rounded bg-amber-100 px-1 py-0.5 dark:bg-amber-900/40">
-          join &lt;seu-código&gt;
-        </code>{" "}
-        como mensagem de WhatsApp para{" "}
-        <code className="rounded bg-amber-100 px-1 py-0.5 dark:bg-amber-900/40">
-          +1 415 523 8886
-        </code>{" "}
-        a partir deste número. Encontre seu código no console da Twilio em
-        Messaging → Try it out → WhatsApp.
+      <div className="mt-6 flex items-start gap-3 rounded-xl border border-warn/40 bg-warn/10 p-3 text-xs text-fg">
+        <Info className="h-4 w-4 shrink-0 text-warn" strokeWidth={2} />
+        <div>
+          <strong className="text-fg">Modo sandbox:</strong> na primeira vez,
+          envie{" "}
+          <code className="rounded bg-surface-2 px-1 py-0.5 text-fg">
+            join &lt;seu-código&gt;
+          </code>{" "}
+          como mensagem de WhatsApp para{" "}
+          <code className="rounded bg-surface-2 px-1 py-0.5 text-fg">
+            +1 415 523 8886
+          </code>{" "}
+          a partir deste número. Encontre seu código no console da Twilio em
+          Messaging → Try it out → WhatsApp.
+        </div>
       </div>
-    </div>
+    </Card>
   );
 }

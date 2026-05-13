@@ -1,6 +1,8 @@
 // Shared helpers for bill-template server actions. Not a "use server"
 // file — exports synchronous utilities and types.
 
+import { isBillIconKey } from "@/lib/icons/bills";
+
 // Postgres error code for unique_violation (our partial unique index
 // on active template names).
 export const UNIQUE_VIOLATION = "23505";
@@ -9,6 +11,7 @@ export type TemplateFields = {
   name: string;
   defaultAmount: number;
   category: string | null;
+  icon: string | null;
   cadence: "monthly" | "weekly" | "biweekly";
   dueDay: number | null;
   dayOfWeek: number | null;
@@ -86,10 +89,23 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
     installmentsStartMonth = `${startRaw}-01`;
   }
 
+  // Icon: optional, must be a registered key when set. We reject any
+  // unknown key so we don't end up storing junk that the renderer will
+  // silently fall back on.
+  const iconRaw = formData.get("icon")?.toString().trim();
+  let icon: string | null = null;
+  if (iconRaw) {
+    if (!isBillIconKey(iconRaw)) {
+      throw new Error("Ícone inválido");
+    }
+    icon = iconRaw;
+  }
+
   return {
     name,
     defaultAmount,
     category: categoryRaw || null,
+    icon,
     cadence,
     dueDay,
     dayOfWeek,

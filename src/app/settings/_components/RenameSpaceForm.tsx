@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Card from "@/components/Card";
 import { renameSpace } from "../actions";
 
 type Props = {
@@ -18,35 +19,31 @@ export default function RenameSpaceForm({ spaceId, currentName }: Props) {
   );
 
   return (
-    <form action={formAction} className="flex items-end gap-3">
-      <div className="flex-1">
-        <label
-          htmlFor="name"
-          className="block text-xs font-medium text-gray-700 dark:text-gray-300"
-        >
-          Nome do espaço
-        </label>
-        <input
-          id="name"
-          name="name"
-          type="text"
-          required
-          defaultValue={currentName}
-          className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
-        />
-      </div>
-      <button
-        type="submit"
-        disabled={isPending}
-        className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-      >
-        {isPending ? "Salvando…" : "Renomear"}
-      </button>
+    <Card className="p-5">
+      <h2 className="text-base font-medium text-fg">Nome do espaço</h2>
+      <form action={formAction} className="mt-4 flex items-end gap-3">
+        <div className="flex-1">
+          <label htmlFor="name" className="field-label">
+            Nome
+          </label>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            required
+            defaultValue={currentName}
+            className="field-input"
+          />
+        </div>
+        <button type="submit" disabled={isPending} className="btn-primary">
+          {isPending ? "Salvando…" : "Renomear"}
+        </button>
+      </form>
       {state.error && (
-        <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+        <p className="mt-2 text-sm text-danger" role="alert">
           {state.error}
         </p>
       )}
-    </form>
+    </Card>
   );
 }

@@ -14,7 +14,7 @@ export default async function BillsPage() {
   const { data: rawTemplates } = await supabase
     .from("recurring_bill_templates")
     .select(
-      "id, name, default_amount, currency, category, cadence, due_day, day_of_week, installments_total, installments_start_month"
+      "id, name, default_amount, currency, category, icon, cadence, due_day, day_of_week, installments_total, installments_start_month"
     )
     .eq("space_id", spaceId)
     .eq("active", true)
@@ -26,6 +26,7 @@ export default async function BillsPage() {
     default_amount: t.default_amount,
     currency: t.currency,
     category: t.category,
+    icon: t.icon,
     cadence: (t.cadence as string) ?? "monthly",
     due_day: t.due_day,
     day_of_week: t.day_of_week,
@@ -74,32 +75,32 @@ export default async function BillsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-        Contas recorrentes
-      </h1>
-      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+    <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
+      <h1 className="text-2xl font-semibold text-fg">Contas recorrentes</h1>
+      <p className="mt-1 text-sm text-muted">
         Os modelos se expandem virtualmente em ocorrências mensais. Edições
         em ocorrências específicas só são materializadas quando você paga,
         sobrescreve ou ignora a conta.
       </p>
 
-      <CreateBillTemplateForm spaceId={spaceId} />
+      <div className="mt-6 flex flex-col gap-5">
+        <CreateBillTemplateForm spaceId={spaceId} />
 
-      <ActiveTemplatesSection
-        spaceId={spaceId}
-        templates={activeTemplates}
-        paidCoveredByTemplate={paidCoveredByTemplate}
-      />
-
-      {completedTemplates.length > 0 && (
         <ActiveTemplatesSection
           spaceId={spaceId}
-          templates={completedTemplates}
+          templates={activeTemplates}
           paidCoveredByTemplate={paidCoveredByTemplate}
-          variant="completed"
         />
-      )}
+
+        {completedTemplates.length > 0 && (
+          <ActiveTemplatesSection
+            spaceId={spaceId}
+            templates={completedTemplates}
+            paidCoveredByTemplate={paidCoveredByTemplate}
+            variant="completed"
+          />
+        )}
+      </div>
     </div>
   );
 }

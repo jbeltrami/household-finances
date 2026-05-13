@@ -2,7 +2,9 @@
 
 import { useActionState, useState } from "react";
 import Link from "next/link";
+import Card from "@/components/Card";
 import { billsUrl } from "@/helpers/paths";
+import IconPicker from "../../../../_components/IconPicker/IconPicker";
 import { updateBillTemplate } from "../../../../actions";
 import { initialFormState } from "../../../../form-state";
 
@@ -21,6 +23,7 @@ type Template = {
   name: string;
   default_amount: number | string;
   category: string | null;
+  icon: string | null;
   due_day: number | null;
   cadence: string | null;
   day_of_week: number | null;
@@ -46,216 +49,188 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
   );
 
   return (
-    <form
-      action={formAction}
-      className="mt-6 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
-    >
-      <input type="hidden" name="space_id" value={spaceId} />
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="sm:col-span-2">
-          <label
-            htmlFor="name"
-            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
-          >
-            Nome
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            required
-            defaultValue={template.name}
-            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="default_amount"
-            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
-          >
-            Valor padrão (BRL)
-          </label>
-          <input
-            id="default_amount"
-            name="default_amount"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            defaultValue={template.default_amount}
-            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
-          />
-        </div>
-
-        <div className="sm:col-span-3">
-          <label
-            htmlFor="category"
-            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
-          >
-            Categoria (opcional)
-          </label>
-          <input
-            id="category"
-            name="category"
-            type="text"
-            defaultValue={template.category ?? ""}
-            placeholder="ex.: Contas básicas, Assinaturas, Saúde"
-            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="cadence"
-            className="block text-xs font-medium text-gray-700 dark:text-gray-300"
-          >
-            Recorrência
-          </label>
-          <select
-            id="cadence"
-            name="cadence"
-            value={cadence}
-            onChange={(e) => setCadence(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
-          >
-            <option value="monthly">Mensal</option>
-            <option value="weekly">Semanal</option>
-            <option value="biweekly">Quinzenal</option>
-          </select>
-        </div>
-
-        {cadence === "monthly" && (
-          <div>
-            <label
-              htmlFor="due_day"
-              className="block text-xs font-medium text-gray-700 dark:text-gray-300"
-            >
-              Dia de vencimento (opcional)
-            </label>
+    <Card className="p-5">
+      <form action={formAction}>
+        <input type="hidden" name="space_id" value={spaceId} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="sm:col-span-2">
+            <label htmlFor="name" className="field-label">Nome</label>
             <input
-              id="due_day"
-              name="due_day"
-              type="number"
-              min="1"
-              max="31"
-              defaultValue={template.due_day ?? ""}
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
+              id="name"
+              name="name"
+              type="text"
+              required
+              defaultValue={template.name}
+              className="field-input"
             />
           </div>
-        )}
-
-        {cadence !== "monthly" && (
           <div>
-            <label
-              htmlFor="day_of_week"
-              className="block text-xs font-medium text-gray-700 dark:text-gray-300"
-            >
-              Dia da semana
+            <label htmlFor="default_amount" className="field-label">
+              Valor padrão (BRL)
             </label>
-            <select
-              id="day_of_week"
-              name="day_of_week"
+            <input
+              id="default_amount"
+              name="default_amount"
+              type="number"
+              min="0"
+              step="0.01"
               required
-              defaultValue={
-                template.day_of_week != null
-                  ? String(template.day_of_week)
-                  : "0"
-              }
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:focus:border-gray-500"
+              defaultValue={template.default_amount}
+              className="field-input"
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label htmlFor="category" className="field-label">
+              Categoria (opcional)
+            </label>
+            <input
+              id="category"
+              name="category"
+              type="text"
+              defaultValue={template.category ?? ""}
+              placeholder="ex.: Contas básicas, Assinaturas, Saúde"
+              className="field-input"
+            />
+          </div>
+
+          <div>
+            <label className="field-label">Ícone (opcional)</label>
+            <IconPicker defaultValue={template.icon} />
+          </div>
+
+          <div>
+            <label htmlFor="cadence" className="field-label">Recorrência</label>
+            <select
+              id="cadence"
+              name="cadence"
+              value={cadence}
+              onChange={(e) => setCadence(e.target.value)}
+              className="field-input"
             >
-              {DAY_OPTIONS.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
+              <option value="monthly">Mensal</option>
+              <option value="weekly">Semanal</option>
+              <option value="biweekly">Quinzenal</option>
             </select>
           </div>
-        )}
-      </div>
 
-      {cadence === "monthly" && (
-        <div className="mt-4 rounded-md border border-gray-200 p-3 dark:border-gray-700">
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input
-              type="checkbox"
-              name="installments_enabled"
-              checked={installmentsEnabled}
-              onChange={(e) => setInstallmentsEnabled(e.target.checked)}
-            />
-            <span>Parcelamento (número limitado de parcelas mensais)</span>
-          </label>
+          {cadence === "monthly" && (
+            <div>
+              <label htmlFor="due_day" className="field-label">
+                Dia de vencimento (opcional)
+              </label>
+              <input
+                id="due_day"
+                name="due_day"
+                type="number"
+                min="1"
+                max="31"
+                defaultValue={template.due_day ?? ""}
+                className="field-input"
+              />
+            </div>
+          )}
 
-          {installmentsEnabled && (
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="installments_total"
-                  className="block text-xs font-medium text-gray-700 dark:text-gray-300"
-                >
-                  Quantas parcelas?
-                </label>
-                <input
-                  id="installments_total"
-                  name="installments_total"
-                  type="number"
-                  min="1"
-                  step="1"
-                  required={installmentsEnabled}
-                  defaultValue={template.installments_total ?? ""}
-                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="installments_start_month"
-                  className="block text-xs font-medium text-gray-700 dark:text-gray-300"
-                >
-                  Mês da primeira parcela
-                </label>
-                <input
-                  id="installments_start_month"
-                  name="installments_start_month"
-                  type="month"
-                  required={installmentsEnabled}
-                  defaultValue={
-                    template.installments_start_month?.slice(0, 7) ?? ""
-                  }
-                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                />
-              </div>
+          {cadence !== "monthly" && (
+            <div>
+              <label htmlFor="day_of_week" className="field-label">
+                Dia da semana
+              </label>
+              <select
+                id="day_of_week"
+                name="day_of_week"
+                required
+                defaultValue={
+                  template.day_of_week != null
+                    ? String(template.day_of_week)
+                    : "0"
+                }
+                className="field-input"
+              >
+                {DAY_OPTIONS.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </div>
-      )}
 
-      {state.error && (
-        <p className="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">
-          {state.error}
+        {cadence === "monthly" && (
+          <div className="mt-4 rounded-xl border border-subtle bg-surface-2 p-3">
+            <label className="flex items-center gap-2 text-sm text-fg">
+              <input
+                type="checkbox"
+                name="installments_enabled"
+                checked={installmentsEnabled}
+                onChange={(e) => setInstallmentsEnabled(e.target.checked)}
+              />
+              <span>Parcelamento (número limitado de parcelas mensais)</span>
+            </label>
+
+            {installmentsEnabled && (
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="installments_total" className="field-label">
+                    Quantas parcelas?
+                  </label>
+                  <input
+                    id="installments_total"
+                    name="installments_total"
+                    type="number"
+                    min="1"
+                    step="1"
+                    required={installmentsEnabled}
+                    defaultValue={template.installments_total ?? ""}
+                    className="field-input"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="installments_start_month"
+                    className="field-label"
+                  >
+                    Mês da primeira parcela
+                  </label>
+                  <input
+                    id="installments_start_month"
+                    name="installments_start_month"
+                    type="month"
+                    required={installmentsEnabled}
+                    defaultValue={
+                      template.installments_start_month?.slice(0, 7) ?? ""
+                    }
+                    className="field-input"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {state.error && (
+          <p className="mt-3 text-sm text-danger" role="alert">
+            {state.error}
+          </p>
+        )}
+
+        <p className="mt-3 text-xs text-muted">
+          Alterações no valor padrão se aplicam automaticamente a todas as
+          ocorrências ainda não pagas, já que elas são calculadas a partir do
+          modelo em tempo real. Lançamentos já pagos ou com valor sobrescrito
+          mantêm os valores salvos.
         </p>
-      )}
 
-      <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-        Alterações no valor padrão se aplicam automaticamente a todas as
-        ocorrências ainda não pagas, já que elas são calculadas a partir do
-        modelo em tempo real. Lançamentos já pagos ou com valor sobrescrito
-        mantêm os valores salvos.
-      </p>
-
-      <div className="mt-4 flex justify-end gap-2">
-        <Link
-          href={billsUrl()}
-          className="rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-        >
-          Cancelar
-        </Link>
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
-        >
-          {isPending ? "Salvando…" : "Salvar alterações"}
-        </button>
-      </div>
-    </form>
+        <div className="mt-4 flex justify-end gap-2">
+          <Link href={billsUrl()} className="btn-ghost">
+            Cancelar
+          </Link>
+          <button type="submit" disabled={isPending} className="btn-primary">
+            {isPending ? "Salvando…" : "Salvar alterações"}
+          </button>
+        </div>
+      </form>
+    </Card>
   );
 }

@@ -14,6 +14,7 @@ export type TemplateRecurrence = {
   default_amount: number;
   currency: string;
   category: string | null;
+  icon: string | null;
   cadence: "monthly" | "weekly" | "biweekly";
   due_day: number | null;
   day_of_week: number | null;
@@ -49,6 +50,7 @@ export type ResolvedEntry = {
   paid: boolean;
   installments_covered: number;
   installmentProgress: InstallmentProgress | null;
+  icon: string | null;       // template's icon key (null for one-off entries)
 };
 
 // --- Ledger DB shapes ---------------------------------------
@@ -79,6 +81,7 @@ export type TemplateRow = {
   default_amount: number | string;
   currency: string;
   category: string | null;
+  icon: string | null;
   active: boolean;
   cadence: string;
   due_day: number | null;

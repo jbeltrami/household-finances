@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { Pencil, PowerOff } from "lucide-react";
+import BillIcon from "@/components/BillIcon";
+import Card from "@/components/Card";
 import { brlFormatter } from "@/helpers/format";
 import { billEditUrl } from "@/helpers/paths";
 import { deactivateBillTemplate } from "../../actions";
@@ -48,18 +51,16 @@ export default function ActiveTemplatesSection({
     variant === "completed" ? "Parcelamentos concluídos" : "Contas ativas";
 
   return (
-    <section className="mt-8">
-      <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-        {heading}
-      </h2>
+    <Card className="p-5">
+      <h2 className="text-base font-medium text-fg">{heading}</h2>
       {templates.length === 0 ? (
-        <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-4 text-sm text-muted">
           {variant === "completed"
             ? "Nenhum parcelamento concluído ainda."
             : "Nenhuma conta cadastrada. Adicione uma acima."}
         </p>
       ) : (
-        <ul className="mt-4 divide-y divide-gray-200 rounded-lg border border-gray-200 bg-white dark:divide-gray-700 dark:border-gray-700 dark:bg-gray-800">
+        <ul className="mt-4 divide-y divide-subtle">
           {templates.map((t) => {
             const cadText = cadenceLabel(t);
             const isInstallment = t.installments_total != null;
@@ -74,32 +75,33 @@ export default function ActiveTemplatesSection({
             return (
               <li
                 key={t.id}
-                className="flex items-center justify-between px-4 py-3"
+                className="flex items-center gap-3 px-3 py-3"
               >
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg">
+                  <BillIcon iconKey={t.icon} className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-fg">
                     {t.name}
                   </p>
                   {cadText && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {cadText}
-                    </p>
+                    <p className="text-xs text-muted">{cadText}</p>
                   )}
                   {installmentText && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {installmentText}
-                    </p>
+                    <p className="text-xs text-muted">{installmentText}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-4">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {brlFormatter.format(Number(t.default_amount))}
-                  </p>
+                <p className="text-sm font-medium text-fg">
+                  {brlFormatter.format(Number(t.default_amount))}
+                </p>
+                <div className="flex items-center gap-0.5">
                   <Link
                     href={billEditUrl(t.id)}
-                    className="text-sm font-medium text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
+                    className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg"
+                    aria-label="Editar"
+                    data-tooltip="Editar"
                   >
-                    Editar
+                    <Pencil className="h-4 w-4" strokeWidth={2} />
                   </Link>
                   <form action={deactivateBillTemplate.bind(null, t.id)}>
                     {/* deactivateBillTemplate reads space_id from FormData
@@ -107,9 +109,11 @@ export default function ActiveTemplatesSection({
                     <input type="hidden" name="space_id" value={spaceId} />
                     <button
                       type="submit"
-                      className="text-sm font-medium text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                      className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-danger"
+                      aria-label="Desativar"
+                      data-tooltip="Desativar"
                     >
-                      Desativar
+                      <PowerOff className="h-4 w-4" strokeWidth={2} />
                     </button>
                   </form>
                 </div>
@@ -118,6 +122,6 @@ export default function ActiveTemplatesSection({
           })}
         </ul>
       )}
-    </section>
+    </Card>
   );
 }

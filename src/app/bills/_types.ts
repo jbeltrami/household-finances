@@ -4,6 +4,7 @@ export type BillTemplate = {
   default_amount: number | string;
   currency: string;
   category: string | null;
+  icon: string | null;
   cadence: string;
   due_day: number | null;
   day_of_week: number | null;

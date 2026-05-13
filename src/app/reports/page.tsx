@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Card from "@/components/Card";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 import { listNonEmptyPastMonths } from "@/helpers/reports";
@@ -50,11 +51,9 @@ export default async function ReportsPage() {
   const hasMissing = rows.some((r) => r.kind === "missing");
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-        Relatórios
-      </h1>
-      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+    <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
+      <h1 className="text-2xl font-semibold text-fg">Relatórios</h1>
+      <p className="mt-1 text-sm text-muted">
         Baixe um PDF com o resumo de qualquer mês anterior.
       </p>
 
@@ -65,20 +64,22 @@ export default async function ReportsPage() {
       )}
 
       {rows.length === 0 ? (
-        <p className="mt-8 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-8 text-sm text-muted">
           Nenhum mês anterior com lançamentos ainda. Volte aqui quando tiver
           registrado lançamentos em um mês passado.
         </p>
       ) : (
-        <ul className="mt-6 divide-y divide-gray-200 dark:divide-gray-800">
-          {rows.map((row) => (
-            <ReportRow
-              key={`${row.year}-${row.month}`}
-              row={row}
-              spaceId={spaceId}
-            />
-          ))}
-        </ul>
+        <Card className="mt-6 p-2">
+          <ul className="divide-y divide-subtle">
+            {rows.map((row) => (
+              <ReportRow
+                key={`${row.year}-${row.month}`}
+                row={row}
+                spaceId={spaceId}
+              />
+            ))}
+          </ul>
+        </Card>
       )}
     </div>
   );

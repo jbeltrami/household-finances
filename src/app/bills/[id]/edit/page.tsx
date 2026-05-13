@@ -19,7 +19,7 @@ export default async function EditBillTemplatePage({
   const { data: template } = await supabase
     .from("recurring_bill_templates")
     .select(
-      "id, name, default_amount, category, due_day, cadence, day_of_week, installments_total, installments_start_month"
+      "id, name, default_amount, category, icon, due_day, cadence, day_of_week, installments_total, installments_start_month"
     )
     .eq("id", id)
     .single();
@@ -27,20 +27,17 @@ export default async function EditBillTemplatePage({
   if (!template) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="flex items-center gap-3">
-        <Link
-          href={billsUrl()}
-          className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-        >
-          ← Voltar
-        </Link>
-      </div>
-      <h1 className="mt-4 text-2xl font-semibold text-gray-900 dark:text-gray-100">
+    <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
+      <Link href={billsUrl()} className="text-sm text-muted hover:text-fg">
+        ← Voltar
+      </Link>
+      <h1 className="mt-4 text-2xl font-semibold text-fg">
         Editar conta recorrente
       </h1>
 
-      <EditBillTemplateForm spaceId={spaceId} template={template} />
+      <div className="mt-6">
+        <EditBillTemplateForm spaceId={spaceId} template={template} />
+      </div>
     </div>
   );
 }

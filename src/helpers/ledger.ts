@@ -175,6 +175,7 @@ function normalizeTemplate(row: TemplateRow): TemplateRecurrence {
     default_amount: Number(row.default_amount),
     currency: row.currency,
     category: row.category,
+    icon: row.icon,
     cadence: row.cadence as TemplateRecurrence["cadence"],
     due_day: row.due_day,
     day_of_week: row.day_of_week,
@@ -225,7 +226,7 @@ export async function getEntriesForMonth(
   const activeTemplatesRes = await supabase
     .from("recurring_bill_templates")
     .select(
-      "id, space_id, name, default_amount, currency, category, active, cadence, due_day, day_of_week, biweekly_anchor, installments_total, installments_start_month"
+      "id, space_id, name, default_amount, currency, category, icon, active, cadence, due_day, day_of_week, biweekly_anchor, installments_total, installments_start_month"
     )
     .in("space_id", spaceIds)
     .eq("active", true);
@@ -252,7 +253,7 @@ export async function getEntriesForMonth(
     const inactiveRes = await supabase
       .from("recurring_bill_templates")
       .select(
-        "id, space_id, name, default_amount, currency, category, active, cadence, due_day, day_of_week, biweekly_anchor, installments_total, installments_start_month"
+        "id, space_id, name, default_amount, currency, category, icon, active, cadence, due_day, day_of_week, biweekly_anchor, installments_total, installments_start_month"
       )
       .in("id", missingTemplateIds);
     templates = [
@@ -334,6 +335,7 @@ export async function getEntriesForMonth(
           template,
           paidCoveredByTemplate.get(template.id) ?? 0
         ),
+        icon: template.icon,
       });
     }
   }
@@ -363,6 +365,7 @@ export async function getEntriesForMonth(
             paidCoveredByTemplate.get(template.id) ?? 0
           )
         : null,
+      icon: template?.icon ?? null,
     });
   }
 

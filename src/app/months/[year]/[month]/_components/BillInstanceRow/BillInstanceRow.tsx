@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pencil, Receipt, RotateCcw, SkipForward } from "lucide-react";
+import { Pencil, RotateCcw, SkipForward } from "lucide-react";
+import BillIcon from "@/components/BillIcon";
 import { brlFormatter } from "@/helpers/format";
 import {
   overrideEntryAmount,
@@ -199,10 +200,10 @@ export default function BillInstanceRow({
       }
     >
       <span
-        className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-muted"
+        className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-fg"
         aria-hidden="true"
       >
-        <Receipt className="h-4 w-4" strokeWidth={2} />
+        <BillIcon iconKey={entry.icon} className="h-4 w-4" />
       </span>
 
       <div className="min-w-0">

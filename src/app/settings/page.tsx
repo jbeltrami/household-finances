@@ -51,46 +51,25 @@ export default async function SpaceSettingsPage() {
   const whatsappPhone = whatsappSettings?.phone_e164 ?? null;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <Link
-        href={backHref}
-        className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
-      >
+    <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
+      <Link href={backHref} className="text-sm text-muted hover:text-fg">
         ← Voltar para este mês
       </Link>
 
-      <h1 className="mt-4 text-2xl font-semibold text-gray-900 dark:text-gray-100">
-        Configurações
-      </h1>
+      <h1 className="mt-4 text-2xl font-semibold text-fg">Configurações</h1>
 
-      <section className="mt-6">
+      <div className="mt-6 flex flex-col gap-5">
         <RenameSpaceForm spaceId={spaceId} currentName={space.name} />
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-          Relatórios por e-mail
-        </h2>
-        <div className="mt-3 rounded-md border border-gray-200 p-4 dark:border-gray-800">
-          <MonthlyReportEmailToggle
-            spaceId={spaceId}
-            initialEnabled={emailEnabled}
-          />
-        </div>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-base font-medium text-gray-900 dark:text-gray-100">
-          Notificações por WhatsApp
-        </h2>
-        <div className="mt-3 rounded-md border border-gray-200 p-4 dark:border-gray-800">
-          <WhatsAppNotificationToggle
-            spaceId={spaceId}
-            initialPhone={whatsappPhone}
-            initialEnabled={whatsappEnabled}
-          />
-        </div>
-      </section>
+        <MonthlyReportEmailToggle
+          spaceId={spaceId}
+          initialEnabled={emailEnabled}
+        />
+        <WhatsAppNotificationToggle
+          spaceId={spaceId}
+          initialPhone={whatsappPhone}
+          initialEnabled={whatsappEnabled}
+        />
+      </div>
     </div>
   );
 }

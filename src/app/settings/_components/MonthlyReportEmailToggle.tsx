@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Card from "@/components/Card";
 import { setMonthlyReportEmailEnabled } from "../actions";
 
 type Props = {
@@ -31,13 +32,14 @@ export default function MonthlyReportEmailToggle({
   };
 
   return (
-    <div>
-      <label className="flex cursor-pointer items-start justify-between gap-4">
+    <Card className="p-5">
+      <h2 className="text-base font-medium text-fg">Relatórios por e-mail</h2>
+      <label className="mt-4 flex cursor-pointer items-start justify-between gap-4">
         <div>
-          <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+          <div className="text-sm font-medium text-fg">
             Enviar relatório mensal por e-mail
           </div>
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-1 text-xs text-muted">
             No dia 1º de cada mês, receba um PDF com o resumo do mês anterior
             no e-mail da sua conta Google.
           </div>
@@ -47,12 +49,14 @@ export default function MonthlyReportEmailToggle({
           checked={enabled}
           onChange={handleChange}
           disabled={pending}
-          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+          className="mt-0.5 h-4 w-4 rounded border-subtle accent-[--color-accent] disabled:opacity-50"
         />
       </label>
       {error && (
-        <p className="mt-2 text-xs text-red-600 dark:text-red-400">{error}</p>
+        <p className="mt-2 text-xs text-danger" role="alert">
+          {error}
+        </p>
       )}
-    </div>
+    </Card>
   );
 }

@@ -22,6 +22,7 @@ export type EntryRow = {
     remaining: number;
     defaultAmount: number;
   } | null;
+  icon: string | null;
 };
 
 export type IncomeRow = {

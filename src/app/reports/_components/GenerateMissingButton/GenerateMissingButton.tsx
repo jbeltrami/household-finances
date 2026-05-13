@@ -44,18 +44,16 @@ export default function GenerateMissingButton({ spaceId }: Props) {
         type="button"
         onClick={handleClick}
         disabled={pending}
-        className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+        className="rounded-lg border border-subtle bg-surface px-4 py-2 text-sm font-medium text-fg transition-colors hover:bg-surface-2 disabled:opacity-50"
       >
         {pending ? "Gerando…" : "Gerar relatórios pendentes"}
       </button>
       {error && (
-        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
-      )}
-      {result && (
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          {summarize(result)}
+        <p className="mt-2 text-sm text-danger" role="alert">
+          {error}
         </p>
       )}
+      {result && <p className="mt-2 text-sm text-muted">{summarize(result)}</p>}
     </div>
   );
 }

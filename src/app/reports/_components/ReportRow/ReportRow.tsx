@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Download, RefreshCw, Send } from "lucide-react";
 import {
   downloadReport,
   generateReport,
@@ -66,59 +67,60 @@ export default function ReportRow({ row, spaceId }: Props) {
   };
 
   return (
-    <li className="flex items-center justify-between gap-4 py-3">
-      <div className="flex flex-col">
-        <span className="text-sm font-medium capitalize text-gray-900 dark:text-gray-100">
-          {monthLabel}
-        </span>
+    <li className="flex items-center gap-3 px-3 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium capitalize text-fg">{monthLabel}</p>
         {row.kind === "generated" ? (
           <>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-muted">
               Gerado em {dateTimeFormatter.format(new Date(row.generatedAt))}
-            </span>
+            </p>
             {row.sentAt && (
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted">
                 Enviado em {dateTimeFormatter.format(new Date(row.sentAt))}
-              </span>
+              </p>
             )}
           </>
         ) : (
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            Pendente
-          </span>
+          <p className="text-xs text-warn">Pendente</p>
         )}
         {error && (
-          <span className="mt-1 text-xs text-red-600 dark:text-red-400">
+          <p className="mt-1 text-xs text-danger" role="alert">
             {error}
-          </span>
+          </p>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         {row.kind === "generated" ? (
           <>
             <button
               type="button"
               onClick={handleGenerate}
               disabled={pending}
-              className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50 dark:text-gray-400 dark:hover:text-gray-200"
+              aria-label="Regenerar"
+              data-tooltip="Regenerar"
+              className="rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:opacity-50"
             >
-              {pending ? "..." : "Regenerar"}
+              <RefreshCw className="h-4 w-4" strokeWidth={2} />
             </button>
             <button
               type="button"
               onClick={handleSend}
               disabled={pending}
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              aria-label={row.sentAt ? "Reenviar por e-mail" : "Enviar por e-mail"}
+              data-tooltip={row.sentAt ? "Reenviar por e-mail" : "Enviar por e-mail"}
+              className="rounded-md p-2 text-muted transition-colors hover:bg-surface-2 hover:text-fg disabled:opacity-50"
             >
-              {pending ? "..." : row.sentAt ? "Reenviar" : "Enviar por e-mail"}
+              <Send className="h-4 w-4" strokeWidth={2} />
             </button>
             <button
               type="button"
               onClick={handleDownload}
               disabled={pending}
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="ml-1 inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
-              {pending ? "..." : "Baixar PDF"}
+              <Download className="h-3.5 w-3.5" strokeWidth={2} />
+              {pending ? "…" : "Baixar PDF"}
             </button>
           </>
         ) : (
@@ -126,7 +128,7 @@ export default function ReportRow({ row, spaceId }: Props) {
             type="button"
             onClick={handleGenerate}
             disabled={pending}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             {pending ? "Gerando…" : "Gerar"}
           </button>
