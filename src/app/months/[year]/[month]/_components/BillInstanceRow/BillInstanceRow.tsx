@@ -29,7 +29,6 @@ function togglePaidTargetFor(entry: EntryRow): TogglePaidTarget {
     kind: "virtual",
     templateId: entry.template_id!,
     date: entry.date,
-    spaceId: entry.space_id,
   };
 }
 
@@ -39,7 +38,6 @@ function overrideTargetFor(entry: EntryRow): OverrideAmountTarget {
     kind: "virtual",
     templateId: entry.template_id!,
     date: entry.date,
-    spaceId: entry.space_id,
   };
 }
 
@@ -49,7 +47,6 @@ function skipTargetFor(entry: EntryRow): SkipTarget {
     kind: "virtual",
     templateId: entry.template_id!,
     date: entry.date,
-    spaceId: entry.space_id,
   };
 }
 

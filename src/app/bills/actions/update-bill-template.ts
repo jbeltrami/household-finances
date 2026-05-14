@@ -24,8 +24,6 @@ export async function updateBillTemplate(
 ): Promise<FormState> {
   void prevState;
 
-  let spaceId: string | undefined;
-
   try {
     const supabase = await createClient();
 
@@ -33,9 +31,6 @@ export async function updateBillTemplate(
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return { error: "Não autenticado" };
-
-    spaceId = formData.get("space_id")?.toString();
-    if (!spaceId) return { error: "Contexto de espaço ausente" };
 
     const {
       name,

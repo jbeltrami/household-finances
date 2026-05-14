@@ -4,14 +4,12 @@ import { useRef, useState, useTransition } from "react";
 import { createIncomeEntry } from "../../actions";
 
 type Props = {
-  spaceId: string;
   year: number;
   month: number;
   onSuccess?: () => void;
 };
 
 export default function CreateIncomeEntryForm({
-  spaceId,
   year,
   month,
   onSuccess,
@@ -23,7 +21,6 @@ export default function CreateIncomeEntryForm({
   const handleSubmit = (formData: FormData) => {
     startSubmit(async () => {
       const result = await createIncomeEntry(
-        spaceId,
         year,
         month,
         { error: null },

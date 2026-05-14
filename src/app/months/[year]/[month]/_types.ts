@@ -70,7 +70,6 @@ export type BalanceGroup = {
 };
 
 export type MonthlyViewProps = {
-  spaceId: string;
   year: number;
   month: number;
   monthOptions: YearMonth[];

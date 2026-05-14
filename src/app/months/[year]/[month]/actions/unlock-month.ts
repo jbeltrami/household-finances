@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { monthUrl } from "@/helpers/paths";
+import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { isMonthLocked } from "@/helpers/lock";
 import { type FormState } from "../form-state";
 
@@ -13,7 +14,6 @@ const MIN_REASON_LENGTH = 5;
 // editable. Rejects attempts to unlock current or future months — they
 // aren't locked to begin with, so a row there is just noise.
 export async function unlockMonth(
-  spaceId: string,
   year: number,
   month: number,
   prevState: FormState,
@@ -28,6 +28,8 @@ export async function unlockMonth(
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return { error: "Não autenticado" };
+
+    const spaceId = await requirePersonalSpaceId(supabase);
 
     const reason = formData.get("reason")?.toString().trim();
     if (!reason) return { error: "O motivo é obrigatório para desbloquear o mês" };

@@ -7,6 +7,7 @@ import {
   listNonEmptyPastMonths,
   performReportGeneration,
 } from "@/helpers/reports";
+import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { reportsUrl } from "@/helpers/paths";
 
 export type GenerateMissingResult = {
@@ -18,25 +19,14 @@ export type GenerateMissingResult = {
 // Backfill any past month that has data but no report yet. Used by
 // the "Gerar relatórios em falta" button. Continues on per-month
 // errors so one bad month doesn't block the rest.
-export async function generateMissingReports(
-  spaceId: string
-): Promise<GenerateMissingResult> {
+export async function generateMissingReports(): Promise<GenerateMissingResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
 
-  const { data: space } = await supabase
-    .from("spaces")
-    .select("created_by")
-    .eq("id", spaceId)
-    .single();
-
-  if (!space) throw new Error("Espaço não encontrado");
-  if (space.created_by !== user.id) {
-    throw new Error("Apenas o dono do espaço pode gerar relatórios");
-  }
+  const spaceId = await requirePersonalSpaceId(supabase);
 
   const admin = createAdminClient();
 

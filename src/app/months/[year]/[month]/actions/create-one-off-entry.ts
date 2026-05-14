@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { monthUrl } from "@/helpers/paths";
+import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { checkDateEditable } from "@/helpers/lock";
 import { todayYmd } from "@/helpers/date";
 import { categoryFor, isBillIconKey } from "@/lib/icons/bills";
@@ -17,7 +18,6 @@ import { type FormState } from "../form-state";
 // We don't accept a free-text category any more — the icon is the
 // single source of truth so reports can group reliably.
 export async function createOneOffEntry(
-  spaceId: string,
   viewedYear: number,
   viewedMonth: number,
   prevState: FormState,
@@ -32,6 +32,8 @@ export async function createOneOffEntry(
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return { error: "Não autenticado" };
+
+    const spaceId = await requirePersonalSpaceId(supabase);
 
     const name = formData.get("name")?.toString().trim();
     const amountRaw = formData.get("amount")?.toString();

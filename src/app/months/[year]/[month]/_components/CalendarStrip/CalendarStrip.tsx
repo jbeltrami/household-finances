@@ -18,7 +18,6 @@ import { buildCalendarGrid } from "./_helpers";
 const DAY_HEADERS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
 type Props = {
-  spaceId: string;
   year: number;
   month: number;
   monthOptions: YearMonth[];

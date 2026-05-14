@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { monthUrl } from "@/helpers/paths";
+import { requirePersonalSpaceId } from "@/helpers/spaces";
 import {
   checkDateEditable,
   checkEntryEditable,
@@ -15,12 +16,7 @@ import {
 // to unpay them.
 export type SkipTarget =
   | { kind: "materialized"; entryId: string }
-  | {
-      kind: "virtual";
-      templateId: string;
-      date: string;
-      spaceId: string;
-    };
+  | { kind: "virtual"; templateId: string; date: string };
 
 export async function skipEntryOccurrence(
   target: SkipTarget,
@@ -65,11 +61,9 @@ export async function skipEntryOccurrence(
     return;
   }
 
-  const check = await checkDateEditable(
-    supabase,
-    target.spaceId,
-    target.date
-  );
+  const spaceId = await requirePersonalSpaceId(supabase);
+
+  const check = await checkDateEditable(supabase, spaceId, target.date);
   if (!check.ok) throw new Error(check.error);
 
   const { data: template } = await supabase
@@ -81,7 +75,7 @@ export async function skipEntryOccurrence(
   if (!template) throw new Error("Conta recorrente não encontrada");
 
   const { error } = await supabase.from("entries").insert({
-    space_id: target.spaceId,
+    space_id: spaceId,
     date: target.date,
     name: template.name,
     amount: template.default_amount,

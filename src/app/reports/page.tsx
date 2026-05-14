@@ -60,7 +60,7 @@ export default async function ReportsPage() {
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        {hasMissing && <GenerateMissingButton spaceId={spaceId} />}
+        {hasMissing && <GenerateMissingButton />}
         <Link
           href="/reports/categories"
           className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2 text-sm font-medium text-fg transition-colors hover:bg-surface-2"
@@ -79,11 +79,7 @@ export default async function ReportsPage() {
         <Card className="mt-6 p-2">
           <ul className="divide-y divide-subtle">
             {rows.map((row) => (
-              <ReportRow
-                key={`${row.year}-${row.month}`}
-                row={row}
-                spaceId={spaceId}
-              />
+              <ReportRow key={`${row.year}-${row.month}`} row={row} />
             ))}
           </ul>
         </Card>

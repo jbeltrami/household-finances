@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getPersonalSpaceId } from "@/helpers/spaces";
 import { billsUrl } from "@/helpers/paths";
 import EditBillTemplateForm from "./_components/EditBillTemplateForm/EditBillTemplateForm";
 
@@ -12,9 +11,6 @@ export default async function EditBillTemplatePage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-
-  const spaceId = await getPersonalSpaceId(supabase);
-  if (!spaceId) notFound();
 
   const { data: template } = await supabase
     .from("recurring_bill_templates")
@@ -36,7 +32,7 @@ export default async function EditBillTemplatePage({
       </h1>
 
       <div className="mt-6">
-        <EditBillTemplateForm spaceId={spaceId} template={template} />
+        <EditBillTemplateForm template={template} />
       </div>
     </div>
   );

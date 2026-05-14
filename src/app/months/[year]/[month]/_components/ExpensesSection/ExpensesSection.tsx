@@ -10,7 +10,6 @@ import type { ExpensesGroup } from "../../_types";
 
 type Props = {
   expenses: ExpensesGroup;
-  spaceId: string;
   year: number;
   month: number;
   locked: boolean;
@@ -19,7 +18,6 @@ type Props = {
 
 export default function ExpensesSection({
   expenses,
-  spaceId,
   year,
   month,
   locked,
@@ -59,7 +57,6 @@ export default function ExpensesSection({
       {!locked && showAddForm && (
         <div className="mt-4">
           <CreateOneOffExpenseForm
-            spaceId={spaceId}
             year={year}
             month={month}
             onSuccess={() => setShowAddForm(false)}

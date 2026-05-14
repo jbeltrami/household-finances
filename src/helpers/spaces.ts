@@ -20,3 +20,15 @@ export async function getPersonalSpaceId(
     .single();
   return data?.id ?? null;
 }
+
+// Throwing variant for server actions. Pages prefer the
+// null-returning version so they can `notFound()` cleanly; actions
+// already wrap their work in try/catch (or propagate to
+// `useTransition`) and want a single readable line at the top.
+export async function requirePersonalSpaceId(
+  supabase: SupabaseClient
+): Promise<string> {
+  const spaceId = await getPersonalSpaceId(supabase);
+  if (!spaceId) throw new Error("Espaço não encontrado");
+  return spaceId;
+}

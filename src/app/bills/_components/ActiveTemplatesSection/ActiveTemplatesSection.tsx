@@ -35,14 +35,12 @@ function formatStartMonth(ymd: string): string {
 }
 
 type Props = {
-  spaceId: string;
   templates: BillTemplate[];
   paidCoveredByTemplate: Map<string, number>;
   variant?: "active" | "completed";
 };
 
 export default function ActiveTemplatesSection({
-  spaceId,
   templates,
   paidCoveredByTemplate,
   variant = "active",
@@ -104,9 +102,6 @@ export default function ActiveTemplatesSection({
                     <Pencil className="h-4 w-4" strokeWidth={2} />
                   </Link>
                   <form action={deactivateBillTemplate.bind(null, t.id)}>
-                    {/* deactivateBillTemplate reads space_id from FormData
-                        to build its revalidatePath URL. */}
-                    <input type="hidden" name="space_id" value={spaceId} />
                     <button
                       type="submit"
                       className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-danger"

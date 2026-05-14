@@ -10,13 +10,11 @@ import {
 } from "../actions";
 
 type Props = {
-  spaceId: string;
   initialPhone: string | null;
   initialEnabled: boolean;
 };
 
 export default function WhatsAppNotificationToggle({
-  spaceId,
   initialPhone,
   initialEnabled,
 }: Props) {
@@ -42,7 +40,7 @@ export default function WhatsAppNotificationToggle({
   const handleSavePhone = (formData: FormData) => {
     setPhoneError(null);
     startSave(async () => {
-      const result = await saveWhatsAppPhone(spaceId, formData);
+      const result = await saveWhatsAppPhone(formData);
       if (result.error || !result.phone) {
         setPhoneError(result.error ?? "Falha ao salvar");
         return;
@@ -58,7 +56,7 @@ export default function WhatsAppNotificationToggle({
     setEnabled(newValue);
     startToggle(async () => {
       try {
-        await setWhatsAppEnabled(spaceId, newValue);
+        await setWhatsAppEnabled(newValue);
       } catch (err) {
         setEnabled(!newValue);
         setToggleError(err instanceof Error ? err.message : "Falha ao atualizar");
@@ -69,7 +67,7 @@ export default function WhatsAppNotificationToggle({
   const handleTest = () => {
     setTestResult(null);
     startTest(async () => {
-      const result = await sendWhatsAppTestMessage(spaceId);
+      const result = await sendWhatsAppTestMessage();
       if (result.ok) {
         setTestResult({ kind: "ok" });
       } else {

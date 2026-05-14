@@ -7,7 +7,6 @@ import { billsUrl } from "@/helpers/paths";
 import type { BillsGroup } from "../../_types";
 
 type Props = {
-  spaceId: string;
   bills: BillsGroup;
   year: number;
   month: number;

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { billsUrl } from "@/helpers/paths";
 import { type FormState } from "../form-state";
 import {
@@ -24,8 +25,7 @@ export async function createBillTemplate(
     } = await supabase.auth.getUser();
     if (!user) return { error: "Não autenticado" };
 
-    const spaceId = formData.get("space_id")?.toString();
-    if (!spaceId) return { error: "Contexto de espaço ausente" };
+    const spaceId = await requirePersonalSpaceId(supabase);
 
     const {
       name,

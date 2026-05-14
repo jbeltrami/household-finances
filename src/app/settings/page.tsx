@@ -59,13 +59,9 @@ export default async function SpaceSettingsPage() {
       <h1 className="mt-4 text-2xl font-semibold text-fg">Configurações</h1>
 
       <div className="mt-6 flex flex-col gap-5">
-        <RenameSpaceForm spaceId={spaceId} currentName={space.name} />
-        <MonthlyReportEmailToggle
-          spaceId={spaceId}
-          initialEnabled={emailEnabled}
-        />
+        <RenameSpaceForm currentName={space.name} />
+        <MonthlyReportEmailToggle initialEnabled={emailEnabled} />
         <WhatsAppNotificationToggle
-          spaceId={spaceId}
           initialPhone={whatsappPhone}
           initialEnabled={whatsappEnabled}
         />

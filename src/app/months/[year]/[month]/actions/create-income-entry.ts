@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { monthUrl } from "@/helpers/paths";
+import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { checkDateEditable } from "@/helpers/lock";
 import { todayYmd } from "@/helpers/date";
 import { type FormState } from "../form-state";
@@ -12,7 +13,6 @@ import { type FormState } from "../form-state";
 // June. The lock check runs against the target month, so adding to a
 // locked month is rejected even when the viewed page is unlocked.
 export async function createIncomeEntry(
-  spaceId: string,
   viewedYear: number,
   viewedMonth: number,
   prevState: FormState,
@@ -27,6 +27,8 @@ export async function createIncomeEntry(
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return { error: "Não autenticado" };
+
+    const spaceId = await requirePersonalSpaceId(supabase);
 
     const name = formData.get("name")?.toString().trim();
     const amountRaw = formData.get("amount")?.toString();

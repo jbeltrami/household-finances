@@ -6,8 +6,6 @@ import {
   type GenerateMissingResult,
 } from "../../actions";
 
-type Props = { spaceId: string };
-
 function summarize(r: GenerateMissingResult): string {
   const parts: string[] = [];
   parts.push(
@@ -20,7 +18,7 @@ function summarize(r: GenerateMissingResult): string {
   return parts.join(", ") + ".";
 }
 
-export default function GenerateMissingButton({ spaceId }: Props) {
+export default function GenerateMissingButton() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateMissingResult | null>(null);
@@ -30,7 +28,7 @@ export default function GenerateMissingButton({ spaceId }: Props) {
     setResult(null);
     startTransition(async () => {
       try {
-        const r = await generateMissingReports(spaceId);
+        const r = await generateMissingReports();
         setResult(r);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Falha ao gerar relatórios");

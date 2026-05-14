@@ -16,10 +16,6 @@ const DAY_OPTIONS = [
   { value: "6", label: "Sáb" },
 ];
 
-type Props = {
-  spaceId: string;
-};
-
 // Default start for an installment — the current month, in YYYY-MM form
 // so it flows straight into <input type="month">.
 function currentMonthValue(): string {
@@ -29,7 +25,7 @@ function currentMonthValue(): string {
   ).padStart(2, "0")}`;
 }
 
-export default function CreateBillTemplateForm({ spaceId }: Props) {
+export default function CreateBillTemplateForm() {
   const [cadence, setCadence] = useState("monthly");
   const [installmentsEnabled, setInstallmentsEnabled] = useState(false);
   const [state, formAction, isPending] = useActionState(
@@ -40,7 +36,6 @@ export default function CreateBillTemplateForm({ spaceId }: Props) {
   return (
     <Card className="p-5">
       <form action={formAction}>
-        <input type="hidden" name="space_id" value={spaceId} />
         <h2 className="text-base font-medium text-fg">Adicionar conta recorrente</h2>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="sm:col-span-2">

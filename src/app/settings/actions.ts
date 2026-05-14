@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendWhatsAppText } from "@/lib/whatsapp/client";
+import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { settingsUrl } from "@/helpers/paths";
 
 type FormState = { error: string | null };
@@ -14,7 +15,6 @@ const E164_REGEX = /^\+[1-9][0-9]{6,14}$/;
 // --- Rename -------------------------------------------------------
 
 export async function renameSpace(
-  spaceId: string,
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
@@ -27,6 +27,8 @@ export async function renameSpace(
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return { error: "Não autenticado" };
+
+    const spaceId = await requirePersonalSpaceId(supabase);
 
     const name = formData.get("name")?.toString().trim();
     if (!name) return { error: "O nome é obrigatório" };
@@ -54,7 +56,6 @@ export async function renameSpace(
 // app-layer ownership check because the only member of a personal
 // space is its owner.
 export async function setMonthlyReportEmailEnabled(
-  spaceId: string,
   enabled: boolean
 ): Promise<void> {
   const supabase = await createClient();
@@ -63,6 +64,8 @@ export async function setMonthlyReportEmailEnabled(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
+
+  const spaceId = await requirePersonalSpaceId(supabase);
 
   const { error } = await supabase
     .from("monthly_report_settings")
@@ -87,7 +90,6 @@ export async function setMonthlyReportEmailEnabled(
 // Returns the normalized phone on success so the client can sync
 // its "saved phone" state without re-reading from the DB.
 export async function saveWhatsAppPhone(
-  spaceId: string,
   formData: FormData
 ): Promise<{ error: string | null; phone: string | null }> {
   try {
@@ -97,6 +99,8 @@ export async function saveWhatsAppPhone(
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return { error: "Não autenticado", phone: null };
+
+    const spaceId = await requirePersonalSpaceId(supabase);
 
     const raw = formData.get("phone")?.toString().trim() ?? "";
     if (!raw) return { error: "O número de telefone é obrigatório", phone: null };
@@ -153,16 +157,15 @@ export async function saveWhatsAppPhone(
 // Toggle WhatsApp alerts on/off. Refuses enabling if no phone is
 // saved yet — the UI also disables the toggle in that case, but
 // this is defense in depth (and the DB CHECK is the final gate).
-export async function setWhatsAppEnabled(
-  spaceId: string,
-  enabled: boolean
-): Promise<void> {
+export async function setWhatsAppEnabled(enabled: boolean): Promise<void> {
   const supabase = await createClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
+
+  const spaceId = await requirePersonalSpaceId(supabase);
 
   if (enabled) {
     const { data: existing } = await supabase
@@ -191,9 +194,10 @@ export async function setWhatsAppEnabled(
 // can never trigger a test to someone else's number. Returns a
 // friendly state object rather than throwing — the UI surfaces it
 // inline.
-export async function sendWhatsAppTestMessage(
-  spaceId: string
-): Promise<{ ok: boolean; error: string | null }> {
+export async function sendWhatsAppTestMessage(): Promise<{
+  ok: boolean;
+  error: string | null;
+}> {
   try {
     const supabase = await createClient();
 
@@ -201,6 +205,8 @@ export async function sendWhatsAppTestMessage(
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return { ok: false, error: "Não autenticado" };
+
+    const spaceId = await requirePersonalSpaceId(supabase);
 
     const { data: settings } = await supabase
       .from("whatsapp_notification_settings")

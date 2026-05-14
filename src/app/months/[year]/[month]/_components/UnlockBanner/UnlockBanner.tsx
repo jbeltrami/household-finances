@@ -6,15 +6,14 @@ import { unlockMonth } from "../../actions";
 import { initialFormState } from "../../form-state";
 
 type Props = {
-  spaceId: string;
   year: number;
   month: number;
 };
 
-export default function UnlockBanner({ spaceId, year, month }: Props) {
+export default function UnlockBanner({ year, month }: Props) {
   const [showForm, setShowForm] = useState(false);
 
-  const boundAction = unlockMonth.bind(null, spaceId, year, month);
+  const boundAction = unlockMonth.bind(null, year, month);
   const [state, formAction, isPending] = useActionState(
     boundAction,
     initialFormState

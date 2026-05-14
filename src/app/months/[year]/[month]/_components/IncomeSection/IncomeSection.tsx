@@ -10,7 +10,6 @@ import type { IncomeGroup } from "../../_types";
 
 type Props = {
   income: IncomeGroup;
-  spaceId: string;
   year: number;
   month: number;
   locked: boolean;
@@ -19,7 +18,6 @@ type Props = {
 
 export default function IncomeSection({
   income,
-  spaceId,
   year,
   month,
   locked,
@@ -59,7 +57,6 @@ export default function IncomeSection({
       {!locked && showAddForm && (
         <div className="mt-4">
           <CreateIncomeEntryForm
-            spaceId={spaceId}
             year={year}
             month={month}
             onSuccess={() => setShowAddForm(false)}

@@ -32,11 +32,10 @@ type Template = {
 };
 
 type Props = {
-  spaceId: string;
   template: Template;
 };
 
-export default function EditBillTemplateForm({ spaceId, template }: Props) {
+export default function EditBillTemplateForm({ template }: Props) {
   const [cadence, setCadence] = useState(template.cadence ?? "monthly");
   const [installmentsEnabled, setInstallmentsEnabled] = useState(
     template.installments_total != null
@@ -51,7 +50,6 @@ export default function EditBillTemplateForm({ spaceId, template }: Props) {
   return (
     <Card className="p-5">
       <form action={formAction}>
-        <input type="hidden" name="space_id" value={spaceId} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="sm:col-span-2">
             <label htmlFor="name" className="field-label">Nome</label>

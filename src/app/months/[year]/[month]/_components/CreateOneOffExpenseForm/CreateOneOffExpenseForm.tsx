@@ -5,14 +5,12 @@ import IconPicker from "@/components/IconPicker/IconPicker";
 import { createOneOffEntry } from "../../actions";
 
 type Props = {
-  spaceId: string;
   year: number;
   month: number;
   onSuccess?: () => void;
 };
 
 export default function CreateOneOffExpenseForm({
-  spaceId,
   year,
   month,
   onSuccess,
@@ -24,7 +22,6 @@ export default function CreateOneOffExpenseForm({
   const handleSubmit = (formData: FormData) => {
     startSubmit(async () => {
       const result = await createOneOffEntry(
-        spaceId,
         year,
         month,
         { error: null },

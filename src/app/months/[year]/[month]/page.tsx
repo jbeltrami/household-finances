@@ -144,7 +144,6 @@ export default async function MonthlyViewPage({
         // Remount (reset highlighted-day state) whenever the URL
         // points at a different month.
         key={`${year}-${month}`}
-        spaceId={spaceId}
         year={year}
         month={month}
         monthOptions={monthOptions}

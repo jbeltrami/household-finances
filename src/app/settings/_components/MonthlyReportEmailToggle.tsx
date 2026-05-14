@@ -5,14 +5,10 @@ import Card from "@/components/Card";
 import { setMonthlyReportEmailEnabled } from "../actions";
 
 type Props = {
-  spaceId: string;
   initialEnabled: boolean;
 };
 
-export default function MonthlyReportEmailToggle({
-  spaceId,
-  initialEnabled,
-}: Props) {
+export default function MonthlyReportEmailToggle({ initialEnabled }: Props) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +19,7 @@ export default function MonthlyReportEmailToggle({
     setEnabled(newValue);
     startTransition(async () => {
       try {
-        await setMonthlyReportEmailEnabled(spaceId, newValue);
+        await setMonthlyReportEmailEnabled(newValue);
       } catch (err) {
         setEnabled(!newValue);
         setError(err instanceof Error ? err.message : "Falha ao atualizar");

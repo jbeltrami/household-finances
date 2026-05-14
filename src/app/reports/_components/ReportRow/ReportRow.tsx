@@ -12,7 +12,6 @@ import type { ReportListRow } from "../../_types";
 
 type Props = {
   row: ReportListRow;
-  spaceId: string;
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
@@ -24,7 +23,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
 });
 
-export default function ReportRow({ row, spaceId }: Props) {
+export default function ReportRow({ row }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +33,7 @@ export default function ReportRow({ row, spaceId }: Props) {
     setError(null);
     startTransition(async () => {
       try {
-        await generateReport(spaceId, row.year, row.month);
+        await generateReport(row.year, row.month);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Falha ao gerar o relatório");
       }

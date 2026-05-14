@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { monthUrl } from "@/helpers/paths";
+import { requirePersonalSpaceId } from "@/helpers/spaces";
 import {
   checkDateEditable,
   checkEntryEditable,
@@ -14,12 +15,7 @@ import {
 // materialize into a new `entries` row on first touch.
 export type TogglePaidTarget =
   | { kind: "materialized"; entryId: string }
-  | {
-      kind: "virtual";
-      templateId: string;
-      date: string;
-      spaceId: string;
-    };
+  | { kind: "virtual"; templateId: string; date: string };
 
 // `covered` only matters for installment templates. A prepayment with
 // covered > 1 represents one payment absorbing multiple installments;
@@ -129,11 +125,9 @@ export async function toggleEntryPaid(
   }
 
   // Virtual occurrence → materialize. Fetch template for defaults.
-  const check = await checkDateEditable(
-    supabase,
-    target.spaceId,
-    target.date
-  );
+  const spaceId = await requirePersonalSpaceId(supabase);
+
+  const check = await checkDateEditable(supabase, spaceId, target.date);
   if (!check.ok) throw new Error(check.error);
 
   const { data: template } = await supabase
@@ -155,7 +149,7 @@ export async function toggleEntryPaid(
       : defaultAmount;
 
   const { error } = await supabase.from("entries").insert({
-    space_id: target.spaceId,
+    space_id: spaceId,
     date: target.date,
     name: template.name,
     amount,

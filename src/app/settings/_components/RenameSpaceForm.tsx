@@ -5,16 +5,14 @@ import Card from "@/components/Card";
 import { renameSpace } from "../actions";
 
 type Props = {
-  spaceId: string;
   currentName: string;
 };
 
 const initialState = { error: null as string | null };
 
-export default function RenameSpaceForm({ spaceId, currentName }: Props) {
-  const boundAction = renameSpace.bind(null, spaceId);
+export default function RenameSpaceForm({ currentName }: Props) {
   const [state, formAction, isPending] = useActionState(
-    boundAction,
+    renameSpace,
     initialState
   );
 

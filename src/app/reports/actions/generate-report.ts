@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { performReportGeneration } from "@/helpers/reports";
+import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { reportsUrl } from "@/helpers/paths";
 import { currentYearMonth, yearMonthKey } from "@/helpers/date";
 
@@ -13,11 +14,7 @@ import { currentYearMonth, yearMonthKey } from "@/helpers/date";
 // empty months and on non-past months, so reaching those branches
 // indicates either a stale page or someone hitting the action
 // directly — both are unexpected states.
-export async function generateReport(
-  spaceId: string,
-  year: number,
-  month: number
-) {
+export async function generateReport(year: number, month: number) {
   if (!Number.isInteger(year) || year < 2000 || year > 2100) {
     throw new Error("Ano inválido");
   }
@@ -35,16 +32,7 @@ export async function generateReport(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
 
-  const { data: space } = await supabase
-    .from("spaces")
-    .select("created_by")
-    .eq("id", spaceId)
-    .single();
-
-  if (!space) throw new Error("Espaço não encontrado");
-  if (space.created_by !== user.id) {
-    throw new Error("Apenas o dono do espaço pode gerar relatórios");
-  }
+  const spaceId = await requirePersonalSpaceId(supabase);
 
   const admin = createAdminClient();
   const result = await performReportGeneration(

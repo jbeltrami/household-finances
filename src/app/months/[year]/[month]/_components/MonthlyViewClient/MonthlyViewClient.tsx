@@ -11,7 +11,6 @@ import UnlockBanner from "../UnlockBanner/UnlockBanner";
 import type { MonthlyViewProps } from "../../_types";
 
 export default function MonthlyViewClient({
-  spaceId,
   year,
   month,
   monthOptions,
@@ -31,7 +30,7 @@ export default function MonthlyViewClient({
 
   return (
     <div className="flex flex-col gap-5">
-      {locked && <UnlockBanner spaceId={spaceId} year={year} month={month} />}
+      {locked && <UnlockBanner year={year} month={month} />}
 
       {!locked && unlockReason && (
         <p className="text-xs text-muted">Desbloqueado: {unlockReason}</p>
@@ -41,7 +40,6 @@ export default function MonthlyViewClient({
       <div className="grid grid-cols-1 gap-5 md:grid-cols-5">
         <div className="md:col-span-3">
           <CalendarStrip
-            spaceId={spaceId}
             year={year}
             month={month}
             monthOptions={monthOptions}
@@ -62,7 +60,6 @@ export default function MonthlyViewClient({
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         <IncomeSection
           income={income}
-          spaceId={spaceId}
           year={year}
           month={month}
           locked={locked}
@@ -70,7 +67,6 @@ export default function MonthlyViewClient({
         />
         <ExpensesSection
           expenses={expenses}
-          spaceId={spaceId}
           year={year}
           month={month}
           locked={locked}
@@ -80,7 +76,6 @@ export default function MonthlyViewClient({
 
       {/* Row 3 — Contas, full width */}
       <BillsSection
-        spaceId={spaceId}
         bills={bills}
         year={year}
         month={month}

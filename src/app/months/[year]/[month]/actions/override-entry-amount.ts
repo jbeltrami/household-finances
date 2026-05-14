@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { monthUrl } from "@/helpers/paths";
+import { requirePersonalSpaceId } from "@/helpers/spaces";
 import {
   checkDateEditable,
   checkEntryEditable,
@@ -13,12 +14,7 @@ import { type FormState } from "../form-state";
 // a virtual occurrence that will be materialized on first touch.
 export type OverrideAmountTarget =
   | { kind: "materialized"; entryId: string }
-  | {
-      kind: "virtual";
-      templateId: string;
-      date: string;
-      spaceId: string;
-    };
+  | { kind: "virtual"; templateId: string; date: string };
 
 export async function overrideEntryAmount(
   target: OverrideAmountTarget,
@@ -58,11 +54,9 @@ export async function overrideEntryAmount(
       return { error: null };
     }
 
-    const check = await checkDateEditable(
-      supabase,
-      target.spaceId,
-      target.date
-    );
+    const spaceId = await requirePersonalSpaceId(supabase);
+
+    const check = await checkDateEditable(supabase, spaceId, target.date);
     if (!check.ok) return { error: check.error };
 
     const { data: template } = await supabase
@@ -74,7 +68,7 @@ export async function overrideEntryAmount(
     if (!template) return { error: "Conta recorrente não encontrada" };
 
     const { error } = await supabase.from("entries").insert({
-      space_id: target.spaceId,
+      space_id: spaceId,
       date: target.date,
       name: template.name,
       amount,

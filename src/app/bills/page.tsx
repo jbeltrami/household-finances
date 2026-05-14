@@ -84,17 +84,15 @@ export default async function BillsPage() {
       </p>
 
       <div className="mt-6 flex flex-col gap-5">
-        <CreateBillTemplateForm spaceId={spaceId} />
+        <CreateBillTemplateForm />
 
         <ActiveTemplatesSection
-          spaceId={spaceId}
           templates={activeTemplates}
           paidCoveredByTemplate={paidCoveredByTemplate}
         />
 
         {completedTemplates.length > 0 && (
           <ActiveTemplatesSection
-            spaceId={spaceId}
             templates={completedTemplates}
             paidCoveredByTemplate={paidCoveredByTemplate}
             variant="completed"
