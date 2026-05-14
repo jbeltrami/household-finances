@@ -101,6 +101,20 @@ export function categoryFor(key: string | null | undefined): string | null {
   return null;
 }
 
+// Pick a representative icon key for a category — the first icon
+// registered under that category in `BILL_ICONS`. Used by category
+// summary UIs that want a visual marker per category without storing
+// one explicitly. Returns null when the category isn't known.
+export function representativeIconForCategory(
+  category: string | null | undefined
+): BillIconKey | null {
+  if (!category) return null;
+  for (const [key, entry] of Object.entries(BILL_ICONS)) {
+    if (entry.category === category) return key as BillIconKey;
+  }
+  return null;
+}
+
 // Convenience grouping for the picker: orders categories by their
 // first appearance in BILL_ICONS, and items within a category by
 // insertion order.

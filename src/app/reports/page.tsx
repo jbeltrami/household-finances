@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { PieChart } from "lucide-react";
 import Card from "@/components/Card";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
@@ -57,11 +59,16 @@ export default async function ReportsPage() {
         Baixe um PDF com o resumo de qualquer mês anterior.
       </p>
 
-      {hasMissing && (
-        <div className="mt-6">
-          <GenerateMissingButton spaceId={spaceId} />
-        </div>
-      )}
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        {hasMissing && <GenerateMissingButton spaceId={spaceId} />}
+        <Link
+          href="/reports/categories"
+          className="inline-flex items-center gap-2 rounded-lg border border-subtle bg-surface px-4 py-2 text-sm font-medium text-fg transition-colors hover:bg-surface-2"
+        >
+          <PieChart className="h-4 w-4" strokeWidth={2} />
+          Gastos por categoria
+        </Link>
+      </div>
 
       {rows.length === 0 ? (
         <p className="mt-8 text-sm text-muted">
