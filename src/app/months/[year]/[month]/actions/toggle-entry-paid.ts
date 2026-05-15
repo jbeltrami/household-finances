@@ -9,20 +9,14 @@ import {
   checkDateEditable,
   checkEntryEditable,
 } from "@/helpers/lock";
-
-// Two-shape target: either a materialized row (entryId) or a virtual
-// occurrence identified by its template + date. Virtual occurrences
-// materialize into a new `entries` row on first touch.
-export type TogglePaidTarget =
-  | { kind: "materialized"; entryId: string }
-  | { kind: "virtual"; templateId: string; date: string };
+import type { EntryMutationTarget } from "../_types";
 
 // `covered` only matters for installment templates. A prepayment with
 // covered > 1 represents one payment absorbing multiple installments;
 // amount auto-scales to default × covered. Unpaying a previously-
 // prepaid row resets coverage to 1 and amount to the template default.
 export async function toggleEntryPaid(
-  target: TogglePaidTarget,
+  target: EntryMutationTarget,
   newPaid: boolean,
   covered: number,
   formData: FormData

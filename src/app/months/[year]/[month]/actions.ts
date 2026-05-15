@@ -19,8 +19,6 @@ export { deleteIncomeEntry } from "./actions/delete-income-entry";
 
 export { unlockMonth } from "./actions/unlock-month";
 
-// Re-export target types so client components can type their action
-// calls without deep-importing from individual action files.
-export type { TogglePaidTarget } from "./actions/toggle-entry-paid";
-export type { OverrideAmountTarget } from "./actions/override-entry-amount";
-export type { SkipTarget } from "./actions/skip-entry-occurrence";
+// Re-export the shared target type so client components can type
+// their action calls without deep-importing from `_types`.
+export type { EntryMutationTarget } from "./_types";

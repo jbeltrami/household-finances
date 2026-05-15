@@ -69,6 +69,14 @@ export type BalanceGroup = {
   netSoFar: number;
 };
 
+// Discriminated target for actions that mutate a bill occurrence:
+// either a materialized row (one already exists in `entries`) or a
+// virtual occurrence (template + date that hasn't been written yet —
+// the action materializes it on first touch).
+export type EntryMutationTarget =
+  | { kind: "materialized"; entryId: string }
+  | { kind: "virtual"; templateId: string; date: string };
+
 export type MonthlyViewProps = {
   year: number;
   month: number;

@@ -8,18 +8,15 @@ import {
   checkDateEditable,
   checkEntryEditable,
 } from "@/helpers/lock";
+import type { EntryMutationTarget } from "../_types";
 
 // Skip marks a single occurrence of a recurring template as cancelled
 // for that date. Virtual → materialize as skipped=true. Materialized
 // (and previously unskipped) → update skipped=true. Paid rows can't
 // be skipped (schema CHECK enforces it); call toggleEntryPaid first
 // to unpay them.
-export type SkipTarget =
-  | { kind: "materialized"; entryId: string }
-  | { kind: "virtual"; templateId: string; date: string };
-
 export async function skipEntryOccurrence(
-  target: SkipTarget,
+  target: EntryMutationTarget,
   formData: FormData
 ) {
   void formData;

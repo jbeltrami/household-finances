@@ -9,15 +9,10 @@ import {
   checkEntryEditable,
 } from "@/helpers/lock";
 import { type FormState } from "../form-state";
-
-// Same target shape as toggleEntryPaid — either a materialized row or
-// a virtual occurrence that will be materialized on first touch.
-export type OverrideAmountTarget =
-  | { kind: "materialized"; entryId: string }
-  | { kind: "virtual"; templateId: string; date: string };
+import type { EntryMutationTarget } from "../_types";
 
 export async function overrideEntryAmount(
-  target: OverrideAmountTarget,
+  target: EntryMutationTarget,
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {

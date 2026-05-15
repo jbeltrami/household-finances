@@ -9,11 +9,8 @@ import {
   skipEntryOccurrence,
   toggleEntryPaid,
   deleteEntry,
-  type OverrideAmountTarget,
-  type SkipTarget,
-  type TogglePaidTarget,
 } from "../../actions";
-import type { EntryRow } from "../../_types";
+import type { EntryMutationTarget, EntryRow } from "../../_types";
 
 type Props = {
   entry: EntryRow;
@@ -23,25 +20,7 @@ type Props = {
   highlightedDay: number | null;
 };
 
-function togglePaidTargetFor(entry: EntryRow): TogglePaidTarget {
-  if (entry.id != null) return { kind: "materialized", entryId: entry.id };
-  return {
-    kind: "virtual",
-    templateId: entry.template_id!,
-    date: entry.date,
-  };
-}
-
-function overrideTargetFor(entry: EntryRow): OverrideAmountTarget {
-  if (entry.id != null) return { kind: "materialized", entryId: entry.id };
-  return {
-    kind: "virtual",
-    templateId: entry.template_id!,
-    date: entry.date,
-  };
-}
-
-function skipTargetFor(entry: EntryRow): SkipTarget {
+function targetFor(entry: EntryRow): EntryMutationTarget {
   if (entry.id != null) return { kind: "materialized", entryId: entry.id };
   return {
     kind: "virtual",
@@ -84,7 +63,7 @@ export default function BillInstanceRow({
     startToggle(async () => {
       const covered = coveredOverride ?? coverInput;
       await toggleEntryPaid(
-        togglePaidTargetFor(entry),
+        targetFor(entry),
         !entry.paid,
         entry.paid ? 1 : covered,
         new FormData()
@@ -96,7 +75,7 @@ export default function BillInstanceRow({
   const handleUpdate = (formData: FormData) => {
     startUpdate(async () => {
       const result = await overrideEntryAmount(
-        overrideTargetFor(entry),
+        targetFor(entry),
         { error: null },
         formData
       );
@@ -118,7 +97,7 @@ export default function BillInstanceRow({
   const handleSkip = () => {
     if (!window.confirm(`Ignorar "${entry.name}" nesta ocorrência?`)) return;
     startSkip(async () => {
-      await skipEntryOccurrence(skipTargetFor(entry), new FormData());
+      await skipEntryOccurrence(targetFor(entry), new FormData());
     });
   };
 
