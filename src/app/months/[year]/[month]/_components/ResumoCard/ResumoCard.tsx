@@ -35,7 +35,7 @@ export default function ResumoCard({ income, bills }: Props) {
         </div>
         <div>
           <p className="text-xs text-muted">Falta pagar</p>
-          <p className="mt-1 text-2xl font-bold text-accent">
+          <p className="mt-1 text-2xl font-bold text-danger">
             {brlFormatter.format(bills.remaining)}
           </p>
         </div>

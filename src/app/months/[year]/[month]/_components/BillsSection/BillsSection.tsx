@@ -3,8 +3,9 @@
 import Link from "next/link";
 import Card from "@/components/Card";
 import BillInstanceRow from "../BillInstanceRow/BillInstanceRow";
+import { brlFormatter } from "@/helpers/format";
 import { billsUrl } from "@/helpers/paths";
-import type { BillsGroup } from "../../_types";
+import type { BillsGroup, EntryRow } from "../../_types";
 
 type Props = {
   bills: BillsGroup;
@@ -24,6 +25,49 @@ function keyFor(entry: {
   return entry.id ?? `virtual-${entry.template_id}-${entry.date}`;
 }
 
+function BillsSubsection({
+  label,
+  entries,
+  total,
+  year,
+  month,
+  locked,
+  highlightedDay,
+}: {
+  label: string;
+  entries: EntryRow[];
+  total: number;
+  year: number;
+  month: number;
+  locked: boolean;
+  highlightedDay: number | null;
+}) {
+  if (entries.length === 0) return null;
+  return (
+    <div className="mt-4">
+      <h3 className="text-xs font-medium uppercase tracking-wide text-muted">
+        {label}
+      </h3>
+      <ul className="mt-2 divide-y divide-subtle">
+        {entries.map((e) => (
+          <BillInstanceRow
+            key={keyFor(e)}
+            entry={e}
+            year={year}
+            month={month}
+            locked={locked}
+            highlightedDay={highlightedDay}
+          />
+        ))}
+        <li className="mt-2 flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2.5 text-sm font-semibold text-fg">
+          <span>Total</span>
+          <span className="text-danger">{brlFormatter.format(total)}</span>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 export default function BillsSection({
   bills,
   year,
@@ -31,13 +75,8 @@ export default function BillsSection({
   locked,
   highlightedDay,
 }: Props) {
-  // Order: pending bills first (by due-date ascending — already sorted by
-  // the ledger fetch), then paid bills last. Flat list, no headers — the
-  // status pill on each row already communicates state.
-  const ordered = [
-    ...bills.entries.filter((e) => !e.paid),
-    ...bills.entries.filter((e) => e.paid),
-  ];
+  const pendingEntries = bills.entries.filter((e) => !e.paid);
+  const paidEntries = bills.entries.filter((e) => e.paid);
 
   return (
     <Card className="p-5">
@@ -52,18 +91,26 @@ export default function BillsSection({
           .
         </p>
       ) : (
-        <ul className="mt-4 divide-y divide-subtle">
-          {ordered.map((e) => (
-            <BillInstanceRow
-              key={keyFor(e)}
-              entry={e}
-              year={year}
-              month={month}
-              locked={locked}
-              highlightedDay={highlightedDay}
-            />
-          ))}
-        </ul>
+        <>
+          <BillsSubsection
+            label="Pendente"
+            entries={pendingEntries}
+            total={bills.remaining}
+            year={year}
+            month={month}
+            locked={locked}
+            highlightedDay={highlightedDay}
+          />
+          <BillsSubsection
+            label="Pago"
+            entries={paidEntries}
+            total={bills.paid}
+            year={year}
+            month={month}
+            locked={locked}
+            highlightedDay={highlightedDay}
+          />
+        </>
       )}
     </Card>
   );
