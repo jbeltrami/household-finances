@@ -1,16 +1,16 @@
-"use client";
+'use client';
 
-import { useState, useTransition } from "react";
-import { Pencil, RotateCcw, SkipForward } from "lucide-react";
-import BillIcon from "@/components/BillIcon";
-import { brlFormatter } from "@/helpers/format";
+import BillIcon from '@/components/BillIcon';
+import { brlFormatter } from '@/helpers/format';
+import { Pencil, RotateCcw, SkipForward } from 'lucide-react';
+import { useState, useTransition } from 'react';
+import type { EntryMutationTarget, EntryRow } from '../../_types';
 import {
+  deleteEntry,
   overrideEntryAmount,
   skipEntryOccurrence,
   toggleEntryPaid,
-  deleteEntry,
-} from "../../actions";
-import type { EntryMutationTarget, EntryRow } from "../../_types";
+} from '../../actions';
 
 type Props = {
   entry: EntryRow;
@@ -21,9 +21,9 @@ type Props = {
 };
 
 function targetFor(entry: EntryRow): EntryMutationTarget {
-  if (entry.id != null) return { kind: "materialized", entryId: entry.id };
+  if (entry.id != null) return { kind: 'materialized', entryId: entry.id };
   return {
-    kind: "virtual",
+    kind: 'virtual',
     templateId: entry.template_id!,
     date: entry.date,
   };
@@ -32,7 +32,7 @@ function targetFor(entry: EntryRow): EntryMutationTarget {
 // Render only the day-and-month portion of a YYYY-MM-DD string, e.g. "14/05".
 // Used for the compact "Vence em DD/MM" label.
 function formatShortDate(ymd: string): string {
-  const [, m, d] = ymd.split("-");
+  const [, m, d] = ymd.split('-');
   return `${d}/${m}`;
 }
 
@@ -54,9 +54,8 @@ export default function BillInstanceRow({
   const isInstallment = progress != null;
   const [coverInput, setCoverInput] = useState(1);
 
-  const dueDay = parseInt(entry.date.split("-")[2], 10);
-  const isHighlighted =
-    highlightedDay !== null && dueDay === highlightedDay;
+  const dueDay = parseInt(entry.date.split('-')[2], 10);
+  const isHighlighted = highlightedDay !== null && dueDay === highlightedDay;
 
   const [isToggling, startToggle] = useTransition();
   const handleTogglePaid = (coveredOverride?: number) => {
@@ -66,7 +65,7 @@ export default function BillInstanceRow({
         targetFor(entry),
         !entry.paid,
         entry.paid ? 1 : covered,
-        new FormData()
+        new FormData(),
       );
     });
   };
@@ -77,7 +76,7 @@ export default function BillInstanceRow({
       const result = await overrideEntryAmount(
         targetFor(entry),
         { error: null },
-        formData
+        formData,
       );
       if (result.error) {
         setUpdateError(result.error);
@@ -131,8 +130,7 @@ export default function BillInstanceRow({
       <li className="px-3 py-3">
         <form
           action={handleUpdate}
-          className="flex flex-wrap items-center gap-2"
-        >
+          className="flex flex-wrap items-center gap-2">
           <input
             type="number"
             name="amount"
@@ -146,16 +144,14 @@ export default function BillInstanceRow({
           <button
             type="submit"
             disabled={isUpdating}
-            className="btn-primary py-1.5 text-xs"
-          >
-            {isUpdating ? "Salvando…" : "Salvar"}
+            className="btn-primary py-1.5 text-xs">
+            {isUpdating ? 'Salvando…' : 'Salvar'}
           </button>
           <button
             type="button"
             onClick={handleCancel}
             disabled={isUpdating}
-            className="btn-ghost py-1.5 text-xs"
-          >
+            className="btn-ghost py-1.5 text-xs">
             Cancelar
           </button>
         </form>
@@ -171,25 +167,22 @@ export default function BillInstanceRow({
   return (
     <li
       className={
-        "grid grid-cols-[auto_1fr_auto_auto_auto] items-center gap-3 px-3 py-2.5 " +
-        (isHighlighted ? "bg-accent-soft" : "")
-      }
-    >
+        'flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 ' +
+        (isHighlighted ? 'bg-accent-soft' : '')
+      }>
       <span
-        className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2 text-fg"
-        aria-hidden="true"
-      >
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg"
+        aria-hidden="true">
         <BillIcon iconKey={entry.icon} className="h-4 w-4" />
       </span>
 
-      <div className="min-w-0">
-        <p className="flex flex-wrap items-center gap-1.5 truncate text-sm font-medium text-fg">
-          <span>{entry.name}</span>
+      <div className="min-w-32 flex-1">
+        <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-fg">
+          <span className="min-w-0 truncate">{entry.name}</span>
           {progressBadge && (
             <span
-              className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-muted"
-              title="Parcelas pagas / total"
-            >
+              className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-muted"
+              title="Parcelas pagas / total">
               {progressBadge}
             </span>
           )}
@@ -205,11 +198,11 @@ export default function BillInstanceRow({
         Vence em {formatShortDate(entry.date)}
       </p>
 
-      <p className="text-sm font-medium text-fg">
+      <p className="shrink-0 text-sm font-medium text-fg">
         {brlFormatter.format(entry.amount)}
       </p>
 
-      <div className="flex items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
         {showCoverInput && (
           <div className="flex items-center gap-1 text-xs text-muted">
             <span>cobre</span>
@@ -232,8 +225,7 @@ export default function BillInstanceRow({
                 onClick={() => handleTogglePaid(maxCover)}
                 disabled={isToggling}
                 className="btn-ghost px-1.5 py-0.5 text-xs"
-                title={`Pagar todas as ${maxCover} restantes`}
-              >
+                title={`Pagar todas as ${maxCover} restantes`}>
                 todas
               </button>
             )}
@@ -241,8 +233,8 @@ export default function BillInstanceRow({
         )}
 
         {noEdit ? (
-          <span className={entry.paid ? "pill-paid" : "pill-pending"}>
-            {entry.paid ? "Pago" : "Pendente"}
+          <span className={entry.paid ? 'pill-paid' : 'pill-pending'}>
+            {entry.paid ? 'Pago' : 'Pendente'}
           </span>
         ) : (
           <button
@@ -250,12 +242,11 @@ export default function BillInstanceRow({
             onClick={() => handleTogglePaid()}
             disabled={isToggling}
             className={
-              (entry.paid ? "pill-paid" : "pill-pending") +
-              " transition-opacity hover:opacity-80 disabled:animate-pulse"
+              (entry.paid ? 'pill-paid' : 'pill-pending') +
+              ' transition-opacity hover:opacity-80 disabled:animate-pulse'
             }
-            title={entry.paid ? "Marcar como pendente" : "Marcar como pago"}
-          >
-            {isToggling ? "…" : entry.paid ? "Pago" : "Pendente"}
+            title={entry.paid ? 'Marcar como pendente' : 'Marcar como pago'}>
+            {isToggling ? '…' : entry.paid ? 'Pago' : 'Pendente'}
           </button>
         )}
 
@@ -266,8 +257,7 @@ export default function BillInstanceRow({
               onClick={() => setEditing(true)}
               className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-fg"
               aria-label="Editar valor"
-              data-tooltip="Editar valor"
-            >
+              data-tooltip="Editar valor">
               <Pencil className="h-4 w-4" strokeWidth={2} />
             </button>
             {!entry.paid && (
@@ -277,8 +267,7 @@ export default function BillInstanceRow({
                 disabled={isSkipping}
                 className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-fg disabled:opacity-50"
                 aria-label="Ignorar esta ocorrência"
-                data-tooltip="Ignorar esta ocorrência"
-              >
+                data-tooltip="Ignorar esta ocorrência">
                 <SkipForward className="h-4 w-4" strokeWidth={2} />
               </button>
             )}
@@ -289,8 +278,7 @@ export default function BillInstanceRow({
                 disabled={isReverting}
                 className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-danger disabled:opacity-50"
                 aria-label="Reverter valor sobrescrito"
-                data-tooltip="Voltar ao valor padrão"
-              >
+                data-tooltip="Voltar ao valor padrão">
                 <RotateCcw className="h-4 w-4" strokeWidth={2} />
               </button>
             )}

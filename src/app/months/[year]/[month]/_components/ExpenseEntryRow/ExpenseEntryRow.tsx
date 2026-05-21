@@ -150,7 +150,7 @@ export default function ExpenseEntryRow({
   return (
     <li
       className={
-        "flex items-center gap-3 px-3 py-2.5 " +
+        "flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 " +
         (isHighlighted ? "bg-accent-soft" : "")
       }
     >
@@ -160,13 +160,8 @@ export default function ExpenseEntryRow({
       >
         <BillIcon iconKey={expense.icon} className="h-4 w-4" />
       </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm">
-          <span className="font-medium text-fg">{expense.name}</span>
-          <span className="text-muted">
-            {" "}— {brlFormatter.format(expense.amount)}
-          </span>
-        </p>
+      <div className="min-w-32 flex-1">
+        <p className="text-sm font-medium text-fg">{expense.name}</p>
         <p className="text-xs text-muted">
           {dateFormatter.format(new Date(expense.date))}
           {expense.category && ` · ${expense.category}`}
@@ -174,8 +169,12 @@ export default function ExpenseEntryRow({
         </p>
       </div>
 
+      <p className="shrink-0 text-sm font-medium text-fg">
+        {brlFormatter.format(expense.amount)}
+      </p>
+
       {!noEdit && (
-        <div className="flex items-center gap-0.5">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <button
             type="button"
             onClick={() => setEditing(true)}

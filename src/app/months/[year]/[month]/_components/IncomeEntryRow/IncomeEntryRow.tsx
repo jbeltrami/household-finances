@@ -122,68 +122,69 @@ export default function IncomeEntryRow({
   return (
     <li
       className={
-        "flex items-center gap-3 px-3 py-2.5 " +
+        "flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 " +
         (isHighlighted ? "bg-accent-soft" : "")
       }
     >
       <StatusIcon className={`h-5 w-5 shrink-0 ${statusColor}`} strokeWidth={2} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm">
-          <span className="font-medium text-fg">{entry.name}</span>
-          <span className="text-muted">
-            {" "}— {brlFormatter.format(entry.amount)}
-          </span>
-        </p>
+      <div className="min-w-32 flex-1">
+        <p className="text-sm font-medium text-fg">{entry.name}</p>
         <p className="text-xs text-muted">
           Esperado em {dateFormatter.format(new Date(entry.expected_date))}
         </p>
       </div>
 
-      <button
-        type="button"
-        onClick={handleToggleReceived}
-        disabled={isToggling || noEdit}
-        className={
-          "flex items-center gap-1.5 text-xs font-medium " +
-          statusColor +
-          (!noEdit && !isToggling ? " hover:opacity-80" : "") +
-          " disabled:cursor-default"
-        }
-        title={
-          noEdit
-            ? undefined
-            : entry.received
-              ? "Marcar como pendente"
-              : "Marcar como recebido"
-        }
-      >
-        <TrendingUp className="h-4 w-4" strokeWidth={2} />
-        {isToggling ? "…" : entry.received ? "Recebido" : "Pendente"}
-      </button>
+      <p className="shrink-0 text-sm font-medium text-fg">
+        {brlFormatter.format(entry.amount)}
+      </p>
 
-      {!noEdit && (
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-fg"
-            aria-label="Editar"
-            data-tooltip="Editar"
-          >
-            <Pencil className="h-4 w-4" strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-danger disabled:opacity-50"
-            aria-label="Excluir"
-            data-tooltip="Excluir"
-          >
-            <Trash2 className="h-4 w-4" strokeWidth={2} />
-          </button>
-        </div>
-      )}
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={handleToggleReceived}
+          disabled={isToggling || noEdit}
+          className={
+            "flex items-center gap-1.5 text-xs font-medium " +
+            statusColor +
+            (!noEdit && !isToggling ? " hover:opacity-80" : "") +
+            " disabled:cursor-default"
+          }
+          title={
+            noEdit
+              ? undefined
+              : entry.received
+                ? "Marcar como pendente"
+                : "Marcar como recebido"
+          }
+        >
+          <TrendingUp className="h-4 w-4" strokeWidth={2} />
+          {isToggling ? "…" : entry.received ? "Recebido" : "Pendente"}
+        </button>
+
+        {!noEdit && (
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-fg"
+              aria-label="Editar"
+              data-tooltip="Editar"
+            >
+              <Pencil className="h-4 w-4" strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="rounded-md p-1 text-muted hover:bg-surface-2 hover:text-danger disabled:opacity-50"
+              aria-label="Excluir"
+              data-tooltip="Excluir"
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </div>
+        )}
+      </div>
     </li>
   );
 }

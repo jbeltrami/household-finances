@@ -18,9 +18,9 @@ export default function SaldoCard({ balance }: Props) {
   return (
     <Card className="p-5">
       <h2 className="text-lg font-semibold text-fg">Saldo</h2>
-      <div className="mt-4 grid grid-cols-2 gap-4">
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div>
-          <p className="text-xs text-muted">Saldo esperado</p>
+          <p className="text-xs text-muted xl:min-h-8">Saldo esperado</p>
           <p
             className={`mt-1 text-2xl font-semibold ${colorClass(balance.netExpected)}`}
           >
@@ -28,7 +28,7 @@ export default function SaldoCard({ balance }: Props) {
           </p>
         </div>
         <div>
-          <p className="text-xs text-muted">Saldo até o momento</p>
+          <p className="text-xs text-muted xl:min-h-8">Saldo até o momento</p>
           <p
             className={`mt-1 text-2xl font-semibold ${colorClass(balance.netSoFar)}`}
           >

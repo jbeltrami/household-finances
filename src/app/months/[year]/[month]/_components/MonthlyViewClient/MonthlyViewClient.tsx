@@ -57,7 +57,7 @@ export default function MonthlyViewClient({
       </div>
 
       {/* Row 2 — Receitas + Despesas side by side */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <IncomeSection
           income={income}
           year={year}
