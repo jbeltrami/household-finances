@@ -81,6 +81,9 @@ export default function BillsSection({
   return (
     <Card className="p-5">
       <h2 className="text-base font-medium text-fg">Contas</h2>
+      <p className="mt-1 text-3xl font-bold text-danger">
+        {brlFormatter.format(bills.total)}
+      </p>
 
       {bills.entries.length === 0 ? (
         <p className="mt-4 text-sm text-muted">

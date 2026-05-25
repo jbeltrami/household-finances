@@ -30,7 +30,7 @@ export default function ExpensesSection({
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-medium text-fg">Despesas</h2>
-          <p className="mt-1 text-3xl font-bold text-fg">
+          <p className="mt-1 text-3xl font-bold text-danger">
             {brlFormatter.format(expenses.total)}
           </p>
         </div>
