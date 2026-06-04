@@ -108,26 +108,34 @@ export default async function InsightsPage({ searchParams }: Props) {
                     } com dados`}
               </span>
             </div>
-            <div className="mt-4 grid gap-4 sm:grid-cols-3">
-              <div>
-                <div className="field-label">Renda média</div>
-                <div className="mt-1 text-xl font-semibold text-fg">
+            <dl className="mt-4 divide-y divide-subtle">
+              <div className="flex items-center justify-between py-2.5">
+                <dt className="text-sm text-muted">Renda média</dt>
+                <dd className="text-base font-semibold text-accent">
                   {brlFormatter.format(averages.avgIncome)}
-                </div>
+                </dd>
               </div>
-              <div>
-                <div className="field-label">Contas fixas médias</div>
-                <div className="mt-1 text-xl font-semibold text-fg">
+              <div className="flex items-center justify-between py-2.5">
+                <dt className="text-sm text-muted">Contas fixas médias</dt>
+                <dd className="text-base font-semibold text-danger">
                   {brlFormatter.format(averages.avgBills)}
-                </div>
+                </dd>
               </div>
-              <div>
-                <div className="field-label">Despesas médias</div>
-                <div className="mt-1 text-xl font-semibold text-fg">
+              <div className="flex items-center justify-between py-2.5">
+                <dt className="text-sm text-muted">Despesas médias</dt>
+                <dd className="text-base font-semibold text-danger">
                   {brlFormatter.format(averages.avgExpenses)}
-                </div>
+                </dd>
               </div>
-            </div>
+              <div className="flex items-center justify-between py-2.5">
+                <dt className="text-sm font-medium text-fg">
+                  Gastos totais médios
+                </dt>
+                <dd className="text-base font-semibold text-danger">
+                  {brlFormatter.format(averages.avgBills + averages.avgExpenses)}
+                </dd>
+              </div>
+            </dl>
           </Card>
 
           {/* Benchmark cards */}
