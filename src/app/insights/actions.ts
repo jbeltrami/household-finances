@@ -1,0 +1,5 @@
+// Barrel for insights server actions. Each action lives in its own
+// file under ./actions/ with its own `"use server"` directive.
+// Do NOT add `"use server"` here — a barrel must stay a plain module.
+
+export { saveIdealBudget } from "./actions/save-ideal-budget";

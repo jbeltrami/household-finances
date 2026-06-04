@@ -11,9 +11,15 @@ import {
   Menu,
   Receipt,
   Settings,
+  Target,
   X,
 } from "lucide-react";
-import { billsUrl, reportsUrl, settingsUrl } from "@/helpers/paths";
+import {
+  billsUrl,
+  insightsUrl,
+  reportsUrl,
+  settingsUrl,
+} from "@/helpers/paths";
 import SignOutButton from "./SignOutButton";
 
 type Props = {
@@ -39,6 +45,12 @@ const NAV_ITEMS: NavItem[] = [
     // home) lights up this item.
     matches: (p) =>
       p === "/" || p.startsWith("/bills") || p.startsWith("/months"),
+  },
+  {
+    href: insightsUrl(),
+    label: "Metas",
+    icon: Target,
+    matches: (p) => p.startsWith("/insights"),
   },
   {
     href: reportsUrl(),

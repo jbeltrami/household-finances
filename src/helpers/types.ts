@@ -100,3 +100,45 @@ export type TemplateRow = {
 export type EditCheckResult =
   | { ok: false; error: string }
   | { ok: true; spaceId: string; year: number; month: number };
+
+// --- Insights -----------------------------------------------
+
+// The five editable parameters behind the /insights benchmarks.
+// Mirrors the ideal_budget_settings table columns. Rates are
+// fractions of monthly income; emergency_months and
+// freedom_annual_mult are multipliers applied to spending.
+export type IdealSettings = {
+  savings_rate: number;        // recommended savings  = income * rate
+  max_mortgage_rate: number;   // max housing payment  = income * rate
+  max_fixed_rate: number;      // max fixed expenses   = income * rate
+  emergency_months: number;    // emergency fund       = monthly spend * months
+  freedom_annual_mult: number; // financial freedom    = annual spend * mult
+};
+
+// Averaged monthly figures over the selected window. `monthsUsed` is
+// how many complete months actually contributed — it adjusts down
+// when a user has less history than the requested window.
+export type BucketAverages = {
+  monthsUsed: number;
+  avgIncome: number;
+  avgBills: number;     // recurring obligations (template_id IS NOT NULL)
+  avgExpenses: number;  // one-off spending      (template_id IS NULL)
+};
+
+// A single benchmark card. `actual` and `meets` are present only for
+// the two cards we can compare against real averages (recommended
+// savings, max fixed expenses); the rest are reference/target figures.
+export type Insight = {
+  key:
+    | "recommendedSavings"
+    | "maxFixedExpenses"
+    | "maxMortgage"
+    | "emergencyFund"
+    | "financialFreedom";
+  target: number;
+  actual: number | null;
+  // For "floor" cards (savings) meets = actual >= target; for "cap"
+  // cards (fixed expenses) meets = actual <= target. null when there's
+  // no actual to compare.
+  meets: boolean | null;
+};

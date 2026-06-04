@@ -24,3 +24,7 @@ export function settingsUrl(): string {
 export function reportsUrl(): string {
   return "/reports";
 }
+
+export function insightsUrl(): string {
+  return "/insights";
+}
