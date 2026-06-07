@@ -83,7 +83,7 @@ export default function CalendarStrip({
             value={currentValue}
             onChange={handleChange}
             aria-label="Ir para o mês"
-            className="cursor-pointer appearance-none bg-transparent text-center text-base font-semibold text-fg focus:outline-none"
+            className="cursor-pointer appearance-none bg-transparent text-center text-base font-semibold text-transparent focus:outline-none"
           >
             {monthOptions.map((opt) => {
               const value = `${opt.year}-${String(opt.month).padStart(2, "0")}`;

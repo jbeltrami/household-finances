@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   FileBarChart,
@@ -38,13 +39,20 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   {
+    // Mirrors the "Home Finances" brand link: pointing at "/"
+    // lets the proxy redirect to the user's current month, so
+    // the link always lands on today's view even across month
+    // boundaries.
+    href: "/",
+    label: "Mês Atual",
+    icon: CalendarDays,
+    matches: (p) => p === "/" || p.startsWith("/months"),
+  },
+  {
     href: billsUrl(),
     label: "Contas",
     icon: Receipt,
-    // Bills section + edit pages, plus the monthly view (the app's
-    // home) lights up this item.
-    matches: (p) =>
-      p === "/" || p.startsWith("/bills") || p.startsWith("/months"),
+    matches: (p) => p.startsWith("/bills"),
   },
   {
     href: insightsUrl(),
