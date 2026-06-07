@@ -207,29 +207,30 @@ export async function getEntriesForMonth(
 
   const { start, end } = getMonthRange(year, month);
 
-  // 1. Materialized entries in this month's date range.
-  const materializedRes = await supabase
-    .from("entries")
-    .select(
-      "id, space_id, template_id, date, name, amount, currency, category, notes, paid, skipped, installments_covered, icon"
-    )
-    .in("space_id", spaceIds)
-    .gte("date", start)
-    .lte("date", end);
+  // 1+2. Materialized entries in the date range AND active templates
+  //      for these spaces are independent reads — run them in parallel.
+  //      Inactive templates are excluded from NEW virtual occurrences,
+  //      but materialized rows that reference them (historical paid
+  //      rows) still render via the join below.
+  const [materializedRes, activeTemplatesRes] = await Promise.all([
+    supabase
+      .from("entries")
+      .select(
+        "id, space_id, template_id, date, name, amount, currency, category, notes, paid, skipped, installments_covered, icon"
+      )
+      .in("space_id", spaceIds)
+      .gte("date", start)
+      .lte("date", end),
+    supabase
+      .from("recurring_bill_templates")
+      .select(
+        "id, space_id, name, default_amount, currency, category, icon, active, cadence, due_day, day_of_week, biweekly_anchor, installments_total, installments_start_month"
+      )
+      .in("space_id", spaceIds)
+      .eq("active", true),
+  ]);
 
   const materialized = (materializedRes.data ?? []) as EntryRow[];
-
-  // 2. Active templates for these spaces (virtual expansion source).
-  //    Inactive templates are excluded from NEW virtual occurrences,
-  //    but materialized rows that reference them (historical paid
-  //    rows) still render via the join below.
-  const activeTemplatesRes = await supabase
-    .from("recurring_bill_templates")
-    .select(
-      "id, space_id, name, default_amount, currency, category, icon, active, cadence, due_day, day_of_week, biweekly_anchor, installments_total, installments_start_month"
-    )
-    .in("space_id", spaceIds)
-    .eq("active", true);
 
   const activeTemplates = (activeTemplatesRes.data ?? []).map((t) =>
     normalizeTemplate(t as TemplateRow)

@@ -27,32 +27,41 @@ export default async function MonthlyViewPage({
   if (!spaceId) notFound();
 
   const spaceIds = [spaceId];
+  const { start, end } = getMonthRange(year, month);
 
-  // Lock state: unlocked if there's a row in month_unlocks for this
-  // (space, year, month) OR if the month is current/future.
-  const unlock = await fetchMonthUnlock(supabase, spaceId, year, month);
+  // These four reads are independent once we have spaceId, so fire
+  // them in parallel — total wait is the slowest single query
+  // instead of the sum.
+  //   1. Lock row for (space, year, month) — drives the locked banner.
+  //   2. All unlocked-month rows for this space — drives the month dropdown.
+  //   3. Unified ledger fetch (virtual + materialized entries).
+  //   4. Income for the date range (no virtual-expansion layer).
+  const [unlock, existingUnlocksRes, resolved, rawIncomeRes] = await Promise.all([
+    fetchMonthUnlock(supabase, spaceId, year, month),
+    supabase
+      .from("month_unlocks")
+      .select("year, month")
+      .eq("space_id", spaceId),
+    getEntriesForMonth(supabase, spaceIds, year, month),
+    supabase
+      .from("income_entries")
+      .select("id, space_id, name, amount, expected_date, received")
+      .in("space_id", spaceIds)
+      .gte("expected_date", start)
+      .lte("expected_date", end)
+      .order("expected_date", { ascending: true }),
+  ]);
+
   const locked = isMonthLocked({
     year,
     month,
     hasUnlock: unlock != null,
   });
 
-  // Dropdown options: unlocked past months plus the next 6 months.
-  // Querying month_unlocks for the viewed space gives us a good hint
-  // at which past months the user has touched recently.
-  const { data: existingUnlocks } = await supabase
-    .from("month_unlocks")
-    .select("year, month")
-    .eq("space_id", spaceId);
-
-  const monthOptions = buildMonthOptions(existingUnlocks ?? [], {
+  const monthOptions = buildMonthOptions(existingUnlocksRes.data ?? [], {
     year,
     month,
   });
-
-  // Unified ledger fetch — merges virtual template occurrences with
-  // materialized exceptions across every aggregate space.
-  const resolved = await getEntriesForMonth(supabase, spaceIds, year, month);
 
   // Split into bills (template-scoped) vs expenses (one-offs).
   const billEntries: EntryRow[] = resolved.filter((e) => e.template_id != null);
@@ -60,16 +69,7 @@ export default async function MonthlyViewPage({
     (e) => e.template_id == null
   );
 
-  // Income is queried directly since it has no virtual-expansion layer.
-  const { start, end } = getMonthRange(year, month);
-
-  const { data: rawIncome } = await supabase
-    .from("income_entries")
-    .select("id, space_id, name, amount, expected_date, received")
-    .in("space_id", spaceIds)
-    .gte("expected_date", start)
-    .lte("expected_date", end)
-    .order("expected_date", { ascending: true });
+  const rawIncome = rawIncomeRes.data;
 
   const incomeEntries: IncomeRow[] = (rawIncome ?? []).map((i) => ({
     id: i.id,
