@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { getPersonalSpaceId } from "@/helpers/spaces";
 import SidebarNav from "./SidebarNav";
 
 function getInitials(name: string): string {
@@ -21,13 +22,8 @@ export default async function Sidebar() {
   // renders, so we don't show the sidebar at all if absent.
   if (!user) return null;
 
-  const { data: space } = await supabase
-    .from("spaces")
-    .select("id, name")
-    .eq("created_by", user.id)
-    .single();
-
-  if (!space) return null;
+  const spaceId = await getPersonalSpaceId(supabase);
+  if (!spaceId) return null;
 
   const fullName = user.user_metadata?.full_name as string | undefined;
   const avatarUrl = user.user_metadata?.avatar_url as string | undefined;

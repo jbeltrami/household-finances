@@ -1,7 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
-export async function createClient() {
+// React.cache memoizes per request, so every caller in the same
+// render/action invocation reuses the same Supabase client. That
+// lets cache()-wrapped helpers (see helpers/spaces.ts) dedupe their
+// queries, because cache keys are based on argument identity.
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -26,4 +31,4 @@ export async function createClient() {
       },
     }
   );
-}
+});

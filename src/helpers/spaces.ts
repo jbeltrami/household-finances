@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Returns the currently authenticated user's personal space ID, or
@@ -10,16 +11,22 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // signed in, and surfacing that as an error is better than crashing
 // the layout. RLS on `spaces` ensures this only sees the caller's
 // own row.
-export async function getPersonalSpaceId(
+//
+// Wrapped in React.cache so multiple callers in the same request
+// (page server component, sidebar, server actions) share one round
+// trip. Dedup is keyed on the supabase argument identity —
+// createClient is also cache()-wrapped, so per-request callers
+// receive the same client instance.
+export const getPersonalSpaceId = cache(async (
   supabase: SupabaseClient
-): Promise<string | null> {
+): Promise<string | null> => {
   const { data } = await supabase
     .from("spaces")
     .select("id")
     .limit(1)
     .single();
   return data?.id ?? null;
-}
+});
 
 // Throwing variant for server actions. Pages prefer the
 // null-returning version so they can `notFound()` cleanly; actions
