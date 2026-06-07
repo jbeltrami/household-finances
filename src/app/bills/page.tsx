@@ -11,16 +11,29 @@ export default async function BillsPage() {
   const spaceId = await getPersonalSpaceId(supabase);
   if (!spaceId) notFound();
 
-  const { data: rawTemplates } = await supabase
-    .from("recurring_bill_templates")
-    .select(
-      "id, name, default_amount, currency, category, icon, cadence, due_day, day_of_week, installments_total, installments_start_month"
-    )
-    .eq("space_id", spaceId)
-    .eq("active", true)
-    .order("name");
+  // Fire the templates query and the paid-coverage query in parallel.
+  // The latter would otherwise have to wait for templates so it could
+  // filter by installment template IDs — instead we query all paid
+  // template-linked entries for this space (a small set per user)
+  // and bucket them client-side.
+  const [templatesRes, paidRowsRes] = await Promise.all([
+    supabase
+      .from("recurring_bill_templates")
+      .select(
+        "id, name, default_amount, currency, category, icon, cadence, due_day, day_of_week, installments_total, installments_start_month"
+      )
+      .eq("space_id", spaceId)
+      .eq("active", true)
+      .order("name"),
+    supabase
+      .from("entries")
+      .select("template_id, installments_covered")
+      .eq("space_id", spaceId)
+      .eq("paid", true)
+      .not("template_id", "is", null),
+  ]);
 
-  const templates: BillTemplate[] = (rawTemplates ?? []).map((t) => ({
+  const templates: BillTemplate[] = (templatesRes.data ?? []).map((t) => ({
     id: t.id,
     name: t.name,
     default_amount: t.default_amount,
@@ -36,27 +49,17 @@ export default async function BillsPage() {
 
   // Installment progress = sum(installments_covered across paid rows)
   // in the `entries` table. "Paid" is the source of truth for how many
-  // installments the user has settled.
-  const installmentTemplateIds = templates
-    .filter((t) => t.installments_total != null)
-    .map((t) => t.id);
-
+  // installments the user has settled. Only installment templates care
+  // about the bucket, but we sum into the map indiscriminately and let
+  // the lookup below pick out the ones that matter.
   const paidCoveredByTemplate = new Map<string, number>();
-  if (installmentTemplateIds.length > 0) {
-    const { data: paidRows } = await supabase
-      .from("entries")
-      .select("template_id, installments_covered")
-      .in("template_id", installmentTemplateIds)
-      .eq("paid", true);
-
-    for (const p of paidRows ?? []) {
-      const tid = p.template_id as string;
-      const cov = (p.installments_covered as number) ?? 1;
-      paidCoveredByTemplate.set(
-        tid,
-        (paidCoveredByTemplate.get(tid) ?? 0) + cov
-      );
-    }
+  for (const p of paidRowsRes.data ?? []) {
+    const tid = p.template_id as string;
+    const cov = (p.installments_covered as number) ?? 1;
+    paidCoveredByTemplate.set(
+      tid,
+      (paidCoveredByTemplate.get(tid) ?? 0) + cov
+    );
   }
 
   const activeTemplates: BillTemplate[] = [];
