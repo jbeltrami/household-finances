@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { defaultEntryDate } from "@/helpers/date";
 import { createIncomeEntry } from "../../actions";
 
 type Props = {
@@ -36,11 +37,9 @@ export default function CreateIncomeEntryForm({
     });
   };
 
-  // Default the expected-date to the first of the currently viewed
-  // month so the entry lands here unless the user picks something else.
-  const defaultDate = `${year.toString().padStart(4, "0")}-${month
-    .toString()
-    .padStart(2, "0")}-01`;
+  // Default to today when viewing the current month, otherwise the first
+  // of the viewed month (so the entry stays visible on this page).
+  const defaultDate = defaultEntryDate(year, month);
 
   return (
     <form

@@ -82,6 +82,20 @@ export function formatMonthLabel(year: number, month: number): string {
   }).format(new Date(year, month - 1, 1));
 }
 
+// Default "YYYY-MM-DD" date for a create-form whose page is viewing the
+// given year/month. When that's the current month we want today's date so
+// new entries land on the present day; for any other month today wouldn't
+// fall inside it, so we fall back to the first of the viewed month (which
+// keeps the entry visible on the page the user is on).
+export function defaultEntryDate(year: number, month: number): string {
+  const today = todayYmd();
+  const parsed = parseYearMonthFromYmd(today);
+  if (parsed && parsed.year === year && parsed.month === month) {
+    return today;
+  }
+  return getMonthRange(year, month).start;
+}
+
 // Format a year/month into a "YYYY-MM-DD" string, clamping the day to
 // the last day of the month when it's larger (e.g. dueDay 31 in February
 // becomes the 28th or 29th).

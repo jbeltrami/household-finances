@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import IconPicker from "@/components/IconPicker/IconPicker";
+import { defaultEntryDate } from "@/helpers/date";
 import { createOneOffEntry } from "../../actions";
 
 type Props = {
@@ -37,10 +38,9 @@ export default function CreateOneOffExpenseForm({
     });
   };
 
-  // Default the date to the first of the currently viewed month.
-  const defaultDate = `${year.toString().padStart(4, "0")}-${month
-    .toString()
-    .padStart(2, "0")}-01`;
+  // Default to today when viewing the current month, otherwise the first
+  // of the viewed month (so the entry stays visible on this page).
+  const defaultDate = defaultEntryDate(year, month);
 
   return (
     <form
