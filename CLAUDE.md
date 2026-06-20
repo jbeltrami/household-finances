@@ -161,7 +161,7 @@ Net so far (received - paid)   R$18.530
 - RLS: enabled on all tables
 - Auth provider: Google OAuth only
 - Migrations live in `supabase/migrations/` (see `history.md` for the evolution story)
-- Current highest migration: `0010_cleanup_shared_spaces_and_perf.sql` — next new migration should be `0011_*.sql`
+- Current highest migration: `0011_financing.sql` — next new migration should be `0012_*.sql`
 - Schema changes are managed via the Supabase CLI (`supabase db push`). Never edit production schema by hand via the dashboard SQL editor — that creates drift the CLI can't see
 
 ### Environment variables
