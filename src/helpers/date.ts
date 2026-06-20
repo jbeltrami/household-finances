@@ -73,6 +73,21 @@ export function yearMonthKey(year: number, month: number): string {
   return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
 }
 
+// Offset a "YYYY-MM-DD" string by N months, preserving the day-of-month
+// but clamping it to the target month's last day (e.g. the 31st + 1 month
+// from January lands on Feb 28/29). String-based to dodge timezone traps —
+// used to walk an amortization schedule from its start date.
+export function addMonthsToYmd(ymd: string, offset: number): string {
+  const parsed = parseYearMonthFromYmd(ymd);
+  if (!parsed) return ymd;
+  const absolute = parsed.year * 12 + (parsed.month - 1) + offset;
+  const year = Math.floor(absolute / 12);
+  const month = (absolute % 12) + 1;
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const day = Math.min(parsed.day, daysInMonth);
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 // Format a year/month as a human-readable Brazilian Portuguese label,
 // e.g. (2026, 4) → "abril de 2026".
 export function formatMonthLabel(year: number, month: number): string {
