@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAuthorizedCron } from "@/lib/cron";
 import { performReportGeneration } from "@/helpers/reports";
 import { performMonthlyReportSend } from "@/lib/email/send-monthly-report";
 import { addMonthsYm, currentYearMonth } from "@/helpers/date";
@@ -9,8 +10,7 @@ import { addMonthsYm, currentYearMonth } from "@/helpers/date";
 // report for every opted-in personal space. Idempotent: a retry
 // safely skips already-sent spaces.
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCron(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

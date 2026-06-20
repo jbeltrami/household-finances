@@ -6,8 +6,7 @@ import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { checkDateEditable } from "@/helpers/lock";
 import { parseYearMonthFromYmd, todayYmd } from "@/helpers/date";
 import { financingDetailUrl, monthUrl } from "@/helpers/paths";
-
-const UNIQUE_VIOLATION = "23505";
+import { callerOwnsFinancing, UNIQUE_VIOLATION } from "./_helpers";
 
 // Marks/unmarks installment N of a financing as paid. Keyed by installment
 // number (stable across schedule reshaping). Toggle-style — throws on
@@ -26,6 +25,10 @@ export async function toggleInstallmentPaid(
   if (!user) throw new Error("Não autenticado");
 
   const spaceId = await requirePersonalSpaceId(supabase);
+
+  if (!(await callerOwnsFinancing(supabase, financingId))) {
+    throw new Error("Financiamento não encontrado");
+  }
 
   const check = await checkDateEditable(supabase, spaceId, date);
   if (!check.ok) throw new Error(check.error);

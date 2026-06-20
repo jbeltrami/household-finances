@@ -5,8 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { parseYearMonthFromYmd } from "@/helpers/date";
 import { financingDetailUrl, monthUrl } from "@/helpers/paths";
-
-const UNIQUE_VIOLATION = "23505";
+import { callerOwnsFinancing, UNIQUE_VIOLATION } from "./_helpers";
 
 // Marks/unmarks a financing installment paid from the financing detail page.
 //
@@ -29,6 +28,10 @@ export async function setInstallmentPaid(
   if (!user) throw new Error("Não autenticado");
 
   const spaceId = await requirePersonalSpaceId(supabase);
+
+  if (!(await callerOwnsFinancing(supabase, financingId))) {
+    throw new Error("Financiamento não encontrado");
+  }
 
   if (newPaid) {
     const { error } = await supabase

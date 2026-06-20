@@ -7,6 +7,7 @@ import { checkDateEditable } from "@/helpers/lock";
 import { parseYearMonthFromYmd } from "@/helpers/date";
 import { financingDetailUrl, monthUrl } from "@/helpers/paths";
 import { type FormState } from "../form-state";
+import { callerOwnsFinancing } from "./_helpers";
 
 export async function addExtraPayment(
   prevState: FormState,
@@ -26,6 +27,9 @@ export async function addExtraPayment(
 
     const financingId = String(formData.get("financing_id") ?? "");
     if (!financingId) return { error: "Financiamento não informado" };
+    if (!(await callerOwnsFinancing(supabase, financingId))) {
+      return { error: "Financiamento não encontrado" };
+    }
 
     const date = String(formData.get("date") ?? "");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Data inválida" };

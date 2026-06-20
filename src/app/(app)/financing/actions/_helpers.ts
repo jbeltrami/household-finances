@@ -1,9 +1,28 @@
 // Non-"use server" helpers for the financing actions: field parsing and
 // the Postgres unique-violation code.
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AmortizationSystem, RatePeriod } from "@/helpers/amortization";
 
 export const UNIQUE_VIOLATION = "23505";
+
+// True only if the financing is visible to the caller under RLS — i.e. it
+// belongs to their space. The child tables (extra payments, installment
+// payments) carry their own space_id, so RLS' WITH CHECK only verifies the
+// caller's space, NOT that the referenced financing belongs to it. Without
+// this guard a caller could write rows referencing another user's financing
+// id. Use it to gate every write that takes a client-supplied financing id.
+export async function callerOwnsFinancing(
+  supabase: SupabaseClient,
+  financingId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("financings")
+    .select("id")
+    .eq("id", financingId)
+    .maybeSingle();
+  return data != null;
+}
 
 export type FinancingFields = {
   name: string;

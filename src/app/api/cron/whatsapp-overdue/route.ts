@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAuthorizedCron } from "@/lib/cron";
 import {
   todayYmd,
   parseYearMonthFromYmd,
@@ -27,8 +28,7 @@ import { sendWhatsAppText } from "@/lib/whatsapp/client";
 //     in the log as (template_id, occurrence_date) instead of
 //     entry_id.
 export async function GET(request: NextRequest) {
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCron(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 
