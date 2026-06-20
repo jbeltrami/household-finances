@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
+  Landmark,
   Receipt,
   ShoppingBag,
   TrendingUp,
@@ -11,7 +12,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Guia — Home Finances",
   description:
-    "Como usar a visão mensal, contas recorrentes, despesas avulsas e receitas.",
+    "Como usar a visão mensal, contas recorrentes, despesas avulsas, receitas e financiamentos.",
 };
 
 type Section = {
@@ -114,6 +115,35 @@ const SECTIONS: Section[] = [
       },
     ],
   },
+  {
+    id: "financiamento",
+    icon: Landmark,
+    title: "Financiamento",
+    intro:
+      "Acompanhe financiamentos (imóvel, carro) com a tabela de amortização completa, no sistema SAC ou Price. A parcela de cada mês aparece nas contas; pagamentos extras entram como despesas.",
+    points: [
+      {
+        term: "Simule e salve",
+        detail:
+          "Informe valor, taxa (ao mês ou ao ano), prazo e o sistema (SAC ou Price). A tabela é calculada na hora; salve para acompanhar mês a mês.",
+      },
+      {
+        term: "Parcela na visão mensal",
+        detail:
+          "A parcela do mês entra junto das contas e conta no “falta pagar”. Marque como paga quando quitar — inclusive parcelas passadas, ao cadastrar um financiamento já em andamento.",
+      },
+      {
+        term: "Amortizações extraordinárias",
+        detail:
+          "Registre pagamentos extras para reduzir o prazo ou a parcela. Eles abatem o saldo devedor e aparecem como despesa no mês em que ocorrem.",
+      },
+      {
+        term: "Inicial, Atual e Simulado",
+        detail:
+          "Compare o plano original com o atual e simule pagamentos futuros, sem salvar, para ver quanto economiza em juros e tempo.",
+      },
+    ],
+  },
 ];
 
 export default function GuidePage() {
@@ -126,8 +156,8 @@ export default function GuidePage() {
         Como usar o Home Finances
       </h1>
       <p className="mt-5 text-lg leading-relaxed text-muted">
-        Um passeio rápido pelas quatro partes do app. Cada seção abaixo cobre um
-        pedaço da sua rotina financeira.
+        Um passeio rápido pelas principais partes do app. Cada seção abaixo
+        cobre um pedaço da sua rotina financeira.
       </p>
 
       {/* Table of contents */}
