@@ -114,6 +114,7 @@ export default async function FinancingDetailPage({
           salvá-los.
         </p>
         <AmortizationSimulator
+          financingId={financing.id}
           input={toAmortizationInput(financing)}
           recordedExtras={extras.map((e) => ({
             date: e.date,

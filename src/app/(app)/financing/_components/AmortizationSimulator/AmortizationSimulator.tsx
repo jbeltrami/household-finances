@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import Collapsible from "@/components/Collapsible/Collapsible";
 import { brlFormatter } from "@/helpers/format";
 import { addMonthsToYmd, todayYmd } from "@/helpers/date";
+import { setInstallmentPaid } from "../../actions";
 import {
   buildSchedule,
   type AmortizationInput,
@@ -17,6 +18,7 @@ import AmortizationTable from "../AmortizationTable/AmortizationTable";
 import { effectLabel, formatYmd } from "../../_helpers";
 
 type Props = {
+  financingId: string;
   input: AmortizationInput;
   recordedExtras: ExtraPaymentInput[];
   paidNumbers: number[];
@@ -75,11 +77,25 @@ function EffectRadios({
 }
 
 export default function AmortizationSimulator({
+  financingId,
   input,
   recordedExtras,
   paidNumbers,
 }: Props) {
   const paidSet = useMemo(() => new Set(paidNumbers), [paidNumbers]);
+
+  // Marking installments paid (incl. backfilling past months) from the
+  // "Atual" tab. Revalidation refreshes paidNumbers from the server.
+  const [isTogglingPaid, startTogglePaid] = useTransition();
+  const handleTogglePaid = (
+    installmentNumber: number,
+    date: string,
+    newPaid: boolean
+  ) => {
+    startTogglePaid(async () => {
+      await setInstallmentPaid(financingId, installmentNumber, date, newPaid);
+    });
+  };
 
   const [oneOffs, setOneOffs] = useState<OneOff[]>([]);
   const [nextId, setNextId] = useState(1);
@@ -329,7 +345,20 @@ export default function AmortizationSimulator({
           })}
         </div>
         <div className="mt-3">
-          <AmortizationTable schedule={active.schedule} paidNumbers={paidSet} />
+          <AmortizationTable
+            schedule={active.schedule}
+            paidNumbers={paidSet}
+            onTogglePaid={
+              active.key === "current" ? handleTogglePaid : undefined
+            }
+            togglePending={isTogglingPaid}
+          />
+          {active.key === "current" && (
+            <p className="mt-2 text-xs text-muted">
+              Clique em “Pendente”/“Pago” para registrar parcelas — inclusive
+              meses passados, ao cadastrar um financiamento já em andamento.
+            </p>
+          )}
         </div>
       </div>
     </div>

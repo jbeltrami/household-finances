@@ -6,13 +6,25 @@ type Props = {
   schedule: Schedule;
   // When provided, installments in this set render as paid (highlighted).
   paidNumbers?: Set<number>;
+  // When provided, each row shows a clickable Pago/Pendente toggle (used on
+  // the financing detail page to mark installments paid, incl. backfilling
+  // past months). togglePending disables the controls while a write is in
+  // flight.
+  onTogglePaid?: (installmentNumber: number, date: string, newPaid: boolean) => void;
+  togglePending?: boolean;
 };
 
 // Renders the full amortization table (Nº, data, prestação, juros,
-// amortização, [extra], saldo). Presentational — safe to render from both
-// server pages and the client simulator.
-export default function AmortizationTable({ schedule, paidNumbers }: Props) {
+// amortização, [extra], saldo, [status]). Presentational — safe to render
+// from both server pages and the client simulator.
+export default function AmortizationTable({
+  schedule,
+  paidNumbers,
+  onTogglePaid,
+  togglePending,
+}: Props) {
   const hasExtra = schedule.rows.some((r) => r.extraApplied > 0);
+  const interactive = onTogglePaid != null;
 
   return (
     <div className="max-h-[28rem] overflow-auto rounded-xl border border-subtle">
@@ -28,6 +40,9 @@ export default function AmortizationTable({ schedule, paidNumbers }: Props) {
               <th className="px-3 py-2 text-right font-medium">Extra</th>
             )}
             <th className="px-3 py-2 text-right font-medium">Saldo devedor</th>
+            {interactive && (
+              <th className="px-3 py-2 text-right font-medium">Status</th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -62,6 +77,22 @@ export default function AmortizationTable({ schedule, paidNumbers }: Props) {
                 <td className="px-3 py-1.5 text-right font-mono tabular-nums">
                   {brlFormatter.format(row.balanceAfter)}
                 </td>
+                {interactive && (
+                  <td className="px-3 py-1.5 text-right">
+                    <button
+                      type="button"
+                      onClick={() => onTogglePaid!(row.number, row.date, !paid)}
+                      disabled={togglePending}
+                      className={
+                        (paid ? "pill-paid" : "pill-pending") +
+                        " transition-opacity hover:opacity-80 disabled:opacity-50"
+                      }
+                      title={paid ? "Marcar como pendente" : "Marcar como paga"}
+                    >
+                      {paid ? "Pago" : "Pendente"}
+                    </button>
+                  </td>
+                )}
               </tr>
             );
           })}
