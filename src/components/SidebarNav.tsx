@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileBarChart,
+  Landmark,
   Menu,
   Receipt,
   Settings,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import {
   billsUrl,
+  financingUrl,
   insightsUrl,
   reportsUrl,
   settingsUrl,
@@ -53,6 +55,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Contas",
     icon: Receipt,
     matches: (p) => p.startsWith("/bills"),
+  },
+  {
+    href: financingUrl(),
+    label: "Financiamento",
+    icon: Landmark,
+    matches: (p) => p.startsWith("/financing"),
   },
   {
     href: insightsUrl(),

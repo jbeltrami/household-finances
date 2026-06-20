@@ -28,3 +28,15 @@ export function reportsUrl(): string {
 export function insightsUrl(): string {
   return "/insights";
 }
+
+export function financingUrl(): string {
+  return "/financing";
+}
+
+export function financingNewUrl(): string {
+  return "/financing/new";
+}
+
+export function financingDetailUrl(id: string): string {
+  return `/financing/${id}`;
+}
