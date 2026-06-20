@@ -13,6 +13,7 @@ import {
 import { createFinancing } from "../../actions";
 import { initialFormState } from "../../form-state";
 import AmortizationTable from "../AmortizationTable/AmortizationTable";
+import CurrencyInput from "../CurrencyInput/CurrencyInput";
 
 type FormValues = {
   name: string;
@@ -96,20 +97,16 @@ export default function NewFinancingForm() {
 
             <div>
               <label htmlFor="principal" className="field-label">
-                Valor do financiamento (BRL)
+                Valor do financiamento
               </label>
-              <input
+              <CurrencyInput
                 id="principal"
-                name="principal"
-                type="number"
-                min="0"
-                step="0.01"
-                required
-                placeholder="0.00"
                 value={values.principal}
-                onChange={(e) => set("principal", e.target.value)}
-                className="field-input"
+                onChange={(raw) => set("principal", raw)}
+                placeholder="0,00"
               />
+              {/* Submit the raw dot-decimal value so the action parses it as-is. */}
+              <input type="hidden" name="principal" value={values.principal} />
             </div>
 
             <div>
