@@ -30,7 +30,7 @@ export default async function FinancingPage() {
         getPaidInstallments(supabase, f.id),
       ]);
       const schedule = buildFinancingSchedule(f, extras);
-      return { financing: f, summary: summarizeFinancing(schedule, paid) };
+      return { financing: f, summary: summarizeFinancing(schedule, paid, extras) };
     })
   );
 

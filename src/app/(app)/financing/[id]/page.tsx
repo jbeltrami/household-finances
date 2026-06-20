@@ -5,16 +5,17 @@ import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 import { financingUrl } from "@/helpers/paths";
 import { brlFormatter } from "@/helpers/format";
-import Card from "@/components/Card";
+import Collapsible from "@/components/Collapsible/Collapsible";
 import {
   getFinancingById,
   getExtraPayments,
   getPaidInstallments,
   buildFinancingSchedule,
   summarizeFinancing,
+  toAmortizationInput,
 } from "@/helpers/financing";
 import { ratePeriodLabel, systemLabel, formatYmd } from "../_helpers";
-import AmortizationTable from "../_components/AmortizationTable/AmortizationTable";
+import AmortizationSimulator from "../_components/AmortizationSimulator/AmortizationSimulator";
 import ExtraPaymentForm from "../_components/ExtraPaymentForm/ExtraPaymentForm";
 import ExtraPaymentRow from "../_components/ExtraPaymentRow/ExtraPaymentRow";
 import DeactivateFinancingButton from "../_components/DeactivateFinancingButton/DeactivateFinancingButton";
@@ -38,7 +39,7 @@ export default async function FinancingDetailPage({
     getPaidInstallments(supabase, id),
   ]);
   const schedule = buildFinancingSchedule(financing, extras);
-  const summary = summarizeFinancing(schedule, paid);
+  const summary = summarizeFinancing(schedule, paid, extras);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
@@ -83,35 +84,44 @@ export default async function FinancingDetailPage({
       </div>
 
       {/* Extra payments */}
-      <Card className="mt-6 p-5">
-        <h2 className="text-base font-medium text-fg">
-          Amortizações extraordinárias
-        </h2>
-        <p className="mt-1 text-sm text-muted">
-          Pagamentos extras reduzem o saldo. Aparecem como despesas no mês em
-          que ocorrem.
-        </p>
-
-        <div className="mt-4">
+      <div className="mt-6 flex flex-col gap-4">
+        <Collapsible
+          title="Amortizações extraordinárias"
+          description="Pagamentos extras reduzem o saldo. Aparecem como despesas no mês em que ocorrem."
+        >
           <ExtraPaymentForm financingId={financing.id} />
-        </div>
+        </Collapsible>
 
         {extras.length > 0 && (
-          <div className="mt-5">
-            {extras.map((p) => (
-              <ExtraPaymentRow key={p.id} payment={p} />
-            ))}
-          </div>
+          <Collapsible
+            title="Amortizações registradas"
+            badge={String(extras.length)}
+          >
+            <div>
+              {extras.map((p) => (
+                <ExtraPaymentRow key={p.id} payment={p} />
+              ))}
+            </div>
+          </Collapsible>
         )}
-      </Card>
+      </div>
 
-      {/* Schedule */}
+      {/* Schedule + simulator */}
       <div className="mt-6">
         <h2 className="text-base font-medium text-fg">Tabela de amortização</h2>
         <p className="mt-1 mb-3 text-sm text-muted">
-          Parcelas pagas aparecem destacadas.
+          Parcelas pagas aparecem destacadas. Simule pagamentos futuros sem
+          salvá-los.
         </p>
-        <AmortizationTable schedule={schedule} paidNumbers={paid} />
+        <AmortizationSimulator
+          input={toAmortizationInput(financing)}
+          recordedExtras={extras.map((e) => ({
+            date: e.date,
+            amount: e.amount,
+            effect: e.effect,
+          }))}
+          paidNumbers={Array.from(paid)}
+        />
       </div>
     </div>
   );

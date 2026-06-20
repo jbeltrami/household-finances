@@ -8,7 +8,7 @@ import {
   type RatePeriod,
   type Schedule,
 } from "./amortization";
-import { getMonthRange } from "./date";
+import { getMonthRange, todayYmd } from "./date";
 
 // Stored financing parameters (the durable inputs — see
 // supabase/migrations/0011_financing.sql). Everything else (payment,
@@ -171,30 +171,46 @@ export async function getPaidInstallments(
   return new Set((data ?? []).map((r) => Number(r.installment_number)));
 }
 
-// Progress + outstanding balance, derived from the computed schedule and
-// the set of paid installment numbers.
+// Progress + outstanding balance.
+//
+// Outstanding balance is what's still owed *today*: the original principal
+// minus the ordinary principal amortized by paid installments, minus every
+// extra payment already made (dated on/before today). Anchoring it to the
+// principal actually paid — rather than to the balance at the last paid
+// installment — means a recorded amortização extraordinária reduces the
+// balance immediately, even before any installment is marked paid.
 export function summarizeFinancing(
   schedule: Schedule,
-  paidNumbers: Set<number>
+  paidNumbers: Set<number>,
+  extras: ExtraPaymentRow[] = []
 ): FinancingSummary {
   const total = schedule.rows.length;
-  let paidCount = 0;
-  let outstandingBalance = schedule.totals.principal;
-  let highestPaid = 0;
-  let monthlyPayment = 0;
+  const today = todayYmd();
 
+  let paidCount = 0;
+  let amortizedByPaid = 0; // ordinary principal from paid installments
   for (const row of schedule.rows) {
     if (paidNumbers.has(row.number)) {
       paidCount += 1;
-      if (row.number > highestPaid) {
-        highestPaid = row.number;
-        outstandingBalance = row.balanceAfter;
-      }
+      amortizedByPaid += row.amortization;
     }
   }
+
+  let extrasPaid = 0; // extraordinary principal already paid
+  for (const e of extras) {
+    if (e.date <= today) extrasPaid += e.amount;
+  }
+
+  const outstandingBalance = Math.max(
+    0,
+    Math.round(
+      (schedule.totals.principal - amortizedByPaid - extrasPaid) * 100
+    ) / 100
+  );
+
   // Next unpaid installment drives the "current monthly payment" figure.
   const nextUnpaid = schedule.rows.find((r) => !paidNumbers.has(r.number));
-  if (nextUnpaid) monthlyPayment = nextUnpaid.payment;
+  const monthlyPayment = nextUnpaid ? nextUnpaid.payment : 0;
 
   return {
     total,
