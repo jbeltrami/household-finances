@@ -84,14 +84,15 @@ export function buildSchedule(
   const EPS = 0.005; // half a cent — treat as fully paid
   const plannedEnd = n;
 
-  // Group extras by "YYYY-MM" for per-installment lookup.
-  const extrasByYm = new Map<string, ExtraPaymentInput[]>();
-  for (const e of extras) {
-    const ym = e.date.slice(0, 7);
-    const list = extrasByYm.get(ym) ?? [];
-    list.push(e);
-    extrasByYm.set(ym, list);
-  }
+  // Extras are applied at the first installment whose date is on/after the
+  // extra's date — so a payment made between installments (or before the
+  // first one, e.g. on a financing that starts in the future) still lands,
+  // instead of being dropped when no installment shares its exact month.
+  // Walked with a pointer over the date-sorted list.
+  const sortedExtras = [...extras].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0
+  );
+  let extraIdx = 0;
 
   let balance = input.principal;
   let pmt = input.system === "price" ? pricePayment(balance, i, n) : 0;
@@ -115,25 +116,26 @@ export function buildSchedule(
     const payment = amort + interest;
     balance -= amort;
 
-    // Apply any extra payments dated in this installment's month.
+    // Apply every extra payment due on/before this installment's date that
+    // hasn't been applied yet (pre-first-installment extras land here too).
     let extraApplied = 0;
-    const monthExtras = extrasByYm.get(date.slice(0, 7));
-    if (monthExtras) {
-      for (const e of monthExtras) {
-        const applied = Math.min(e.amount, balance);
-        balance -= applied;
-        extraApplied += applied;
+    while (extraIdx < sortedExtras.length && sortedExtras[extraIdx].date <= date) {
+      const e = sortedExtras[extraIdx];
+      extraIdx += 1;
 
-        const remaining = plannedEnd - k;
-        if (balance > EPS && remaining > 0 && e.effect === "reduce_installment") {
-          if (input.system === "price") {
-            pmt = pricePayment(balance, i, remaining);
-          } else {
-            sacAmort = balance / remaining;
-          }
+      const applied = Math.min(e.amount, balance);
+      balance -= applied;
+      extraApplied += applied;
+
+      const remaining = plannedEnd - k;
+      if (balance > EPS && remaining > 0 && e.effect === "reduce_installment") {
+        if (input.system === "price") {
+          pmt = pricePayment(balance, i, remaining);
+        } else {
+          sacAmort = balance / remaining;
         }
-        // reduce_term: basis unchanged; the loop ends earlier on its own.
       }
+      // reduce_term: basis unchanged; the loop ends earlier on its own.
     }
 
     totalPaid += payment + extraApplied;
