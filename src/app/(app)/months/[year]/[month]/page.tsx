@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { todayYmd, getMonthRange } from "@/helpers/date";
 import { fetchMonthUnlock, isMonthLocked } from "@/helpers/lock";
 import { getEntriesForMonth } from "@/helpers/ledger";
+import { getFinancingMonthItems } from "@/helpers/financing";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 import { buildMonthOptions } from "./_helpers";
 import MonthlyViewClient from "./_components/MonthlyViewClient/MonthlyViewClient";
@@ -36,21 +37,27 @@ export default async function MonthlyViewPage({
   //   2. All unlocked-month rows for this space — drives the month dropdown.
   //   3. Unified ledger fetch (virtual + materialized entries).
   //   4. Income for the date range (no virtual-expansion layer).
-  const [unlock, existingUnlocksRes, resolved, rawIncomeRes] = await Promise.all([
-    fetchMonthUnlock(supabase, spaceId, year, month),
-    supabase
-      .from("month_unlocks")
-      .select("year, month")
-      .eq("space_id", spaceId),
-    getEntriesForMonth(supabase, spaceIds, year, month),
-    supabase
-      .from("income_entries")
-      .select("id, space_id, name, amount, expected_date, received")
-      .in("space_id", spaceIds)
-      .gte("expected_date", start)
-      .lte("expected_date", end)
-      .order("expected_date", { ascending: true }),
-  ]);
+  const [unlock, existingUnlocksRes, resolved, rawIncomeRes, financingItems] =
+    await Promise.all([
+      fetchMonthUnlock(supabase, spaceId, year, month),
+      supabase
+        .from("month_unlocks")
+        .select("year, month")
+        .eq("space_id", spaceId),
+      getEntriesForMonth(supabase, spaceIds, year, month),
+      supabase
+        .from("income_entries")
+        .select("id, space_id, name, amount, expected_date, received")
+        .in("space_id", spaceIds)
+        .gte("expected_date", start)
+        .lte("expected_date", end)
+        .order("expected_date", { ascending: true }),
+      getFinancingMonthItems(supabase, spaceIds, year, month),
+    ]);
+
+  // Financing installments surface as bills; extra payments as expenses.
+  const mortgageBills = financingItems.bills;
+  const mortgageExpenses = financingItems.expenses;
 
   const locked = isMonthLocked({
     year,
@@ -92,6 +99,12 @@ export default async function MonthlyViewPage({
     daysWithBillsSet.add(day);
     if (!e.paid && e.date <= today) daysWithOverdueBillsSet.add(day);
   }
+  for (const b of mortgageBills) {
+    const day = parseInt(b.date.split("-")[2], 10);
+    if (!Number.isInteger(day)) continue;
+    daysWithBillsSet.add(day);
+    if (!b.paid && b.date <= today) daysWithOverdueBillsSet.add(day);
+  }
   const daysWithBills = Array.from(daysWithBillsSet).sort((a, b) => a - b);
   const daysWithOverdueBills = Array.from(daysWithOverdueBillsSet).sort(
     (a, b) => a - b
@@ -109,22 +122,34 @@ export default async function MonthlyViewPage({
     const day = parseInt(e.date.split("-")[2], 10);
     if (Number.isInteger(day)) daysWithExpensesSet.add(day);
   }
+  for (const e of mortgageExpenses) {
+    const day = parseInt(e.date.split("-")[2], 10);
+    if (Number.isInteger(day)) daysWithExpensesSet.add(day);
+  }
   const daysWithExpenses = Array.from(daysWithExpensesSet).sort(
     (a, b) => a - b
   );
 
-  const totalBills = billEntries.reduce((s, e) => s + e.amount, 0);
-  const paidBills = billEntries
-    .filter((e) => e.paid)
-    .reduce((s, e) => s + e.amount, 0);
+  // Bill totals fold the regular entries together with mortgage
+  // installments (a financing's payment behaves like a bill for the month).
+  const totalBills =
+    billEntries.reduce((s, e) => s + e.amount, 0) +
+    mortgageBills.reduce((s, b) => s + b.amount, 0);
+  const paidBills =
+    billEntries.filter((e) => e.paid).reduce((s, e) => s + e.amount, 0) +
+    mortgageBills.filter((b) => b.paid).reduce((s, b) => s + b.amount, 0);
   const remainingBills = totalBills - paidBills;
 
   // Unpaid bills whose date is on or before today count as money that
   // should already be gone from the account — "net so far" subtracts
   // them alongside the explicitly-paid ones.
-  const overdueUnpaidBills = billEntries
-    .filter((e) => !e.paid && e.date <= today)
-    .reduce((s, e) => s + e.amount, 0);
+  const overdueUnpaidBills =
+    billEntries
+      .filter((e) => !e.paid && e.date <= today)
+      .reduce((s, e) => s + e.amount, 0) +
+    mortgageBills
+      .filter((b) => !b.paid && b.date <= today)
+      .reduce((s, b) => s + b.amount, 0);
 
   const totalIncome = incomeEntries.reduce((s, e) => s + e.amount, 0);
   const receivedIncome = incomeEntries
@@ -132,7 +157,10 @@ export default async function MonthlyViewPage({
     .reduce((s, e) => s + e.amount, 0);
   const stillToReceive = totalIncome - receivedIncome;
 
-  const totalExpenses = expenseEntries.reduce((s, e) => s + e.amount, 0);
+  // Mortgage extra payments are real cash out → fold into expenses.
+  const totalExpenses =
+    expenseEntries.reduce((s, e) => s + e.amount, 0) +
+    mortgageExpenses.reduce((s, e) => s + e.amount, 0);
 
   const netExpected = totalIncome - totalBills - totalExpenses;
   const netSoFar =
@@ -157,6 +185,7 @@ export default async function MonthlyViewPage({
         }}
         bills={{
           entries: billEntries,
+          mortgages: mortgageBills,
           total: totalBills,
           paid: paidBills,
           remaining: remainingBills,
@@ -167,7 +196,11 @@ export default async function MonthlyViewPage({
           received: receivedIncome,
           stillExpected: stillToReceive,
         }}
-        expenses={{ entries: expenseEntries, total: totalExpenses }}
+        expenses={{
+          entries: expenseEntries,
+          mortgages: mortgageExpenses,
+          total: totalExpenses,
+        }}
         balance={{ netExpected, netSoFar }}
       />
     </div>

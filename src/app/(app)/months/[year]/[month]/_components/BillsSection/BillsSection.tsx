@@ -3,9 +3,10 @@
 import Link from "next/link";
 import Card from "@/components/Card";
 import BillInstanceRow from "../BillInstanceRow/BillInstanceRow";
+import MortgageBillRow from "../MortgageBillRow/MortgageBillRow";
 import { brlFormatter } from "@/helpers/format";
 import { billsUrl } from "@/helpers/paths";
-import type { BillsGroup, EntryRow } from "../../_types";
+import type { BillsGroup, EntryRow, MortgageBillItem } from "../../_types";
 
 type Props = {
   bills: BillsGroup;
@@ -28,6 +29,7 @@ function keyFor(entry: {
 function BillsSubsection({
   label,
   entries,
+  mortgages,
   total,
   year,
   month,
@@ -36,19 +38,28 @@ function BillsSubsection({
 }: {
   label: string;
   entries: EntryRow[];
+  mortgages: MortgageBillItem[];
   total: number;
   year: number;
   month: number;
   locked: boolean;
   highlightedDay: number | null;
 }) {
-  if (entries.length === 0) return null;
+  if (entries.length === 0 && mortgages.length === 0) return null;
   return (
     <div className="mt-4">
       <h3 className="text-xs font-medium uppercase tracking-wide text-muted">
         {label}
       </h3>
       <ul className="mt-2 divide-y divide-subtle">
+        {mortgages.map((m) => (
+          <MortgageBillRow
+            key={`fin-${m.financingId}-${m.installmentNumber}`}
+            item={m}
+            locked={locked}
+            highlightedDay={highlightedDay}
+          />
+        ))}
         {entries.map((e) => (
           <BillInstanceRow
             key={keyFor(e)}
@@ -77,6 +88,10 @@ export default function BillsSection({
 }: Props) {
   const pendingEntries = bills.entries.filter((e) => !e.paid);
   const paidEntries = bills.entries.filter((e) => e.paid);
+  const pendingMortgages = bills.mortgages.filter((m) => !m.paid);
+  const paidMortgages = bills.mortgages.filter((m) => m.paid);
+
+  const isEmpty = bills.entries.length === 0 && bills.mortgages.length === 0;
 
   return (
     <Card className="p-5">
@@ -85,7 +100,7 @@ export default function BillsSection({
         {brlFormatter.format(bills.total)}
       </p>
 
-      {bills.entries.length === 0 ? (
+      {isEmpty ? (
         <p className="mt-4 text-sm text-muted">
           Sem contas neste mês. Cadastre uma conta recorrente em{" "}
           <Link href={billsUrl()} className="text-accent underline">
@@ -98,6 +113,7 @@ export default function BillsSection({
           <BillsSubsection
             label="Pendente"
             entries={pendingEntries}
+            mortgages={pendingMortgages}
             total={bills.remaining}
             year={year}
             month={month}
@@ -107,6 +123,7 @@ export default function BillsSection({
           <BillsSubsection
             label="Pago"
             entries={paidEntries}
+            mortgages={paidMortgages}
             total={bills.paid}
             year={year}
             month={month}

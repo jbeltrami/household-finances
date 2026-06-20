@@ -1,4 +1,10 @@
 import type { YearMonth } from "./_helpers";
+import type {
+  MortgageBillItem,
+  MortgageExpenseItem,
+} from "@/helpers/financing";
+
+export type { MortgageBillItem, MortgageExpenseItem };
 
 // A resolved ledger entry — unified shape for virtual template
 // occurrences and materialized rows in `entries`. When id is null,
@@ -42,9 +48,12 @@ export type CalendarGroup = {
 };
 
 // Bills group contains entries whose `template_id` is non-null
-// (recurring occurrences — virtual or materialized exceptions).
+// (recurring occurrences — virtual or materialized exceptions) plus any
+// financing installments falling in the month. Totals already include the
+// mortgage amounts (folded in the page server component).
 export type BillsGroup = {
   entries: EntryRow[];
+  mortgages: MortgageBillItem[];
   total: number;
   paid: number;
   remaining: number;
@@ -58,9 +67,11 @@ export type IncomeGroup = {
 };
 
 // Expenses group contains entries whose `template_id` is null
-// (free-form one-offs).
+// (free-form one-offs) plus any financing extra payments made in the month
+// (read-only here — managed from the financing area). Total includes both.
 export type ExpensesGroup = {
   entries: EntryRow[];
+  mortgages: MortgageExpenseItem[];
   total: number;
 };
 

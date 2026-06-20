@@ -5,6 +5,7 @@ import { Plus, X } from "lucide-react";
 import Card from "@/components/Card";
 import CreateOneOffExpenseForm from "../CreateOneOffExpenseForm/CreateOneOffExpenseForm";
 import ExpenseEntryRow from "../ExpenseEntryRow/ExpenseEntryRow";
+import MortgageExpenseRow from "../MortgageExpenseRow/MortgageExpenseRow";
 import { brlFormatter } from "@/helpers/format";
 import type { ExpensesGroup } from "../../_types";
 
@@ -64,12 +65,15 @@ export default function ExpensesSection({
         </div>
       )}
 
-      {expenses.entries.length === 0 ? (
+      {expenses.entries.length === 0 && expenses.mortgages.length === 0 ? (
         <p className="mt-4 text-sm text-muted">
           Nenhuma despesa avulsa registrada neste mês.
         </p>
       ) : (
         <ul className="mt-4 divide-y divide-subtle">
+          {expenses.mortgages.map((m) => (
+            <MortgageExpenseRow key={`fin-extra-${m.id}`} item={m} />
+          ))}
           {expenses.entries.map((expense) => (
             <ExpenseEntryRow
               key={expense.id!}
