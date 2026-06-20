@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, Clock, Pencil, TrendingUp, Trash2 } from "lucide-react";
+import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
 import {
   deleteIncomeEntry,
@@ -82,15 +83,13 @@ export default function IncomeEntryRow({
             defaultValue={entry.name}
             className="field-input mt-0 min-w-32 flex-1"
           />
-          <input
-            type="number"
+          <CurrencyInput
             name="amount"
-            min="0"
-            step="5"
             required
-            defaultValue={String(entry.amount)}
             autoFocus
-            className="field-input mt-0 w-28 text-right"
+            defaultValue={String(entry.amount)}
+            wrapperClassName="relative w-36"
+            className="mt-0"
           />
           <button type="submit" disabled={isUpdating} className="btn-primary py-1.5 text-xs">
             {isUpdating ? "Salvando…" : "Salvar"}

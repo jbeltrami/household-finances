@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import BillIcon from "@/components/BillIcon";
 import IconPicker from "@/components/IconPicker/IconPicker";
+import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
 import { deleteEntry, updateEntry } from "../../actions";
 import type { EntryRow } from "../../_types";
@@ -83,15 +84,11 @@ export default function ExpenseEntryRow({
               />
             </div>
             <div>
-              <label className="field-label">Valor (BRL)</label>
-              <input
+              <label className="field-label">Valor</label>
+              <CurrencyInput
                 name="amount"
-                type="number"
-                min="0"
-                step="5"
                 required
                 defaultValue={String(expense.amount)}
-                className="field-input text-right"
               />
             </div>
             <div className="sm:col-span-3">

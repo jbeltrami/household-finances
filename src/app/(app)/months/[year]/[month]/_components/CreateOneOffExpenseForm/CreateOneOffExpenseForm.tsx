@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import IconPicker from "@/components/IconPicker/IconPicker";
+import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { defaultEntryDate } from "@/helpers/date";
 import { createOneOffEntry } from "../../actions";
 
@@ -65,18 +66,9 @@ export default function CreateOneOffExpenseForm({
         </div>
         <div>
           <label htmlFor="expense_amount" className="field-label">
-            Valor (BRL)
+            Valor
           </label>
-          <input
-            id="expense_amount"
-            name="amount"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            placeholder="0.00"
-            className="field-input"
-          />
+          <CurrencyInput id="expense_amount" name="amount" required />
         </div>
         <div>
           <label htmlFor="expense_date" className="field-label">

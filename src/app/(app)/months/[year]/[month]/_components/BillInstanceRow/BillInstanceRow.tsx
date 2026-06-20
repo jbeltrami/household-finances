@@ -1,6 +1,7 @@
 'use client';
 
 import BillIcon from '@/components/BillIcon';
+import CurrencyInput from '@/components/CurrencyInput/CurrencyInput';
 import { brlFormatter } from '@/helpers/format';
 import { Pencil, RotateCcw, SkipForward } from 'lucide-react';
 import { useState, useTransition } from 'react';
@@ -131,15 +132,13 @@ export default function BillInstanceRow({
         <form
           action={handleUpdate}
           className="flex flex-wrap items-center gap-2">
-          <input
-            type="number"
+          <CurrencyInput
             name="amount"
-            min="0"
-            step="5"
             required
-            defaultValue={String(entry.amount)}
             autoFocus
-            className="field-input mt-0 w-28 text-right"
+            defaultValue={String(entry.amount)}
+            wrapperClassName="relative w-36"
+            className="mt-0"
           />
           <button
             type="submit"

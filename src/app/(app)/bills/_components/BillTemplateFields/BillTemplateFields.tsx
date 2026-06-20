@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import IconPicker from "@/components/IconPicker/IconPicker";
+import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 
 const DAY_OPTIONS = [
   { value: "0", label: "Dom" },
@@ -65,18 +66,17 @@ export default function BillTemplateFields({ defaults }: Props) {
         </div>
         <div>
           <label htmlFor="default_amount" className="field-label">
-            Valor padrão (BRL)
+            Valor padrão
           </label>
-          <input
+          <CurrencyInput
             id="default_amount"
             name="default_amount"
-            type="number"
-            min="0"
-            step="0.01"
             required
-            placeholder="0.00"
-            defaultValue={defaults?.defaultAmount ?? ""}
-            className="field-input"
+            defaultValue={
+              defaults?.defaultAmount != null
+                ? String(defaults.defaultAmount)
+                : ""
+            }
           />
         </div>
 

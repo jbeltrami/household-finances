@@ -10,10 +10,10 @@ import {
   type RatePeriod,
   type Schedule,
 } from "@/helpers/amortization";
+import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { createFinancing } from "../../actions";
 import { initialFormState } from "../../form-state";
 import AmortizationTable from "../AmortizationTable/AmortizationTable";
-import CurrencyInput from "../CurrencyInput/CurrencyInput";
 
 type FormValues = {
   name: string;
@@ -101,12 +101,10 @@ export default function NewFinancingForm() {
               </label>
               <CurrencyInput
                 id="principal"
+                name="principal"
                 value={values.principal}
-                onChange={(raw) => set("principal", raw)}
-                placeholder="0,00"
+                onValueChange={(raw) => set("principal", raw)}
               />
-              {/* Submit the raw dot-decimal value so the action parses it as-is. */}
-              <input type="hidden" name="principal" value={values.principal} />
             </div>
 
             <div>

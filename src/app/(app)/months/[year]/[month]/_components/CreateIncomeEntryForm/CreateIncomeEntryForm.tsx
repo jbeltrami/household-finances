@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { defaultEntryDate } from "@/helpers/date";
 import { createIncomeEntry } from "../../actions";
 
@@ -64,18 +65,9 @@ export default function CreateIncomeEntryForm({
         </div>
         <div>
           <label htmlFor="income_amount" className="field-label">
-            Valor (BRL)
+            Valor
           </label>
-          <input
-            id="income_amount"
-            name="amount"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            placeholder="0.00"
-            className="field-input"
-          />
+          <CurrencyInput id="income_amount" name="amount" required />
         </div>
         <div className="sm:col-span-3">
           <label htmlFor="income_expected_date" className="field-label">

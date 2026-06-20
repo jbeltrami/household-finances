@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { todayYmd } from "@/helpers/date";
 import { addExtraPayment } from "../../actions";
 import { initialFormState } from "../../form-state";
@@ -22,18 +23,9 @@ export default function ExtraPaymentForm({ financingId }: Props) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="extra_amount" className="field-label">
-            Valor (BRL)
+            Valor
           </label>
-          <input
-            id="extra_amount"
-            name="amount"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            placeholder="0.00"
-            className="field-input"
-          />
+          <CurrencyInput id="extra_amount" name="amount" required />
         </div>
         <div>
           <label htmlFor="extra_date" className="field-label">
