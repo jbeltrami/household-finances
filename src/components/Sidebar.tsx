@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
+import { monthUrl } from "@/helpers/paths";
 import SidebarNav from "./SidebarNav";
 
 function getInitials(name: string): string {
@@ -36,12 +37,19 @@ export default async function Sidebar() {
   const cookieStore = await cookies();
   const defaultCollapsed = cookieStore.get("sidebar_collapsed")?.value === "1";
 
+  // "/" is now the public marketing homepage, so the brand and "Mês Atual"
+  // links must target the current month directly instead of relying on a
+  // proxy redirect from "/".
+  const now = new Date();
+  const monthHref = monthUrl(now.getFullYear(), now.getMonth() + 1);
+
   return (
     <SidebarNav
       displayName={displayName}
       avatarUrl={avatarUrl}
       initials={initials}
       defaultCollapsed={defaultCollapsed}
+      monthHref={monthHref}
     />
   );
 }

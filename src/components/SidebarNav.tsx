@@ -28,6 +28,7 @@ type Props = {
   avatarUrl?: string;
   initials: string;
   defaultCollapsed: boolean;
+  monthHref: string;
 };
 
 type NavItem = {
@@ -39,14 +40,13 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    // Mirrors the "Home Finances" brand link: pointing at "/"
-    // lets the proxy redirect to the user's current month, so
-    // the link always lands on today's view even across month
-    // boundaries.
+    // Resolved to the current month at render via `monthHref` (see below).
+    // "/" is the public marketing homepage now, so this can't rely on a
+    // proxy redirect anymore.
     href: "/",
     label: "Mês Atual",
     icon: CalendarDays,
-    matches: (p) => p === "/" || p.startsWith("/months"),
+    matches: (p) => p.startsWith("/months"),
   },
   {
     href: billsUrl(),
@@ -86,6 +86,7 @@ export default function SidebarNav({
   avatarUrl,
   initials,
   defaultCollapsed,
+  monthHref,
 }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);                       // mobile drawer
@@ -113,7 +114,7 @@ export default function SidebarNav({
         >
           <Menu className="h-5 w-5" />
         </button>
-        <Link href="/" className="text-lg font-light text-fg">
+        <Link href={monthHref} className="text-lg font-light text-fg">
           Home <span className="font-bold">Finances</span>
         </Link>
         <div className="w-9" />
@@ -148,7 +149,7 @@ export default function SidebarNav({
         >
           {/* Brand: hidden on md+ when collapsed; always visible on mobile drawer */}
           <Link
-            href="/"
+            href={monthHref}
             onClick={close}
             className={
               "text-2xl font-light text-fg " + (collapsed ? "md:hidden" : "")
@@ -188,10 +189,11 @@ export default function SidebarNav({
           {NAV_ITEMS.map((item) => {
             const active = item.matches(pathname);
             const Icon = item.icon;
+            const href = item.href === "/" ? monthHref : item.href;
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={href}
                 onClick={close}
                 aria-current={active ? "page" : undefined}
                 aria-label={collapsed ? item.label : undefined}
