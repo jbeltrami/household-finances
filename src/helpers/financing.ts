@@ -221,6 +221,169 @@ export function summarizeFinancing(
   };
 }
 
+// Per-financing standing for a monthly report, computed AS OF the report
+// month-end (a historical snapshot, consistent with the rest of the report).
+export type FinancingReportRow = {
+  name: string;
+  system: AmortizationSystem;
+  ratePercent: number;
+  ratePeriod: RatePeriod;
+  installmentNumber: number | null; // parcela do mês (null if none this month)
+  installmentAmount: number | null;
+  installmentPaid: boolean;
+  paidCount: number; // installments paid as of month-end
+  totalInstallments: number; // effective term (schedule length)
+  percentComplete: number; // 0–100
+  outstandingBalance: number; // as of month-end
+  payoffDate: string; // projected last installment date ("YYYY-MM-DD")
+};
+
+type ReportFoldRow = { date: string; name: string; amount: number; paid: boolean };
+
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+// Report data for all active financings of a space, as of the given month.
+// Returns the per-financing rows for the dedicated report section, plus the
+// month's installments and extra payments mapped as bill/expense rows to fold
+// into the report totals (so the PDF matches the on-screen monthly view).
+//
+// Everything is computed AS OF month-end: only extra payments dated on/before
+// the month-end shape the schedule, and only installments due by then count
+// as paid — so a report for a past month reflects that month, not today.
+export async function getFinancingReport(
+  supabase: SupabaseClient,
+  spaceId: string,
+  year: number,
+  month: number
+): Promise<{
+  financings: FinancingReportRow[];
+  installmentRows: ReportFoldRow[];
+  extraRows: ReportFoldRow[];
+}> {
+  const { data: finData } = await supabase
+    .from("financings")
+    .select(FINANCING_COLUMNS)
+    .eq("space_id", spaceId)
+    .eq("active", true);
+
+  const financings = (finData ?? []).map(mapFinancing);
+  if (financings.length === 0) {
+    return { financings: [], installmentRows: [], extraRows: [] };
+  }
+
+  const ids = financings.map((f) => f.id);
+  const ym = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+  const { start, end } = getMonthRange(year, month);
+  const monthEnd = end;
+
+  const [extrasRes, paidRes] = await Promise.all([
+    supabase
+      .from("financing_extra_payments")
+      .select("id, financing_id, date, amount, effect, notes")
+      .in("financing_id", ids),
+    supabase
+      .from("financing_installment_payments")
+      .select("financing_id, installment_number")
+      .in("financing_id", ids),
+  ]);
+
+  const extrasByFin = new Map<string, ExtraPaymentRow[]>();
+  for (const r of extrasRes.data ?? []) {
+    const e = mapExtraPayment(r);
+    const list = extrasByFin.get(e.financing_id) ?? [];
+    list.push(e);
+    extrasByFin.set(e.financing_id, list);
+  }
+  const paidByFin = new Map<string, Set<number>>();
+  for (const r of paidRes.data ?? []) {
+    const fid = r.financing_id as string;
+    const set = paidByFin.get(fid) ?? new Set<number>();
+    set.add(Number(r.installment_number));
+    paidByFin.set(fid, set);
+  }
+
+  const out: FinancingReportRow[] = [];
+  const installmentRows: ReportFoldRow[] = [];
+  const extraRows: ReportFoldRow[] = [];
+
+  for (const f of financings) {
+    // Financings that hadn't started by the report month don't belong in it.
+    if (f.start_date > monthEnd) continue;
+
+    const allExtras = extrasByFin.get(f.id) ?? [];
+    const extrasAsOf = allExtras.filter((e) => e.date <= monthEnd);
+    const schedule = buildFinancingSchedule(f, extrasAsOf);
+    const paidSet = paidByFin.get(f.id) ?? new Set<number>();
+    const total = schedule.rows.length;
+
+    // Paid as of month-end = paid installments whose scheduled date <= month-end.
+    let paidCount = 0;
+    let amortizedByPaid = 0;
+    for (const row of schedule.rows) {
+      if (paidSet.has(row.number) && row.date <= monthEnd) {
+        paidCount += 1;
+        amortizedByPaid += row.amortization;
+      }
+    }
+    const extrasPaidSum = extrasAsOf.reduce((s, e) => s + e.amount, 0);
+    const outstanding = Math.max(
+      0,
+      round2(schedule.totals.principal - amortizedByPaid - extrasPaidSum)
+    );
+
+    const monthRow = schedule.rows.find((r) => r.date.slice(0, 7) === ym);
+
+    // Skip financings already settled before this month (no installment now
+    // and nothing left owed) — they'd just be noise in later reports.
+    if (!monthRow && outstanding <= 0.005) continue;
+
+    let installmentNumber: number | null = null;
+    let installmentAmount: number | null = null;
+    let installmentPaid = false;
+    if (monthRow) {
+      installmentNumber = monthRow.number;
+      installmentAmount = monthRow.payment;
+      installmentPaid = paidSet.has(monthRow.number);
+      installmentRows.push({
+        date: monthRow.date,
+        name: `Financiamento ${f.name} (${monthRow.number}/${total})`,
+        amount: monthRow.payment,
+        paid: installmentPaid,
+      });
+    }
+
+    for (const e of allExtras) {
+      if (e.date >= start && e.date <= end) {
+        extraRows.push({
+          date: e.date,
+          name: `Amortização — ${f.name}`,
+          amount: e.amount,
+          paid: true,
+        });
+      }
+    }
+
+    out.push({
+      name: f.name,
+      system: f.amortization_system,
+      ratePercent: f.interest_rate,
+      ratePeriod: f.rate_period,
+      installmentNumber,
+      installmentAmount,
+      installmentPaid,
+      paidCount,
+      totalInstallments: total,
+      percentComplete: total > 0 ? Math.round((paidCount / total) * 100) : 0,
+      outstandingBalance: outstanding,
+      payoffDate: schedule.rows[total - 1]?.date ?? f.start_date,
+    });
+  }
+
+  return { financings: out, installmentRows, extraRows };
+}
+
 // Monthly-view items: for each active financing, the installment falling in
 // the viewed month (a "bill") and any extra payments made that month
 // (each an "expense"). Schedules are built with each financing's recorded

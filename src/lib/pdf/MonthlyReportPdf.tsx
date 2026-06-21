@@ -8,8 +8,12 @@ import {
 } from "@react-pdf/renderer";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
 import { formatMonthLabel } from "@/helpers/date";
-import type { MonthlyReportData, ReportIncomeRow } from "@/helpers/reports";
-import type { ResolvedEntry } from "@/helpers/types";
+import type {
+  MonthlyReportData,
+  ReportEntryRow,
+  ReportIncomeRow,
+} from "@/helpers/reports";
+import type { FinancingReportRow } from "@/helpers/financing";
 
 const colors = {
   text: "#0f172a",
@@ -63,6 +67,10 @@ const styles = StyleSheet.create({
   colName: { width: "48%" },
   colAmount: { width: "22%", textAlign: "right" },
   colStatus: { width: "18%", textAlign: "right" },
+  // Wider variants for rows without a status column (realized spending —
+  // despesas are money already spent, so "pago/pendente" doesn't apply).
+  colNameNoStatus: { width: "58%" },
+  colAmountNoStatus: { width: "30%", textAlign: "right" },
   statusPaid: { color: colors.positive },
   statusPending: { color: colors.muted },
   summary: {
@@ -99,6 +107,27 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontStyle: "italic",
   },
+  finBlock: {
+    marginBottom: 10,
+    padding: 10,
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    borderRadius: 4,
+  },
+  finHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    marginBottom: 6,
+  },
+  finName: {
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
+  },
+  finMeta: {
+    fontSize: 9,
+    color: colors.muted,
+  },
   footer: {
     position: "absolute",
     bottom: 24,
@@ -118,30 +147,97 @@ const formatYmdShort = (ymd: string) => {
 const capitalize = (s: string) =>
   s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
 
+const systemShort = (s: FinancingReportRow["system"]) =>
+  s === "sac" ? "SAC" : "Price";
+const periodShort = (p: FinancingReportRow["ratePeriod"]) =>
+  p === "monthly" ? "a.m." : "a.a.";
+// "YYYY-MM-DD" -> "MM/YYYY"
+const payoffLabel = (ymd: string) => {
+  const [y, m] = ymd.split("-");
+  return `${m}/${y}`;
+};
+
+function FinancingSection({ financings }: { financings: FinancingReportRow[] }) {
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>Financiamentos</Text>
+      {financings.map((f, idx) => (
+        <View key={`${f.name}-${idx}`} style={styles.finBlock}>
+          <View style={styles.finHeader}>
+            <Text style={styles.finName}>{f.name}</Text>
+            <Text style={styles.finMeta}>
+              {systemShort(f.system)} · {f.ratePercent}%{" "}
+              {periodShort(f.ratePeriod)}
+            </Text>
+          </View>
+          {f.installmentNumber !== null ? (
+            <View style={styles.balanceRow}>
+              <Text style={styles.balanceLabel}>Parcela do mês</Text>
+              <Text style={styles.balanceValue}>
+                {brlFormatter.format(f.installmentAmount ?? 0)} (
+                {f.installmentPaid ? "Pago" : "Pendente"})
+              </Text>
+            </View>
+          ) : null}
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceLabel}>Progresso</Text>
+            <Text style={styles.balanceValue}>
+              {f.paidCount}/{f.totalInstallments} ({f.percentComplete}%)
+            </Text>
+          </View>
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceLabel}>Saldo devedor</Text>
+            <Text style={styles.balanceValue}>
+              {brlFormatter.format(f.outstandingBalance)}
+            </Text>
+          </View>
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceLabel}>Previsão de quitação</Text>
+            <Text style={styles.balanceValue}>{payoffLabel(f.payoffDate)}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 type Props = { data: MonthlyReportData; generatedAt: Date };
 
-function EntryRows({ entries }: { entries: ResolvedEntry[] }) {
+// `showStatus` is false for realized spending (despesas), where a
+// pago/pendente label is meaningless — those rows omit the status column.
+function EntryRows({
+  entries,
+  showStatus = true,
+}: {
+  entries: ReportEntryRow[];
+  showStatus?: boolean;
+}) {
   if (entries.length === 0) {
     return <Text style={styles.empty}>Sem lançamentos.</Text>;
   }
   return (
     <View>
       {entries.map((e, idx) => (
-        <View
-          key={`${e.id ?? "virtual"}-${e.template_id ?? "oneoff"}-${e.date}-${idx}`}
-          style={styles.row}
-        >
+        <View key={`${e.date}-${e.name}-${idx}`} style={styles.row}>
           <Text style={styles.colDate}>{formatYmdShort(e.date)}</Text>
-          <Text style={styles.colName}>{e.name}</Text>
-          <Text style={styles.colAmount}>{brlFormatter.format(e.amount)}</Text>
-          <Text
-            style={[
-              styles.colStatus,
-              e.paid ? styles.statusPaid : styles.statusPending,
-            ]}
-          >
-            {e.paid ? "Pago" : "Pendente"}
+          <Text style={showStatus ? styles.colName : styles.colNameNoStatus}>
+            {e.name}
           </Text>
+          <Text
+            style={showStatus ? styles.colAmount : styles.colAmountNoStatus}
+          >
+            {brlFormatter.format(e.amount)}
+          </Text>
+          {showStatus ? (
+            <Text
+              style={[
+                styles.colStatus,
+                e.paid ? styles.statusPaid : styles.statusPending,
+              ]}
+            >
+              {e.paid ? "Pago" : "Pendente"}
+            </Text>
+          ) : null}
         </View>
       ))}
     </View>
@@ -174,7 +270,8 @@ function IncomeRows({ entries }: { entries: ReportIncomeRow[] }) {
 }
 
 function MonthlyReportPdf({ data, generatedAt }: Props) {
-  const { spaceName, year, month, bills, expenses, income, totals } = data;
+  const { spaceName, year, month, bills, expenses, income, financings, totals } =
+    data;
   const monthLabel = capitalize(formatMonthLabel(year, month));
   const generatedLabel = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
@@ -233,7 +330,7 @@ function MonthlyReportPdf({ data, generatedAt }: Props) {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Despesas avulsas</Text>
-          <EntryRows entries={expenses} />
+          <EntryRows entries={expenses} showStatus={false} />
           {expenses.length > 0 ? (
             <View style={styles.summary}>
               <Text style={styles.summaryItem}>
@@ -242,6 +339,10 @@ function MonthlyReportPdf({ data, generatedAt }: Props) {
             </View>
           ) : null}
         </View>
+
+        {financings.length > 0 ? (
+          <FinancingSection financings={financings} />
+        ) : null}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Resumo</Text>

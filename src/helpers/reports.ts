@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addMonthsYm, getMonthRange, todayYmd } from "./date";
 import { getEntriesForMonth } from "./ledger";
+import { getFinancingReport, type FinancingReportRow } from "./financing";
 import { renderMonthlyReportPdf } from "@/lib/pdf/MonthlyReportPdf";
 import type { ResolvedEntry } from "./types";
 
@@ -25,13 +26,23 @@ export type ReportIncomeRow = {
   received: boolean;
 };
 
+// A bill/expense line in the report. Lighter than ResolvedEntry so financing
+// installments and extra payments can sit alongside ledger entries.
+export type ReportEntryRow = {
+  date: string;
+  name: string;
+  amount: number;
+  paid: boolean;
+};
+
 export type MonthlyReportData = {
   spaceName: string;
   year: number;
   month: number;
-  bills: ResolvedEntry[];
-  expenses: ResolvedEntry[];
+  bills: ReportEntryRow[];
+  expenses: ReportEntryRow[];
   income: ReportIncomeRow[];
+  financings: FinancingReportRow[];
   totals: {
     totalBills: number;
     paidBills: number;
@@ -64,8 +75,30 @@ export async function getMonthlyReportData(
 
   // Reports are personal-space only — no shared-space aggregation.
   const resolved = await getEntriesForMonth(supabase, [spaceId], year, month);
-  const bills = resolved.filter((e) => e.template_id != null);
-  const expenses = resolved.filter((e) => e.template_id == null);
+  const resolvedBills = resolved.filter((e) => e.template_id != null);
+  const resolvedExpenses = resolved.filter((e) => e.template_id == null);
+
+  // Financings: the dedicated report section + the month's installment / extra
+  // payments folded into bills/expenses so the report matches the monthly view.
+  const fin = await getFinancingReport(supabase, spaceId, year, month);
+
+  const toRow = (e: ResolvedEntry): ReportEntryRow => ({
+    date: e.date,
+    name: e.name,
+    amount: e.amount,
+    paid: e.paid,
+  });
+  const byDate = (a: ReportEntryRow, b: ReportEntryRow) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+
+  const bills: ReportEntryRow[] = [
+    ...resolvedBills.map(toRow),
+    ...fin.installmentRows,
+  ].sort(byDate);
+  const expenses: ReportEntryRow[] = [
+    ...resolvedExpenses.map(toRow),
+    ...fin.extraRows,
+  ].sort(byDate);
 
   const { start, end } = getMonthRange(year, month);
 
@@ -85,7 +118,12 @@ export async function getMonthlyReportData(
     received: i.received as boolean,
   }));
 
-  if (bills.length === 0 && expenses.length === 0 && income.length === 0) {
+  if (
+    bills.length === 0 &&
+    expenses.length === 0 &&
+    income.length === 0 &&
+    fin.financings.length === 0
+  ) {
     return null;
   }
 
@@ -122,6 +160,7 @@ export async function getMonthlyReportData(
     bills,
     expenses,
     income,
+    financings: fin.financings,
     totals: {
       totalBills,
       paidBills,
