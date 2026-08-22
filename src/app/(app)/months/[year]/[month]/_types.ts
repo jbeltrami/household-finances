@@ -3,7 +3,7 @@ import type {
   MortgageBillItem,
   MortgageExpenseItem,
 } from "@/helpers/financing";
-import type { ResolvedCategory } from "@/helpers/types";
+import type { EntryMutationTarget, ResolvedCategory } from "@/helpers/types";
 import type { CategoryRow, PayerRow } from "@/helpers/taxonomy";
 
 export type { ResolvedCategory };
@@ -90,13 +90,10 @@ export type BalanceGroup = {
   netSoFar: number;
 };
 
-// Discriminated target for actions that mutate a bill occurrence:
-// either a materialized row (one already exists in `entries`) or a
-// virtual occurrence (template + date that hasn't been written yet —
-// the action materializes it on first touch).
-export type EntryMutationTarget =
-  | { kind: "materialized"; entryId: string }
-  | { kind: "virtual"; templateId: string; date: string };
+// Discriminated target for actions that mutate a bill occurrence. Declared
+// in the shared type vocabulary because `writeOccurrence` — which is what
+// turns a virtual target into a row — lives beside the ledger, not here.
+export type { EntryMutationTarget };
 
 export type MonthlyViewProps = {
   // Active lists for the create/edit forms. Resolved server-side once and

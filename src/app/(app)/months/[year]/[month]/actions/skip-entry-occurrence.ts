@@ -3,18 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { monthUrl } from "@/helpers/paths";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
-import {
-  checkDateEditable,
-  checkEntryEditable,
-} from "@/helpers/lock";
-import type { EntryMutationTarget } from "../_types";
+import { writeOccurrence } from "@/helpers/occurrences";
+import type { EntryMutationTarget } from "@/helpers/types";
 
-// Skip marks a single occurrence of a recurring template as cancelled
-// for that date. Virtual → materialize as skipped=true. Materialized
-// (and previously unskipped) → update skipped=true. Paid rows can't
-// be skipped (schema CHECK enforces it); call toggleEntryPaid first
-// to unpay them.
+// Skip marks a single occurrence of a Conta recorrente as cancelled for
+// that date. A virtual occurrence is written as skipped on first touch; a
+// row that already exists is updated. Paid rows can't be skipped (a schema
+// CHECK enforces it); call toggleEntryPaid first to unpay them.
 export async function skipEntryOccurrence(
   target: EntryMutationTarget,
   formData: FormData
@@ -28,70 +23,29 @@ export async function skipEntryOccurrence(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
 
+  // Both refusals are about the existing row, so they only apply to a
+  // materialized target — a virtual one is a template occurrence by
+  // definition, and cannot already be paid.
   if (target.kind === "materialized") {
-    const check = await checkEntryEditable(supabase, target.entryId);
-    if (!check.ok) throw new Error(check.error);
-
-    // Only template rows can be skipped; one-offs have no "skip"
-    // semantics (they were created explicitly).
     const { data: row } = await supabase
       .from("entries")
       .select("template_id, paid")
       .eq("id", target.entryId)
-      .single();
+      .maybeSingle();
 
+    // One-offs have no "skip" semantics — they were created explicitly.
     if (!row?.template_id) {
       throw new Error("Só é possível ignorar ocorrências recorrentes");
     }
     if (row.paid) {
       throw new Error("Desmarque o pagamento antes de ignorar");
     }
-
-    const { error } = await supabase
-      .from("entries")
-      .update({ skipped: true })
-      .eq("id", target.entryId);
-
-    if (error) throw new Error(`Falha ao ignorar a ocorrência: ${error.message}`);
-
-    revalidatePath(monthUrl(check.year, check.month));
-    return;
   }
 
-  const spaceId = await requirePersonalSpaceId(supabase);
+  const result = await writeOccurrence(supabase, target, { skipped: true });
+  if (!result.ok) throw new Error(result.error);
 
-  const check = await checkDateEditable(supabase, spaceId, target.date);
-  if (!check.ok) throw new Error(check.error);
-
-  const { data: template } = await supabase
-    .from("recurring_bill_templates")
-    .select("name, default_amount, currency")
-    .eq("id", target.templateId)
-    .single();
-
-  if (!template) throw new Error("Conta recorrente não encontrada");
-
-  const { error } = await supabase.from("entries").insert({
-    space_id: spaceId,
-    date: target.date,
-    name: template.name,
-    amount: template.default_amount,
-    currency: template.currency,
-    // No `category_id` here on purpose. Leaving it NULL is what makes this
-    // row inherit its Categoria from the template, so recategorising the
-    // Conta later moves this payment with it instead of stranding it under
-    // the old name. The amount above IS copied, because what was paid is a
-    // fact about this payment rather than a description of the bill.
-    // See docs/adr/0001-categories-are-referenced-not-snapshotted.md
-    paid: false,
-    skipped: true,
-    template_id: target.templateId,
-    installments_covered: 1,
-  });
-
-  if (error) throw new Error(`Falha ao ignorar a ocorrência: ${error.message}`);
-
-  revalidatePath(monthUrl(check.year, check.month));
+  revalidatePath(monthUrl(result.year, result.month));
 }
 
 // Undo a skip — flip skipped back to false. If that leaves the row
@@ -110,15 +64,12 @@ export async function unskipEntryOccurrence(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
 
-  const check = await checkEntryEditable(supabase, entryId);
-  if (!check.ok) throw new Error(check.error);
+  const result = await writeOccurrence(
+    supabase,
+    { kind: "materialized", entryId },
+    { skipped: false }
+  );
+  if (!result.ok) throw new Error(result.error);
 
-  const { error } = await supabase
-    .from("entries")
-    .update({ skipped: false })
-    .eq("id", entryId);
-
-  if (error) throw new Error(`Falha ao reverter o ignorar: ${error.message}`);
-
-  revalidatePath(monthUrl(check.year, check.month));
+  revalidatePath(monthUrl(result.year, result.month));
 }

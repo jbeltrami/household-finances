@@ -168,3 +168,13 @@ export type Insight = {
   // no actual to compare.
   meets: boolean | null;
 };
+
+// --- Occurrence writes ---------------------------------------
+
+// What a mutation is aimed at. A Conta recorrente occurrence either already
+// has a row in `entries` or is still virtual — a template plus a date that
+// nothing has been done to yet. Writing to the second means creating it
+// first, which is what `writeOccurrence` is for.
+export type EntryMutationTarget =
+  | { kind: "materialized"; entryId: string }
+  | { kind: "virtual"; templateId: string; date: string };

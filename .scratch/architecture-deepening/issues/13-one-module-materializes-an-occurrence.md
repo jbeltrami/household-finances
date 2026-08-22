@@ -17,15 +17,15 @@ Ignoring an occurrence moves onto it first, as the simplest of the three. Ticket
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] One module turns a mutation target into a row and returns its space, year
+- [x] One module turns a mutation target into a row and returns its space, year
       and month
-- [ ] It refuses when the target month is locked
-- [ ] The row it writes leaves Categoria unset, so the occurrence inherits from
+- [x] It refuses when the target month is locked
+- [x] The row it writes leaves Categoria unset, so the occurrence inherits from
       its Conta, per ADR-0001
-- [ ] Ignoring an occurrence goes through it
-- [ ] Ignoring a virtual occurrence still removes it from the month
-- [ ] Ignoring an already-materialized occurrence still works, as does undoing it
-- [ ] A paid occurrence still cannot be ignored
-- [ ] A one-off Despesa still cannot be ignored
+- [x] Ignoring an occurrence goes through it
+- [x] Ignoring a virtual occurrence still removes it from the month
+- [x] Ignoring an already-materialized occurrence still works, as does undoing it
+- [x] A paid occurrence still cannot be ignored
+- [x] A one-off Despesa still cannot be ignored
