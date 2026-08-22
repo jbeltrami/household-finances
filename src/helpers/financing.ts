@@ -390,34 +390,52 @@ export async function getFinancingReport(
   return { financings: out, installmentRows, extraRows };
 }
 
-// Monthly-view items: for each active financing, the installment falling in
-// the viewed month (a "bill") and any extra payments made that month
-// (each an "expense"). Schedules are built with each financing's recorded
-// extra payments so amounts/balances reflect reality.
-export async function getFinancingMonthItems(
+// --- The hydration seam --------------------------------------
+// Every consumer of a Financiamento needs the same four things: the loan,
+// its amortizações extraordinárias, which parcelas are marked paid, and the
+// schedule computed from all three. Working those out was written five
+// different ways — twice with batched queries, three times one loan at a
+// time — so a new field meant finding five fetches.
+//
+// This is the one place that answers it. Everything above it is a pure
+// projection: give it a hydrated ledger and it returns rows, with no
+// database in reach.
+
+export type HydratedFinancing = {
+  financing: FinancingRow;
+  extras: ExtraPaymentRow[];
+  paidNumbers: Set<number>;
+  // Built from every recorded extra — the loan as it stands today. A
+  // projection wanting a historical view (the report reads each loan as of
+  // its month's end) rebuilds from `extras`, which is cheap and pure; what
+  // is expensive, and what this saves, is the fetching.
+  schedule: Schedule;
+};
+
+// Hydrate every active Financiamento of a space in a fixed number of
+// queries, however many loans there are.
+export async function getFinancingLedger(
   supabase: SupabaseClient,
-  spaceIds: string[],
-  year: number,
-  month: number
-): Promise<{ bills: MortgageBillItem[]; expenses: MortgageExpenseItem[] }> {
+  spaceId: string
+): Promise<HydratedFinancing[]> {
   const { data: finData } = await supabase
     .from("financings")
     .select(FINANCING_COLUMNS)
-    .in("space_id", spaceIds)
-    .eq("active", true);
+    .eq("space_id", spaceId)
+    .eq("active", true)
+    .order("created_at", { ascending: false });
 
   const financings = (finData ?? []).map(mapFinancing);
-  if (financings.length === 0) return { bills: [], expenses: [] };
+  if (financings.length === 0) return [];
 
   const ids = financings.map((f) => f.id);
-  const ym = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
-  const { start, end } = getMonthRange(year, month);
 
   const [extrasRes, paidRes] = await Promise.all([
     supabase
       .from("financing_extra_payments")
       .select("id, financing_id, date, amount, effect, notes")
-      .in("financing_id", ids),
+      .in("financing_id", ids)
+      .order("date", { ascending: true }),
     supabase
       .from("financing_installment_payments")
       .select("financing_id, installment_number")
@@ -440,36 +458,55 @@ export async function getFinancingMonthItems(
     paidByFin.set(fid, set);
   }
 
+  return financings.map((financing) => {
+    const extras = extrasByFin.get(financing.id) ?? [];
+    return {
+      financing,
+      extras,
+      paidNumbers: paidByFin.get(financing.id) ?? new Set<number>(),
+      schedule: buildFinancingSchedule(financing, extras),
+    };
+  });
+}
+
+// --- Projection: the monthly view ----------------------------
+
+// The parcela falling in the viewed month becomes a Conta; every
+// amortização extraordinária dated inside it becomes a Despesa. A loan
+// whose schedule reaches neither contributes nothing, which covers both a
+// month before it started and one after it is settled.
+export function buildMonthItems(
+  ledger: HydratedFinancing[],
+  year: number,
+  month: number
+): { bills: MortgageBillItem[]; expenses: MortgageExpenseItem[] } {
+  const ym = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+  const { start, end } = getMonthRange(year, month);
+
   const bills: MortgageBillItem[] = [];
   const expenses: MortgageExpenseItem[] = [];
 
-  for (const f of financings) {
-    const extras = extrasByFin.get(f.id) ?? [];
-    const schedule = buildSchedule(toAmortizationInput(f), toExtraInputs(extras));
-    const paidSet = paidByFin.get(f.id) ?? new Set<number>();
-
-    // The installment whose date lands in the viewed month (at most one
-    // for a monthly schedule).
+  for (const { financing, extras, paidNumbers, schedule } of ledger) {
+    // At most one for a monthly schedule.
     const row = schedule.rows.find((r) => r.date.slice(0, 7) === ym);
     if (row) {
       bills.push({
-        financingId: f.id,
-        financingName: f.name,
+        financingId: financing.id,
+        financingName: financing.name,
         installmentNumber: row.number,
         installmentsTotal: schedule.rows.length,
         date: row.date,
         amount: row.payment,
-        paid: paidSet.has(row.number),
+        paid: paidNumbers.has(row.number),
       });
     }
 
-    // Extra payments made within the viewed month → expenses.
     for (const e of extras) {
       if (e.date >= start && e.date <= end) {
         expenses.push({
           id: e.id,
-          financingId: f.id,
-          financingName: f.name,
+          financingId: financing.id,
+          financingName: financing.name,
           date: e.date,
           amount: e.amount,
           effect: e.effect,
@@ -479,6 +516,17 @@ export async function getFinancingMonthItems(
   }
 
   return { bills, expenses };
+}
+
+// Monthly-view items for a space: the parcela of the month as a Conta, and
+// that month's amortizações as Despesas.
+export async function getFinancingMonthItems(
+  supabase: SupabaseClient,
+  spaceId: string,
+  year: number,
+  month: number
+): Promise<{ bills: MortgageBillItem[]; expenses: MortgageExpenseItem[] }> {
+  return buildMonthItems(await getFinancingLedger(supabase, spaceId), year, month);
 }
 
 // --- Spend reporting -----------------------------------------

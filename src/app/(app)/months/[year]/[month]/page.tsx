@@ -65,7 +65,7 @@ export default async function MonthlyViewPage({
         .gte("expected_date", start)
         .lte("expected_date", end)
         .order("expected_date", { ascending: true }),
-      getFinancingMonthItems(supabase, spaceIds, year, month),
+      getFinancingMonthItems(supabase, spaceId, year, month),
       // Active only: a deactivated Categoria must not be offerable on a new
       // Despesa. Rows already filed under one still render it, because
       // getEntriesForMonth resolves Categorias by id regardless of active.

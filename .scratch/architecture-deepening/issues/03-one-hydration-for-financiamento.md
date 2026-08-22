@@ -15,15 +15,15 @@ monthly view shows the same parcela and the same amortizações it shows today.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] One module hydrates a space's active Financiamentos in a fixed number of
+- [x] One module hydrates a space's active Financiamentos in a fixed number of
       queries, regardless of how many loans there are
-- [ ] It returns each loan with its schedule, paid parcela numbers and extras
-- [ ] The monthly view's Financiamento items become a pure projection over it
-- [ ] The projection is tested as plain data: the parcela falling in the month,
+- [x] It returns each loan with its schedule, paid parcela numbers and extras
+- [x] The monthly view's Financiamento items become a pure projection over it
+- [x] The projection is tested as plain data: the parcela falling in the month,
       the extras dated inside it, and nothing at all for a month before the loan
       begins
-- [ ] The parcela shown in Contas for a given month is unchanged
-- [ ] The amortizações shown in Despesas for a given month are unchanged
-- [ ] Their amounts still reflect recorded extras
+- [x] The parcela shown in Contas for a given month is unchanged
+- [x] The amortizações shown in Despesas for a given month are unchanged
+- [x] Their amounts still reflect recorded extras
