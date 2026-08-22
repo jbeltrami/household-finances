@@ -9,12 +9,15 @@
 //     free. N <= 12 month-loops per page view is negligible for a
 //     personal app; if this ever needs to scale, replace the loop with
 //     a single range query + in-memory expansion.
+//   - averageBuckets: the pure division at the end of that walk, split out
+//     so the arithmetic can be tested without a database.
 //   - computeInsights: a pure function (no DB) mapping averages +
 //     parameters to benchmark values. Trivial to unit-test.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addMonthsYm, getMonthRange, todayYmd, yearMonthKey } from "./date";
 import { getEntriesForMonth } from "./ledger";
+import { buildMonthItems, getFinancingLedger } from "./financing";
 import { summarizeMonth } from "./month-summary";
 import type { BucketAverages, IdealSettings, Insight } from "./types";
 
@@ -32,6 +35,14 @@ export const DEFAULT_IDEAL_SETTINGS: IdealSettings = {
 // Allowed averaging windows (in complete months) offered on the page.
 export const WINDOW_OPTIONS = [3, 6, 12] as const;
 export const DEFAULT_WINDOW = 6;
+
+const NO_DATA: BucketAverages = {
+  monthsUsed: 0,
+  avgIncome: 0,
+  avgBills: 0,
+  avgExpenses: 0,
+  avgMortgage: 0,
+};
 
 // Absolute month index for a "YYYY-MM" string, for cheap month math.
 function monthIndex(ym: string): number {
@@ -78,9 +89,7 @@ export async function getBucketAveragesForRange(
     incomeMinRes.data?.expected_date,
   ].filter((d): d is string => !!d);
 
-  if (earliestDates.length === 0) {
-    return { monthsUsed: 0, avgIncome: 0, avgBills: 0, avgExpenses: 0 };
-  }
+  if (earliestDates.length === 0) return NO_DATA;
 
   const earliestYm = earliestDates.sort()[0].slice(0, 7);
 
@@ -89,9 +98,7 @@ export async function getBucketAveragesForRange(
   // user's only data is the current (incomplete) month — there's no
   // complete-month history to average yet, so report no data.
   const available = monthIndex(endYm) - monthIndex(earliestYm) + 1;
-  if (available <= 0) {
-    return { monthsUsed: 0, avgIncome: 0, avgBills: 0, avgExpenses: 0 };
-  }
+  if (available <= 0) return NO_DATA;
   const monthsUsed = Math.min(windowMonths, available);
 
   // Income summed across the whole range in one query (no virtual
@@ -118,35 +125,75 @@ export async function getBucketAveragesForRange(
 
   const today = todayYmd();
 
-  let billsTotal = 0;
-  let expensesTotal = 0;
+  // Hydrated once for the whole window; each month is a pure projection over
+  // it, so a twelve-month window costs the same three queries as a three.
+  const financingLedger = await getFinancingLedger(supabase, spaceId);
+
+  const months: MonthlyBuckets[] = [];
   for (let i = 0; i < monthsUsed; i++) {
     const ym = addMonthsYm(endYm, -i);
     const y = Number(ym.slice(0, 4));
     const m = Number(ym.slice(5, 7));
+
     const entries = await getEntriesForMonth(supabase, [spaceId], y, m);
+    const parcelas = buildMonthItems(financingLedger, y, m).bills;
+
     const totals = summarizeMonth({
       bills: entries.filter((e) => e.template_id != null),
       expenses: entries.filter((e) => e.template_id == null),
       // Receitas are summed across the whole range in one query above; no
       // virtual expansion is involved, so there is nothing to fold per month.
       income: [],
-      // Financiamento is deliberately not counted here — see ticket 12,
-      // which decides whether the parcela belongs in this average. Passing
-      // empty lists rather than leaving the field out is the point: this is
-      // a decision on the record, not the omission it used to be.
-      financing: { bills: [], expenses: [] },
+      financing: {
+        // The parcela is a recurring obligation like any other Conta.
+        bills: parcelas,
+        // Amortizações extraordinárias are not. They happen once, and
+        // averaging one across a window either flatters or damns every
+        // month in it depending on where it landed.
+        expenses: [],
+      },
       today,
     });
-    billsTotal += totals.bills.total;
-    expensesTotal += totals.expenses.total;
+
+    months.push({
+      bills: totals.bills.total,
+      expenses: totals.expenses.total,
+      mortgage: parcelas.reduce((sum, p) => sum + p.amount, 0),
+    });
   }
+
+  return averageBuckets({ monthsUsed, incomeTotal, months });
+}
+
+// What one month contributed to the window.
+export type MonthlyBuckets = {
+  bills: number;
+  expenses: number;
+  // Part of `bills`, tracked separately so the housing benchmark has an
+  // actual. A month the loan had not started in contributes zero, which is
+  // what makes a window straddling its start average correctly.
+  mortgage: number;
+};
+
+// The division at the end of the walk. Pure, so the arithmetic that decides
+// what a user is told they spend can be checked without a database.
+export function averageBuckets(input: {
+  monthsUsed: number;
+  incomeTotal: number;
+  months: MonthlyBuckets[];
+}): BucketAverages {
+  const { monthsUsed, incomeTotal, months } = input;
+  if (monthsUsed <= 0) return NO_DATA;
+
+  const total = (pick: (m: MonthlyBuckets) => number) =>
+    months.reduce((sum, m) => sum + pick(m), 0);
 
   return {
     monthsUsed,
     avgIncome: incomeTotal / monthsUsed,
-    avgBills: billsTotal / monthsUsed,
-    avgExpenses: expensesTotal / monthsUsed,
+    avgBills: total((m) => m.bills) / monthsUsed,
+    avgExpenses: total((m) => m.expenses) / monthsUsed,
+    avgMortgage: total((m) => m.mortgage) / monthsUsed,
   };
 }
 
@@ -157,7 +204,7 @@ export function computeInsights(
   averages: BucketAverages,
   settings: IdealSettings
 ): Insight[] {
-  const { avgIncome, avgBills, avgExpenses } = averages;
+  const { avgIncome, avgBills, avgExpenses, avgMortgage } = averages;
   const monthlySpend = avgBills + avgExpenses;
   const leftover = avgIncome - monthlySpend;
 
@@ -182,7 +229,16 @@ export function computeInsights(
       // Cap: your fixed expenses should stay AT OR BELOW this.
       meets: avgBills <= maxFixedExpenses,
     },
-    { key: "maxMortgage", target: maxMortgage, actual: null, meets: null },
+    {
+      key: "maxMortgage",
+      target: maxMortgage,
+      // The Financiamento parcela, which is also counted inside avgBills
+      // above — shown separately here because this card is the one asking
+      // specifically about housing.
+      actual: avgMortgage,
+      // Cap: the parcela should stay AT OR BELOW this.
+      meets: avgMortgage <= maxMortgage,
+    },
     { key: "emergencyFund", target: emergencyFund, actual: null, meets: null },
     {
       key: "financialFreedom",

@@ -20,16 +20,17 @@ overall picture and shown separately where the user is asking specifically about
 it. Amortizações extraordinárias are one-off by nature and averaging them across a
 window flatters or damns a month at random — they stay out.
 
-Confirm the shape before building.
+**Confirmed: both.** The parcela joins the Contas average and also
+becomes the actual for the housing benchmark.
 
 **Blocked by:** 05, 11.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The parcela of each month in the window counts toward the Contas average
-- [ ] Amortizações extraordinárias do not
-- [ ] The mortgage benchmark shows an actual to compare against
-- [ ] The Contas average matches the Contas total the monthly view shows for the
+- [x] The parcela of each month in the window counts toward the Contas average
+- [x] Amortizações extraordinárias do not
+- [x] The mortgage benchmark shows an actual to compare against
+- [x] The Contas average matches the Contas total the monthly view shows for the
       same month
-- [ ] A space with no Financiamento sees unchanged figures
-- [ ] A window in which a loan starts partway through is covered by a test
+- [x] A space with no Financiamento sees unchanged figures
+- [x] A window in which a loan starts partway through is covered by a test

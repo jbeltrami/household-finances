@@ -147,8 +147,14 @@ export type IdealSettings = {
 export type BucketAverages = {
   monthsUsed: number;
   avgIncome: number;
-  avgBills: number;     // recurring obligations (template_id IS NOT NULL)
-  avgExpenses: number;  // one-off spending      (template_id IS NULL)
+  // Recurring obligations. Includes the Financiamento parcela, because a
+  // parcela is exactly that and leaving it out understated the figure by
+  // what is usually a household's largest fixed outflow.
+  avgBills: number;
+  avgExpenses: number;  // one-off spending (template_id IS NULL)
+  // The parcela alone, so the housing benchmark has something to compare
+  // against. A subset of avgBills, not an addition to it.
+  avgMortgage: number;
 };
 
 // A single benchmark card. `actual` and `meets` are present only for

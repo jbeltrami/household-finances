@@ -28,7 +28,7 @@ export const INSIGHT_META: Record<Insight["key"], InsightMeta> = {
   maxMortgage: {
     title: "Teto de moradia / mês",
     meaning: "Parcela máxima de moradia (aluguel/financiamento) por mês.",
-    compareLabel: null,
+    compareLabel: "Média de parcelas de financiamento",
   },
   emergencyFund: {
     title: "Reserva de emergência",
