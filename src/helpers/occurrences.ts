@@ -14,7 +14,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { checkDateEditable, checkEntryEditable } from "./lock";
-import { requirePersonalSpaceId } from "./spaces";
+import { requireSession } from "./session";
 import type { EntryMutationTarget } from "./types";
 
 // The fields a mutation can set on an occurrence. Everything else about the
@@ -65,7 +65,7 @@ export async function writeOccurrence(
     };
   }
 
-  const spaceId = await requirePersonalSpaceId(supabase);
+  const { spaceId } = await requireSession(supabase);
 
   const check = await checkDateEditable(supabase, spaceId, target.date);
   if (!check.ok) return check;
