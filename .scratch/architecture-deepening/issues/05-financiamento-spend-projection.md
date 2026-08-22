@@ -10,11 +10,11 @@ changes is the number of round-trips behind it and where the schedule is built.
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The spend rows are a pure projection over the shared hydration
-- [ ] Hydration happens once for the space rather than once per Financiamento
-- [ ] The existing spend-row tests still pass against the projection
-- [ ] Gastos por categoria reports the same totals for a given year
-- [ ] An unpaid parcela still counts as nothing
-- [ ] A parcela or extra dated outside the range still counts as nothing
+- [x] The spend rows are a pure projection over the shared hydration
+- [x] Hydration happens once for the space rather than once per Financiamento
+- [x] The existing spend-row tests still pass against the projection
+- [x] Gastos por categoria reports the same totals for a given year
+- [x] An unpaid parcela still counts as nothing
+- [x] A parcela or extra dated outside the range still counts as nothing

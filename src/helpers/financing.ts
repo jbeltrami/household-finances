@@ -598,32 +598,32 @@ export function buildFinancingSpendRows(
   return rows;
 }
 
+// Every Financiamento's spend rows for one date range, flattened. The
+// schedule is the hydrated one — the loan as it stands today — which is
+// right here: this reports what was actually paid, and a payment recorded
+// after the range still happened on its own date.
+export function buildSpendRows(
+  ledger: HydratedFinancing[],
+  start: string,
+  end: string
+): FinancingSpendRow[] {
+  return ledger.flatMap(({ financing, schedule, paidNumbers, extras }) =>
+    buildFinancingSpendRows(
+      financing,
+      schedule.rows,
+      paidNumbers,
+      extras,
+      start,
+      end
+    )
+  );
+}
+
 export async function getFinancingSpendForRange(
   supabase: SupabaseClient,
   spaceId: string,
   start: string,
   end: string
 ): Promise<FinancingSpendRow[]> {
-  const financings = await getFinancings(supabase, spaceId);
-  if (financings.length === 0) return [];
-
-  const perFinancing = await Promise.all(
-    financings.map(async (f) => {
-      const [extras, paidNumbers] = await Promise.all([
-        getExtraPayments(supabase, f.id),
-        getPaidInstallments(supabase, f.id),
-      ]);
-      const schedule = buildFinancingSchedule(f, extras);
-      return buildFinancingSpendRows(
-        f,
-        schedule.rows,
-        paidNumbers,
-        extras,
-        start,
-        end
-      );
-    })
-  );
-
-  return perFinancing.flat();
+  return buildSpendRows(await getFinancingLedger(supabase, spaceId), start, end);
 }

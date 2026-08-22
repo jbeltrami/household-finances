@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildFinancingSpendRows } from "../financing";
+import {
+  buildFinancingSpendRows,
+  buildSpendRows,
+  type HydratedFinancing,
+} from "../financing";
 
 const CASA = {
   id: "fin-1",
@@ -135,5 +139,72 @@ describe("buildFinancingSpendRows", () => {
     it("returns nothing for a financing with no activity in range", () => {
       expect(rows([1, 5], [{ id: "x", date: "2020-01-01", amount: 1 }])).toEqual([]);
     });
+  });
+});
+
+// The composition above `buildFinancingSpendRows`: the same rules, applied to
+// every Financiamento a space has, flattened into one list for the fold.
+describe("buildSpendRows", () => {
+  function hydrated(
+    id: string,
+    name: string,
+    categoryId: string | null,
+    paid: number[]
+  ): HydratedFinancing {
+    return {
+      financing: {
+        id,
+        space_id: "space-1",
+        category_id: categoryId,
+        name,
+        principal: 15000,
+        interest_rate: 0,
+        rate_period: "monthly",
+        amortization_system: "sac",
+        start_date: "2025-12-08",
+        installments_total: SCHEDULE.length,
+        active: true,
+        created_at: "2025-11-01T00:00:00Z",
+      },
+      extras: [],
+      paidNumbers: new Set(paid),
+      schedule: {
+        rows: SCHEDULE.map((r) => ({
+          ...r,
+          interest: 0,
+          amortization: r.payment,
+          extraApplied: 0,
+          balanceAfter: 0,
+        })),
+        totals: { paid: 0, interest: 0, principal: 15000, extra: 0 },
+      },
+    };
+  }
+
+  it("returns nothing for a space with no Financiamentos", () => {
+    expect(buildSpendRows([], ...YEAR)).toEqual([]);
+  });
+
+  it("flattens several Financiamentos into one list", () => {
+    const ledger = [
+      hydrated("fin-1", "Casa", "cat-moradia", [2]),
+      hydrated("fin-2", "Carro", "cat-transporte", [2, 3]),
+    ];
+    const result = buildSpendRows(ledger, ...YEAR);
+    expect(result).toHaveLength(3);
+    expect(result.map((r) => r.category_id)).toEqual([
+      "cat-moradia",
+      "cat-transporte",
+      "cat-transporte",
+    ]);
+  });
+
+  it("applies the range to every Financiamento alike", () => {
+    const ledger = [
+      hydrated("fin-1", "Casa", "cat-moradia", [1]),
+      hydrated("fin-2", "Carro", "cat-transporte", [1]),
+    ];
+    // Parcela 1 falls in December 2025, outside the year.
+    expect(buildSpendRows(ledger, ...YEAR)).toEqual([]);
   });
 });
