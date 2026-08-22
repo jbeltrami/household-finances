@@ -6,10 +6,22 @@ This ticket covers only the assignment. Folding financing spend into the categor
 
 **Blocked by:** 01.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The Financiamento create form offers an optional Categoria, listing only active outflow Categorias
-- [ ] An existing Financiamento's Categoria can be changed
-- [ ] The Categoria is visible on the financing card
-- [ ] A Financiamento with no Categoria still saves and displays
-- [ ] Deactivated Categorias do not appear in the picker
+- [x] The Financiamento create form offers an optional Categoria, listing only active outflow Categorias
+- [x] An existing Financiamento's Categoria can be changed
+- [x] The Categoria is visible on the financing card
+- [x] A Financiamento with no Categoria still saves and displays
+- [x] Deactivated Categorias do not appear in the picker
+
+---
+
+**Done.** Typecheck and production build clean.
+
+Note on how "change an existing Financiamento's Categoria" was built. There is
+no financing edit form and deliberately still isn't: every other column on
+`financings` is an input to the amortization schedule, which is computed rather
+than stored, so a general edit form could silently reshape a schedule — and the
+installments already marked paid against it — by touching `principal` or
+`start_date`. Instead the Categoria gets a single-purpose action and a
+save-on-change picker on the detail page, which cannot reach anything else.

@@ -35,6 +35,7 @@ export async function createFinancing(
       id: newId,
       space_id: spaceId,
       name: f.name,
+      category_id: f.categoryId,
       principal: f.principal,
       interest_rate: f.interestRate,
       rate_period: f.ratePeriod,

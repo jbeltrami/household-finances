@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
+import { getCategories } from "@/helpers/taxonomy";
 import { financingNewUrl } from "@/helpers/paths";
 import {
   getFinancings,
@@ -19,7 +20,13 @@ export default async function FinancingPage() {
   const spaceId = await getPersonalSpaceId(supabase);
   if (!spaceId) notFound();
 
-  const financings = await getFinancings(supabase, spaceId);
+  const [financings, allCategories] = await Promise.all([
+    getFinancings(supabase, spaceId),
+    // Inactive included: a Financiamento filed under a since-deactivated
+    // Categoria must still show it rather than read as uncategorised.
+    getCategories(supabase, spaceId, "outflow", { includeInactive: true }),
+  ]);
+  const categoryNameById = new Map(allCategories.map((c) => [c.id, c.name]));
 
   // Per financing: pull its extra payments + paid installments, build the
   // schedule, and derive the summary (balance, progress, current payment).
@@ -75,6 +82,11 @@ export default async function FinancingPage() {
               key={financing.id}
               financing={financing}
               summary={summary}
+              categoryName={
+                financing.category_id
+                  ? categoryNameById.get(financing.category_id) ?? null
+                  : null
+              }
             />
           ))}
         </div>

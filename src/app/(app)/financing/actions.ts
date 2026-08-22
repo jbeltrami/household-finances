@@ -8,3 +8,4 @@ export { addExtraPayment } from "./actions/add-extra-payment";
 export { deleteExtraPayment } from "./actions/delete-extra-payment";
 export { toggleInstallmentPaid } from "./actions/toggle-installment-paid";
 export { setInstallmentPaid } from "./actions/set-installment-paid";
+export { setFinancingCategory } from "./actions/set-financing-category";

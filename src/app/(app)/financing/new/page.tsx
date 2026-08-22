@@ -1,9 +1,19 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { notFound } from "next/navigation";
 import { financingUrl } from "@/helpers/paths";
+import { createClient } from "@/lib/supabase/server";
+import { getPersonalSpaceId } from "@/helpers/spaces";
+import { getCategories } from "@/helpers/taxonomy";
 import NewFinancingForm from "../_components/NewFinancingForm/NewFinancingForm";
 
-export default function NewFinancingPage() {
+export default async function NewFinancingPage() {
+  const supabase = await createClient();
+  const spaceId = await getPersonalSpaceId(supabase);
+  if (!spaceId) notFound();
+
+  const categories = await getCategories(supabase, spaceId, "outflow");
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
       <Link
@@ -21,7 +31,7 @@ export default function NewFinancingPage() {
       </p>
 
       <div className="mt-6">
-        <NewFinancingForm />
+        <NewFinancingForm categories={categories} />
       </div>
     </div>
   );

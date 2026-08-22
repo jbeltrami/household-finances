@@ -11,6 +11,10 @@ type Props = {
   current?: { id: string; name: string } | null;
   name?: string;
   id?: string;
+  // Optional, for the save-on-change case. Left off, this stays an
+  // uncontrolled field that a plain <form> submission picks up.
+  onChange?: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  disabled?: boolean;
 };
 
 // The Categoria dropdown, shared by every form that assigns one.
@@ -27,6 +31,8 @@ export default function CategorySelect({
   current = null,
   name = "category_id",
   id,
+  onChange,
+  disabled = false,
 }: Props) {
   const currentIsRetired =
     current != null && !categories.some((c) => c.id === current.id);
@@ -36,6 +42,8 @@ export default function CategorySelect({
       id={id}
       name={name}
       defaultValue={current?.id ?? ""}
+      onChange={onChange}
+      disabled={disabled}
       className="field-input"
     >
       <option value="">Sem categoria</option>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
+import { getCategories } from "@/helpers/taxonomy";
 import { financingUrl } from "@/helpers/paths";
 import { brlFormatter } from "@/helpers/format";
 import Collapsible from "@/components/Collapsible/Collapsible";
@@ -19,6 +20,7 @@ import AmortizationSimulator from "../_components/AmortizationSimulator/Amortiza
 import ExtraPaymentForm from "../_components/ExtraPaymentForm/ExtraPaymentForm";
 import ExtraPaymentRow from "../_components/ExtraPaymentRow/ExtraPaymentRow";
 import DeactivateFinancingButton from "../_components/DeactivateFinancingButton/DeactivateFinancingButton";
+import FinancingCategoryPicker from "../_components/FinancingCategoryPicker/FinancingCategoryPicker";
 
 export default async function FinancingDetailPage({
   params,
@@ -33,6 +35,15 @@ export default async function FinancingDetailPage({
 
   const financing = await getFinancingById(supabase, id);
   if (!financing || !financing.active) notFound();
+
+  // Active for the picker, full list to resolve a Categoria that has since
+  // been deactivated — CategorySelect renders it so saving is not destructive.
+  const [categories, allCategories] = await Promise.all([
+    getCategories(supabase, spaceId, "outflow"),
+    getCategories(supabase, spaceId, "outflow", { includeInactive: true }),
+  ]);
+  const currentCategory =
+    allCategories.find((c) => c.id === financing.category_id) ?? null;
 
   const [extras, paid] = await Promise.all([
     getExtraPayments(supabase, id),
@@ -61,6 +72,14 @@ export default async function FinancingDetailPage({
           </p>
         </div>
         <DeactivateFinancingButton financingId={financing.id} />
+      </div>
+
+      <div className="mt-5 max-w-sm">
+        <FinancingCategoryPicker
+          financingId={financing.id}
+          categories={categories}
+          current={currentCategory}
+        />
       </div>
 
       {/* Summary */}

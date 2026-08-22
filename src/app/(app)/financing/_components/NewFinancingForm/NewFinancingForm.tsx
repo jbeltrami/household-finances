@@ -14,6 +14,8 @@ import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { createFinancing } from "../../actions";
 import { initialFormState } from "../../form-state";
 import AmortizationTable from "../AmortizationTable/AmortizationTable";
+import CategorySelect from "@/components/CategorySelect/CategorySelect";
+import type { CategoryRow } from "@/helpers/taxonomy";
 
 type FormValues = {
   name: string;
@@ -50,7 +52,11 @@ function previewSchedule(v: FormValues): Schedule | null {
   }
 }
 
-export default function NewFinancingForm() {
+type Props = {
+  categories: CategoryRow[];
+};
+
+export default function NewFinancingForm({ categories }: Props) {
   const [state, formAction, isPending] = useActionState(
     createFinancing,
     initialFormState
@@ -93,6 +99,17 @@ export default function NewFinancingForm() {
                 onChange={(e) => set("name", e.target.value)}
                 className="field-input"
               />
+            </div>
+
+            <div>
+              <label htmlFor="financing_category" className="field-label">
+                Categoria (opcional)
+              </label>
+              <CategorySelect id="financing_category" categories={categories} />
+              <p className="mt-1 text-xs text-muted">
+                Financiamento é calculado à parte do restante do mês, então
+                sem categoria ele fica de fora dos relatórios de gastos.
+              </p>
             </div>
 
             <div>

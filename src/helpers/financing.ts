@@ -16,6 +16,11 @@ import { getMonthRange, todayYmd } from "./date";
 export type FinancingRow = {
   id: string;
   space_id: string;
+  // Financiamento is a parallel ledger — its installments are computed from
+  // these parameters rather than written to `entries` — so it needs its own
+  // Categoria to be visible to spend reporting at all. Wiring it into the
+  // aggregation totals belongs to the report piece.
+  category_id: string | null;
   name: string;
   principal: number;
   interest_rate: number; // percent, as entered
@@ -66,12 +71,13 @@ export type FinancingSummary = {
 };
 
 const FINANCING_COLUMNS =
-  "id, space_id, name, principal, interest_rate, rate_period, amortization_system, start_date, installments_total, active, created_at";
+  "id, space_id, name, principal, interest_rate, rate_period, amortization_system, start_date, installments_total, active, created_at, category_id";
 
 function mapFinancing(r: Record<string, unknown>): FinancingRow {
   return {
     id: r.id as string,
     space_id: r.space_id as string,
+    category_id: (r.category_id as string | null) ?? null,
     name: r.name as string,
     principal: Number(r.principal),
     interest_rate: Number(r.interest_rate),

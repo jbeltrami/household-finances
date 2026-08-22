@@ -26,6 +26,7 @@ export async function callerOwnsFinancing(
 
 export type FinancingFields = {
   name: string;
+  categoryId: string | null;
   principal: number;
   interestRate: number;
   ratePeriod: RatePeriod;
@@ -71,8 +72,12 @@ export function parseFinancingFields(formData: FormData): FinancingFields {
     throw new Error("Quantidade de parcelas inválida");
   }
 
+  const categoryRaw = formData.get("category_id")?.toString().trim();
+  const categoryId = categoryRaw ? categoryRaw : null;
+
   return {
     name,
+    categoryId,
     principal,
     interestRate,
     ratePeriod,

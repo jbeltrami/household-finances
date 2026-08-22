@@ -6,11 +6,12 @@ import type { FinancingRow, FinancingSummary } from "@/helpers/financing";
 import { systemLabel } from "../../_helpers";
 
 type Props = {
+  categoryName?: string | null;
   financing: FinancingRow;
   summary: FinancingSummary;
 };
 
-export default function FinancingCard({ financing, summary }: Props) {
+export default function FinancingCard({ categoryName, financing, summary }: Props) {
   const pct =
     summary.total > 0
       ? Math.round((summary.paidCount / summary.total) * 100)
@@ -24,6 +25,7 @@ export default function FinancingCard({ financing, summary }: Props) {
             <h3 className="font-medium text-fg">{financing.name}</h3>
             <p className="mt-0.5 text-xs text-muted">
               {systemLabel(financing.amortization_system)}
+              {categoryName ? ` · ${categoryName}` : " · Sem categoria"}
             </p>
           </div>
           <div className="text-right">
