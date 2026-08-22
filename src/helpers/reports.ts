@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addMonthsYm, getMonthRange, todayYmd } from "./date";
 import { getEntriesForMonth } from "./ledger";
 import { foldNonEmptyMonths } from "./report-months";
+import { summarizeMonth, type MonthTotals } from "./month-summary";
 import { getFinancingReport, type FinancingReportRow } from "./financing";
 import { renderMonthlyReportPdf } from "@/lib/pdf/MonthlyReportPdf";
 import type { ResolvedEntry } from "./types";
@@ -46,17 +47,10 @@ export type MonthlyReportData = {
   expenses: ReportEntryRow[];
   income: ReportIncomeRow[];
   financings: FinancingReportRow[];
-  totals: {
-    totalBills: number;
-    paidBills: number;
-    remainingBills: number;
-    totalIncome: number;
-    receivedIncome: number;
-    stillToReceive: number;
-    totalExpenses: number;
-    netExpected: number;
-    netSoFar: number;
-  };
+  // The same figures the monthly view shows, from the same fold — so the PDF
+  // and the screen agree by construction rather than by two implementations
+  // happening to match.
+  totals: MonthTotals;
 };
 
 // Fetch the full data needed to render a monthly report PDF for the
@@ -145,31 +139,20 @@ export async function getMonthlyReportData(
     return null;
   }
 
-  const totalBills = bills.reduce((s, e) => s + e.amount, 0);
-  const paidBills = bills
-    .filter((e) => e.paid)
-    .reduce((s, e) => s + e.amount, 0);
-  const remainingBills = totalBills - paidBills;
-
-  const totalIncome = income.reduce((s, i) => s + i.amount, 0);
-  const receivedIncome = income
-    .filter((i) => i.received)
-    .reduce((s, i) => s + i.amount, 0);
-  const stillToReceive = totalIncome - receivedIncome;
-
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-
-  // Mirror the monthly view's netSoFar formula. For past months this
-  // collapses to received - totalBills - expenses since every unpaid
-  // bill is overdue by definition.
-  const today = todayYmd();
-  const overdueUnpaidBills = bills
-    .filter((e) => !e.paid && e.date <= today)
-    .reduce((s, e) => s + e.amount, 0);
-
-  const netExpected = totalIncome - totalBills - totalExpenses;
-  const netSoFar =
-    receivedIncome - paidBills - overdueUnpaidBills - totalExpenses;
+  // Financiamento goes in through its own slot rather than pre-merged, so
+  // the fold sees the same separation the monthly view gives it. The merged
+  // `bills` and `expenses` above are for rendering the PDF's line tables.
+  //
+  // For a past month `netSoFar` collapses to received minus everything,
+  // since every unpaid Conta is overdue by then — but that is a fact about
+  // the calendar, not a licence to compute it differently.
+  const totals = summarizeMonth({
+    bills: resolvedBills.map(toRow),
+    expenses: resolvedExpenses.map(toRow),
+    income,
+    financing: { bills: fin.installmentRows, expenses: fin.extraRows },
+    today: todayYmd(),
+  });
 
   return {
     spaceName: space.name as string,
@@ -179,17 +162,7 @@ export async function getMonthlyReportData(
     expenses,
     income,
     financings: fin.financings,
-    totals: {
-      totalBills,
-      paidBills,
-      remainingBills,
-      totalIncome,
-      receivedIncome,
-      stillToReceive,
-      totalExpenses,
-      netExpected,
-      netSoFar,
-    },
+    totals,
   };
 }
 

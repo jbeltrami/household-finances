@@ -298,13 +298,13 @@ function MonthlyReportPdf({ data, generatedAt }: Props) {
           {income.length > 0 ? (
             <View style={styles.summary}>
               <Text style={styles.summaryItem}>
-                Esperado: {brlFormatter.format(totals.totalIncome)}
+                Esperado: {brlFormatter.format(totals.income.total)}
               </Text>
               <Text style={styles.summaryItem}>
-                Recebido: {brlFormatter.format(totals.receivedIncome)}
+                Recebido: {brlFormatter.format(totals.income.received)}
               </Text>
               <Text style={styles.summaryItem}>
-                A receber: {brlFormatter.format(totals.stillToReceive)}
+                A receber: {brlFormatter.format(totals.income.stillExpected)}
               </Text>
             </View>
           ) : null}
@@ -316,13 +316,13 @@ function MonthlyReportPdf({ data, generatedAt }: Props) {
           {bills.length > 0 ? (
             <View style={styles.summary}>
               <Text style={styles.summaryItem}>
-                Total: {brlFormatter.format(totals.totalBills)}
+                Total: {brlFormatter.format(totals.bills.total)}
               </Text>
               <Text style={styles.summaryItem}>
-                Pago: {brlFormatter.format(totals.paidBills)}
+                Pago: {brlFormatter.format(totals.bills.paid)}
               </Text>
               <Text style={styles.summaryItem}>
-                Falta pagar: {brlFormatter.format(totals.remainingBills)}
+                Falta pagar: {brlFormatter.format(totals.bills.remaining)}
               </Text>
             </View>
           ) : null}
@@ -334,7 +334,7 @@ function MonthlyReportPdf({ data, generatedAt }: Props) {
           {expenses.length > 0 ? (
             <View style={styles.summary}>
               <Text style={styles.summaryItem}>
-                Total: {brlFormatter.format(totals.totalExpenses)}
+                Total: {brlFormatter.format(totals.expenses.total)}
               </Text>
             </View>
           ) : null}
@@ -350,13 +350,13 @@ function MonthlyReportPdf({ data, generatedAt }: Props) {
             <View style={styles.balanceRow}>
               <Text style={styles.balanceLabel}>Saldo esperado</Text>
               <Text style={styles.balanceValue}>
-                {brlFormatter.format(totals.netExpected)}
+                {brlFormatter.format(totals.balance.netExpected)}
               </Text>
             </View>
             <View style={styles.balanceRow}>
               <Text style={styles.balanceLabel}>Saldo até o momento</Text>
               <Text style={styles.balanceValue}>
-                {brlFormatter.format(totals.netSoFar)}
+                {brlFormatter.format(totals.balance.netSoFar)}
               </Text>
             </View>
           </View>

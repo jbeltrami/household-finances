@@ -11,12 +11,12 @@ a report generated mid-month is where they can part company.
 
 **Blocked by:** 04, 08.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The report's totals come from the shared module
-- [ ] Its own copy of the arithmetic is deleted
-- [ ] A PDF regenerated for a past month is unchanged
-- [ ] A PDF generated for the current month shows the figures the monthly view
+- [x] The report's totals come from the shared module
+- [x] Its own copy of the arithmetic is deleted
+- [x] A PDF regenerated for a past month is unchanged
+- [x] A PDF generated for the current month shows the figures the monthly view
       shows that same day
-- [ ] Financiamento still appears both in the totals and in its own section
-- [ ] A month with nothing in it is still skipped rather than reported empty
+- [x] Financiamento still appears both in the totals and in its own section
+- [x] A month with nothing in it is still skipped rather than reported empty
