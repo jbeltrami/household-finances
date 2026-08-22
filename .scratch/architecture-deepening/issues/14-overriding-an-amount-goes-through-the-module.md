@@ -6,13 +6,13 @@ comment goes with it.
 
 **Blocked by:** 13.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Overriding the amount on a virtual occurrence goes through the module
-- [ ] The override writes an exception for that month only, leaving the Conta
+- [x] Overriding the amount on a virtual occurrence goes through the module
+- [x] The override writes an exception for that month only, leaving the Conta
       itself and every other month untouched
-- [ ] The overridden occurrence still shows its Conta's Categoria
-- [ ] Overriding an already-materialized occurrence still works
-- [ ] Overriding in a locked month is still refused
-- [ ] An invalid amount still comes back as an inline error rather than an error
+- [x] The overridden occurrence still shows its Conta's Categoria
+- [x] Overriding an already-materialized occurrence still works
+- [x] Overriding in a locked month is still refused
+- [x] An invalid amount still comes back as an inline error rather than an error
       page
