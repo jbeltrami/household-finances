@@ -11,6 +11,7 @@ import UnlockBanner from "../UnlockBanner/UnlockBanner";
 import type { MonthlyViewProps } from "../../_types";
 
 export default function MonthlyViewClient({
+  outflowCategories,
   year,
   month,
   monthOptions,
@@ -66,6 +67,7 @@ export default function MonthlyViewClient({
           highlightedDay={highlightedDay}
         />
         <ExpensesSection
+          categories={outflowCategories}
           expenses={expenses}
           year={year}
           month={month}

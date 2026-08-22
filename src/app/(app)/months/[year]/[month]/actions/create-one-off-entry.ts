@@ -6,7 +6,7 @@ import { monthUrl } from "@/helpers/paths";
 import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { checkDateEditable } from "@/helpers/lock";
 import { todayYmd } from "@/helpers/date";
-import { categoryFor, isBillIconKey } from "@/lib/icons/bills";
+import { isBillIconKey } from "@/lib/icons/bills";
 import { type FormState } from "../form-state";
 
 // Create a one-off entry (money-out event with no template). The
@@ -14,9 +14,10 @@ import { type FormState } from "../form-state";
 // by its `date` field, so a user adding an entry with a date in a
 // different month naturally lands it there.
 //
-// Category is derived from the picked icon (see src/lib/icons/bills.ts).
-// We don't accept a free-text category any more — the icon is the
-// single source of truth so reports can group reliably.
+// Categoria is an explicit, optional choice. It used to be derived from
+// the picked icon, which meant choosing a coffee cup silently filed the
+// Despesa under "Consumo". Icon and Categoria are now independent: a
+// Despesa with no icon of its own displays its Categoria's.
 export async function createOneOffEntry(
   viewedYear: number,
   viewedMonth: number,
@@ -62,7 +63,10 @@ export async function createOneOffEntry(
       if (!isBillIconKey(iconRaw)) return { error: "Ícone inválido" };
       icon = iconRaw;
     }
-    const category = categoryFor(icon);
+
+    // Empty string is what an unselected <select> submits.
+    const categoryRaw = formData.get("category_id")?.toString().trim();
+    const categoryId = categoryRaw ? categoryRaw : null;
 
     const check = await checkDateEditable(supabase, spaceId, date);
     if (!check.ok) return { error: check.error };
@@ -73,7 +77,7 @@ export async function createOneOffEntry(
       name,
       amount,
       currency: "BRL",
-      category,
+      category_id: categoryId,
       icon,
       notes: notesRaw || null,
       paid: false,

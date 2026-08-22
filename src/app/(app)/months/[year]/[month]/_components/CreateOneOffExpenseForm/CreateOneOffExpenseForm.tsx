@@ -2,17 +2,21 @@
 
 import { useRef, useState, useTransition } from "react";
 import IconPicker from "@/components/IconPicker/IconPicker";
+import type { CategoryRow } from "@/helpers/taxonomy";
+import CategorySelect from "@/components/CategorySelect/CategorySelect";
 import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { defaultEntryDate } from "@/helpers/date";
 import { createOneOffEntry } from "../../actions";
 
 type Props = {
+  categories: CategoryRow[];
   year: number;
   month: number;
   onSuccess?: () => void;
 };
 
 export default function CreateOneOffExpenseForm({
+  categories,
   year,
   month,
   onSuccess,
@@ -84,6 +88,13 @@ export default function CreateOneOffExpenseForm({
           />
         </div>
         <div className="sm:col-span-2">
+          <label htmlFor="expense_category" className="field-label">
+            Categoria (opcional)
+          </label>
+          <CategorySelect id="expense_category" categories={categories} />
+        </div>
+
+        <div>
           <label className="field-label">Ícone (opcional)</label>
           <IconPicker />
         </div>

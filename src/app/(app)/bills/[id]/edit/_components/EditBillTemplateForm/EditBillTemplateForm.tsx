@@ -14,7 +14,7 @@ type Template = {
   name: string;
   default_amount: number | string;
   icon: string | null;
-  category_id: string | null;
+  category: { id: string; name: string } | null;
   due_day: number | null;
   cadence: string | null;
   day_of_week: number | null;
@@ -43,7 +43,7 @@ export default function EditBillTemplateForm({ template, categories }: Props) {
             name: template.name,
             defaultAmount: template.default_amount,
             icon: template.icon,
-            categoryId: template.category_id,
+            category: template.category,
             cadence: template.cadence ?? undefined,
             dueDay: template.due_day,
             dayOfWeek: template.day_of_week,

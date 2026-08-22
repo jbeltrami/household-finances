@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { todayYmd, getMonthRange } from "@/helpers/date";
 import { fetchMonthUnlock, isMonthLocked } from "@/helpers/lock";
 import { getEntriesForMonth } from "@/helpers/ledger";
+import { getCategories } from "@/helpers/taxonomy";
 import { getFinancingMonthItems } from "@/helpers/financing";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 import { buildMonthOptions } from "./_helpers";
@@ -37,8 +38,14 @@ export default async function MonthlyViewPage({
   //   2. All unlocked-month rows for this space — drives the month dropdown.
   //   3. Unified ledger fetch (virtual + materialized entries).
   //   4. Income for the date range (no virtual-expansion layer).
-  const [unlock, existingUnlocksRes, resolved, rawIncomeRes, financingItems] =
-    await Promise.all([
+  const [
+    unlock,
+    existingUnlocksRes,
+    resolved,
+    rawIncomeRes,
+    financingItems,
+    outflowCategories,
+  ] = await Promise.all([
       fetchMonthUnlock(supabase, spaceId, year, month),
       supabase
         .from("month_unlocks")
@@ -53,6 +60,10 @@ export default async function MonthlyViewPage({
         .lte("expected_date", end)
         .order("expected_date", { ascending: true }),
       getFinancingMonthItems(supabase, spaceIds, year, month),
+      // Active only: a deactivated Categoria must not be offerable on a new
+      // Despesa. Rows already filed under one still render it, because
+      // getEntriesForMonth resolves Categorias by id regardless of active.
+      getCategories(supabase, spaceId, "outflow"),
     ]);
 
   // Financing installments surface as bills; extra payments as expenses.
@@ -169,6 +180,7 @@ export default async function MonthlyViewPage({
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
       <MonthlyViewClient
+        outflowCategories={outflowCategories}
         // Remount (reset highlighted-day state) whenever the URL
         // points at a different month.
         key={`${year}-${month}`}

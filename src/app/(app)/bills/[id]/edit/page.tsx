@@ -27,7 +27,17 @@ export default async function EditBillTemplatePage({
   const spaceId = await getPersonalSpaceId(supabase);
   if (!spaceId) notFound();
 
-  const categories = await getCategories(supabase, spaceId, "outflow");
+  // Two lists on purpose. The picker offers only active Categorias, but the
+  // template may already be filed under one that has since been deactivated,
+  // and the form needs its name to render it as the current selection —
+  // otherwise saving would silently strip it. See CategorySelect.
+  const [categories, allCategories] = await Promise.all([
+    getCategories(supabase, spaceId, "outflow"),
+    getCategories(supabase, spaceId, "outflow", { includeInactive: true }),
+  ]);
+
+  const current =
+    allCategories.find((c) => c.id === template.category_id) ?? null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
@@ -39,7 +49,10 @@ export default async function EditBillTemplatePage({
       </h1>
 
       <div className="mt-6">
-        <EditBillTemplateForm template={template} categories={categories} />
+        <EditBillTemplateForm
+          template={{ ...template, category: current }}
+          categories={categories}
+        />
       </div>
     </div>
   );

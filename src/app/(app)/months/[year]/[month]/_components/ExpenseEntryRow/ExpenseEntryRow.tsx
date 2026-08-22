@@ -5,6 +5,8 @@ import { Pencil, Trash2 } from "lucide-react";
 import BillIcon from "@/components/BillIcon";
 import CategoryChip from "@/components/CategoryChip";
 import IconPicker from "@/components/IconPicker/IconPicker";
+import type { CategoryRow } from "@/helpers/taxonomy";
+import CategorySelect from "@/components/CategorySelect/CategorySelect";
 import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
 import { deleteEntry, updateEntry } from "../../actions";
@@ -12,6 +14,7 @@ import type { EntryRow } from "../../_types";
 
 type Props = {
   expense: EntryRow;                 // template_id is guaranteed null here
+  categories: CategoryRow[];         // active outflow Categorias
   year: number;
   month: number;
   locked: boolean;
@@ -20,6 +23,7 @@ type Props = {
 
 export default function ExpenseEntryRow({
   expense,
+  categories,
   year,
   month,
   locked,
@@ -90,6 +94,13 @@ export default function ExpenseEntryRow({
                 name="amount"
                 required
                 defaultValue={String(expense.amount)}
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <label className="field-label">Categoria (opcional)</label>
+              <CategorySelect
+                categories={categories}
+                current={expense.category}
               />
             </div>
             <div className="sm:col-span-3">

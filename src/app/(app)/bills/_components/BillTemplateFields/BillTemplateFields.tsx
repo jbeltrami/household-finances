@@ -4,6 +4,7 @@ import { useState } from "react";
 import IconPicker from "@/components/IconPicker/IconPicker";
 import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import type { CategoryRow } from "@/helpers/taxonomy";
+import CategorySelect from "@/components/CategorySelect/CategorySelect";
 
 const DAY_OPTIONS = [
   { value: "0", label: "Dom" },
@@ -28,7 +29,9 @@ export type BillTemplateFieldDefaults = {
   name?: string;
   defaultAmount?: number | string;
   icon?: string | null;
-  categoryId?: string | null;
+  // The whole Categoria, not just its id: the select needs the name to
+  // render it when it has since been deactivated.
+  category?: { id: string; name: string } | null;
   cadence?: string;
   dueDay?: number | null;
   dayOfWeek?: number | null;
@@ -90,19 +93,11 @@ export default function BillTemplateFields({ defaults, categories }: Props) {
           <label htmlFor="category_id" className="field-label">
             Categoria (opcional)
           </label>
-          <select
+          <CategorySelect
             id="category_id"
-            name="category_id"
-            defaultValue={defaults?.categoryId ?? ""}
-            className="field-input"
-          >
-            <option value="">Sem categoria</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
+            categories={categories}
+            current={defaults?.category ?? null}
+          />
           <p className="mt-1 text-xs text-muted">
             Agrupa a conta nos relatórios. Mudar a categoria move todo o
             histórico dela junto.

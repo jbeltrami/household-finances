@@ -8,9 +8,11 @@ import ExpenseEntryRow from "../ExpenseEntryRow/ExpenseEntryRow";
 import MortgageExpenseRow from "../MortgageExpenseRow/MortgageExpenseRow";
 import { brlFormatter } from "@/helpers/format";
 import type { ExpensesGroup } from "../../_types";
+import type { CategoryRow } from "@/helpers/taxonomy";
 
 type Props = {
   expenses: ExpensesGroup;
+  categories: CategoryRow[];
   year: number;
   month: number;
   locked: boolean;
@@ -19,6 +21,7 @@ type Props = {
 
 export default function ExpensesSection({
   expenses,
+  categories,
   year,
   month,
   locked,
@@ -58,6 +61,7 @@ export default function ExpensesSection({
       {!locked && showAddForm && (
         <div className="mt-4">
           <CreateOneOffExpenseForm
+            categories={categories}
             year={year}
             month={month}
             onSuccess={() => setShowAddForm(false)}
@@ -76,6 +80,7 @@ export default function ExpensesSection({
           ))}
           {expenses.entries.map((expense) => (
             <ExpenseEntryRow
+              categories={categories}
               key={expense.id!}
               expense={expense}
               year={year}

@@ -4,6 +4,7 @@ import type {
   MortgageExpenseItem,
 } from "@/helpers/financing";
 import type { ResolvedCategory } from "@/helpers/types";
+import type { CategoryRow } from "@/helpers/taxonomy";
 
 export type { ResolvedCategory };
 
@@ -94,6 +95,9 @@ export type EntryMutationTarget =
   | { kind: "virtual"; templateId: string; date: string };
 
 export type MonthlyViewProps = {
+  // Active outflow Categorias, for the Despesa forms. Resolved server-side
+  // once and fanned out, rather than fetched per form.
+  outflowCategories: CategoryRow[];
   year: number;
   month: number;
   monthOptions: YearMonth[];
