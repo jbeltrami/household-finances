@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
-import { getCategories } from "@/helpers/taxonomy";
+import { getTaxonomy } from "@/helpers/taxonomy";
 import { financingUrl } from "@/helpers/paths";
 import { brlFormatter } from "@/helpers/format";
 import Collapsible from "@/components/Collapsible/Collapsible";
@@ -38,14 +38,12 @@ export default async function FinancingDetailPage({
   if (!hydrated) notFound();
   const { financing, extras, paidNumbers } = hydrated;
 
-  // Active for the picker, full list to resolve a Categoria that has since
+  // `active` for the picker, `byId` to resolve a Categoria that has since
   // been deactivated — CategorySelect renders it so saving is not destructive.
-  const [categories, allCategories] = await Promise.all([
-    getCategories(supabase, spaceId, "outflow"),
-    getCategories(supabase, spaceId, "outflow", { includeInactive: true }),
-  ]);
-  const currentCategory =
-    allCategories.find((c) => c.id === financing.category_id) ?? null;
+  const { outflow } = await getTaxonomy(supabase, spaceId);
+  const currentCategory = financing.category_id
+    ? outflow.byId.get(financing.category_id) ?? null
+    : null;
 
   const summary = buildSummary(hydrated);
 
@@ -74,7 +72,7 @@ export default async function FinancingDetailPage({
       <div className="mt-5 max-w-sm">
         <FinancingCategoryPicker
           financingId={financing.id}
-          categories={categories}
+          categories={outflow.active}
           current={currentCategory}
         />
       </div>

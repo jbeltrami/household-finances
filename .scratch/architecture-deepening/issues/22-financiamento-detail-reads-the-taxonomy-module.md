@@ -6,9 +6,9 @@ Categoria still shows it. It reads the shared module instead.
 
 **Blocked by:** 21.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The page reads the taxonomy module
-- [ ] The picker still offers only active Categorias
-- [ ] A Financiamento filed under a deactivated Categoria still shows it
-- [ ] Saving from that state does not silently clear the Categoria
+- [x] The page reads the taxonomy module
+- [x] The picker still offers only active Categorias
+- [x] A Financiamento filed under a deactivated Categoria still shows it
+- [x] Saving from that state does not silently clear the Categoria
