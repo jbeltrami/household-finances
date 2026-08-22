@@ -56,14 +56,14 @@ spaces
 
 recurring_bill_templates
   id, space_id, name
-  default_amount, currency, category (nullable), active, created_at
+  default_amount, currency, category_id (nullable fk -> categories), active, created_at
   cadence ('monthly' | 'weekly' | 'biweekly'), due_day, day_of_week, biweekly_anchor
   installments_total (nullable int), installments_start_month (nullable date, day=1)
   -- installments_total set => bounded series on monthly cadence; null => indefinite
 
 entries
   id, space_id, date, name, amount, currency
-  category (nullable), notes (nullable)
+  category_id (nullable fk -> categories), notes (nullable)
   paid (bool, default false)
   skipped (bool, default false)
   template_id (nullable fk -> recurring_bill_templates)
@@ -80,7 +80,21 @@ month_unlocks
   PK (space_id, year, month)
 
 income_entries
-  id, space_id, expected_date, name, amount, currency, received, created_at
+  id, space_id, expected_date, name (nullable), amount, currency, received, created_at
+  category_id (nullable fk -> categories), payer_id (nullable fk -> payers)
+  -- name is optional: Pagador and Categoria carry the structure it used to
+  -- smuggle ("Freelance XYZ"). A nameless Receita renders as "Pagador · Categoria".
+
+categories
+  id, space_id, kind ('income' | 'outflow'), name
+  icon (nullable), color, active, created_at
+  -- user-managed, seeded per space by the on_space_created trigger
+  -- partial unique (space_id, kind, lower(trim(name))) WHERE active
+
+payers
+  id, space_id, name, color, active, created_at
+  -- income-only: on the outflow side the counterparty is the Conta's own name
+  -- partial unique (space_id, lower(trim(name))) WHERE active
 
 monthly_reports
   id, space_id, year, month
@@ -161,7 +175,7 @@ Net so far (received - paid)   R$18.530
 - RLS: enabled on all tables
 - Auth provider: Google OAuth only
 - Migrations live in `supabase/migrations/` (see `history.md` for the evolution story)
-- Current highest migration: `0012_categories_and_payers.sql` — next new migration should be `0013_*.sql` (and `0013_drop_category_text.sql` is already owed: it drops the `category` text columns that 0012 deliberately left in place)
+- Current highest migration: `0013_drop_category_text.sql` — next new migration should be `0014_*.sql`
 - Schema changes are managed via the Supabase CLI (`supabase db push`). Never edit production schema by hand via the dashboard SQL editor — that creates drift the CLI can't see
 
 ### Environment variables
@@ -244,6 +258,7 @@ Route-specific helpers live in the route's `_helpers.ts`. Third-party integratio
 - **WhatsApp overdue cron — `template_id IS NOT NULL` is mandatory** — the `entries` table mixes one-off expenses (`template_id IS NULL`) and recurring-bill exceptions/virtual occurrences (`template_id IS NOT NULL`). For "overdue alert" semantics, only the latter qualify — one-off entries are historical records of money already spent (or planned standalone purchases), not obligations needing a reminder. Any new "due-date" / "past-due" / "reminder" feature must inherit this filter. Note: the existing `netSoFar` balance math intentionally treats *all* unpaid past-dated entries as overdue (that's a cash-reality calculation, not an obligation reminder) — different question, different filter
 - **WhatsApp idempotency: "one alert per overdue stretch, per bill"** — `whatsapp_notifications_sent` records each notified bill. Materialized rows key by `(space_id, entry_id)`; virtual recurring occurrences key by `(space_id, template_id, occurrence_date)`. A CHECK enforces exactly-one-of, and two partial unique indexes enforce no-double-notify on each side. The cron handles the cross-case where a virtual occurrence we already notified gets materialized later — by checking the template-key set against materialized entries too, so we don't re-alert. **`toggleEntryPaid` clears the matching log rows on the unpaid → paid transition** — both possible key shapes — so if the user accidentally toggles paid back to unpaid, the next cron run treats it as a fresh overdue stretch and re-alerts. Past-month bills are still gated by the `date >= start_of_current_month` filter, so unlocking a past month doesn't re-spam every overdue bill in it. All log writes (insert from cron, delete from `toggleEntryPaid`) go through the admin client; SELECT is `is_active_member` for an eventual history UI
 - **Twilio WhatsApp uses direct REST, not the SDK** — `src/lib/whatsapp/client.ts` calls Twilio's Messages endpoint via `fetch` with HTTP Basic auth (Account SID + Auth Token). The full `twilio` SDK is ~5 MB for capabilities we don't use. Sandbox vs production: in sandbox we send free-form text bodies and the recipient must opt in via `join <code>`; in production we'd switch to a Meta-approved Content Template SID and remove the join step. The client function takes a body string today — when we graduate to production, refactor to take a template ID + variables instead
+- **An icon is only ever an icon** — `src/lib/icons/registry.ts` used to do a second job: each entry carried a `category`, and `categoryFor(icon)` was the authoritative source of an entry's Categoria, so picking the wifi icon silently filed a Conta under "Moradia". That derivation is gone. Icon and Categoria are chosen independently, and a row with no icon of its own falls back to its Categoria's. The registry is flat for the same reason: the old picker's group headings were those hardcoded category names, which would now tell a user "Moradia" while their own list says "Casa"
 - **`category_id` is inherited, not snapshotted** — on a template-bound entry (`template_id IS NOT NULL`), `category_id IS NULL` means *inherit from the template*; on a one-off it means *uncategorised*. `template_id` is what disambiguates the overloaded null. This is deliberately unlike `name` and `amount`, which **are** frozen into the row at materialization — an amount is a fact about a payment, a category is a classification of the bill, and freezing the latter splits one bill's history in two the moment the user reorganises their list. Category aggregation therefore has to join `recurring_bill_templates` for the null case; don't "optimise" that join away by reintroducing the copy. Full reasoning in `docs/adr/0001-categories-are-referenced-not-snapshotted.md`
 - **`categories.kind` is `'income' | 'outflow'` — never `'expense'`** — `CONTEXT.md` binds *expense* to Despesas specifically, so an `'expense'` category would read as excluding Contas. *Outflow* is the umbrella: Contas, Despesas and Financiamentos alike. Always read the list through a kind-filtered helper — Postgres cannot enforce that an outflow row points at an outflow category, so that invariant lives in application code
 
