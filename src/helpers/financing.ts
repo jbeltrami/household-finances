@@ -334,6 +334,16 @@ export async function getFinancingLedger(
   });
 }
 
+// --- Projection: one loan's standing today -------------------
+
+// Progress and saldo devedor for a hydrated Financiamento. A thin wrapper
+// over `summarizeFinancing`, and worth having: taking the three pieces
+// separately let a caller pair a schedule with another loan's paid parcelas,
+// and every caller was reassembling the same three anyway.
+export function buildSummary(h: HydratedFinancing): FinancingSummary {
+  return summarizeFinancing(h.schedule, h.paidNumbers, h.extras);
+}
+
 // --- Projection: the monthly report --------------------------
 
 // Per-financing standing for a monthly report, plus the month's parcela and

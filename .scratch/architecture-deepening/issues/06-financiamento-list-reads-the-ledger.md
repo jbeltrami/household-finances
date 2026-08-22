@@ -9,12 +9,12 @@ paid parcelas and every extra already made — moves with it and gets tests.
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The page hydrates through the shared module rather than per Financiamento
-- [ ] The summary becomes a pure projection, tested as plain data
-- [ ] An extra dated in the future does not reduce today's saldo devedor
-- [ ] A recorded extra reduces the balance immediately, before any parcela is
+- [x] The page hydrates through the shared module rather than per Financiamento
+- [x] The summary becomes a pure projection, tested as plain data
+- [x] An extra dated in the future does not reduce today's saldo devedor
+- [x] A recorded extra reduces the balance immediately, before any parcela is
       marked paid
-- [ ] Parcela atual is the next unpaid parcela, and zero once the loan is settled
-- [ ] Every card shows the figures it shows today
+- [x] Parcela atual is the next unpaid parcela, and zero once the loan is settled
+- [x] Every card shows the figures it shows today

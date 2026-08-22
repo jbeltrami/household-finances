@@ -5,13 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 import { getCategories } from "@/helpers/taxonomy";
 import { financingNewUrl } from "@/helpers/paths";
-import {
-  getFinancings,
-  getExtraPayments,
-  getPaidInstallments,
-  buildFinancingSchedule,
-  summarizeFinancing,
-} from "@/helpers/financing";
+import { getFinancingLedger, buildSummary } from "@/helpers/financing";
 import FinancingCard from "./_components/FinancingCard/FinancingCard";
 
 export default async function FinancingPage() {
@@ -20,26 +14,20 @@ export default async function FinancingPage() {
   const spaceId = await getPersonalSpaceId(supabase);
   if (!spaceId) notFound();
 
-  const [financings, allCategories] = await Promise.all([
-    getFinancings(supabase, spaceId),
+  const [ledger, allCategories] = await Promise.all([
+    getFinancingLedger(supabase, spaceId),
     // Inactive included: a Financiamento filed under a since-deactivated
     // Categoria must still show it rather than read as uncategorised.
     getCategories(supabase, spaceId, "outflow", { includeInactive: true }),
   ]);
   const categoryNameById = new Map(allCategories.map((c) => [c.id, c.name]));
 
-  // Per financing: pull its extra payments + paid installments, build the
-  // schedule, and derive the summary (balance, progress, current payment).
-  const withSummary = await Promise.all(
-    financings.map(async (f) => {
-      const [extras, paid] = await Promise.all([
-        getExtraPayments(supabase, f.id),
-        getPaidInstallments(supabase, f.id),
-      ]);
-      const schedule = buildFinancingSchedule(f, extras);
-      return { financing: f, summary: summarizeFinancing(schedule, paid, extras) };
-    })
-  );
+  // The hydration already did the fetching; deriving each card's balance,
+  // progress and current payment is pure from here.
+  const withSummary = ledger.map((h) => ({
+    financing: h.financing,
+    summary: buildSummary(h),
+  }));
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
