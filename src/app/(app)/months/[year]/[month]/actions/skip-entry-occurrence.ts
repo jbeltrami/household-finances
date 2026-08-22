@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/helpers/session";
 import { monthUrl } from "@/helpers/paths";
+import { checkEntryEditable } from "@/helpers/lock";
 import { writeOccurrence } from "@/helpers/occurrences";
 import type { EntryMutationTarget } from "@/helpers/types";
 
@@ -25,6 +26,13 @@ export async function skipEntryOccurrence(
   // materialized target — a virtual one is a template occurrence by
   // definition, and cannot already be paid.
   if (target.kind === "materialized") {
+    // The lock first, even though `writeOccurrence` checks it again below.
+    // In a locked month both refusals are true at once, and "unlock the
+    // month" is the one the user can act on — being told to unpay a Conta
+    // they then still cannot skip is a dead end.
+    const check = await checkEntryEditable(supabase, target.entryId);
+    if (!check.ok) throw new Error(check.error);
+
     const { data: row } = await supabase
       .from("entries")
       .select("template_id, paid")

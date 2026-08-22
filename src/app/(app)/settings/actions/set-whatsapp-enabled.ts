@@ -13,7 +13,6 @@ export async function setWhatsAppEnabled(enabled: boolean): Promise<void> {
 
   const { spaceId } = await requireSession(supabase);
 
-
   if (enabled) {
     const { data: existing } = await supabase
       .from("whatsapp_notification_settings")

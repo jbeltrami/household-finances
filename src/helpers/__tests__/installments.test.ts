@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { expandTemplateForMonth, installmentWindow } from "../ledger";
+import { dayOfMonthFromYmd } from "../date";
 import type { TemplateRecurrence } from "../types";
 
 // A Conta recorrente with no parcelamento, as the monthly cadence path
@@ -160,5 +161,23 @@ describe("expandTemplateForMonth", () => {
       "2026-02-16",
       "2026-02-23",
     ]);
+  });
+});
+
+// Moved into date.ts during review: a date-string helper belongs beside the
+// others, not privately inside the fold that happened to need it first.
+describe("dayOfMonthFromYmd", () => {
+  it("reads the day off the string", () => {
+    expect(dayOfMonthFromYmd("2026-04-20")).toBe(20);
+  });
+
+  it("reads the first of the month as 1, not the previous day", () => {
+    // Where `new Date("2026-04-01")` would slip back in São Paulo.
+    expect(dayOfMonthFromYmd("2026-04-01")).toBe(1);
+  });
+
+  it("returns null for something that isn't a date", () => {
+    expect(dayOfMonthFromYmd("nonsense")).toBeNull();
+    expect(dayOfMonthFromYmd("2026-04")).toBeNull();
   });
 });

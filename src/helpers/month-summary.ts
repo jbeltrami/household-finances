@@ -1,3 +1,5 @@
+import { dayOfMonthFromYmd } from "./date";
+
 // The month's figures: Saldo and the Resumo strip.
 //
 // These are what the app is for, and until now they had no module. They
@@ -116,14 +118,6 @@ export function summarizeMonth(ledger: MonthLedger): MonthTotals {
   };
 }
 
-// The day-of-month out of a "YYYY-MM-DD" string, read directly rather than
-// parsed into a Date — `new Date("2026-04-01")` is UTC midnight, which in
-// São Paulo formats as the previous day.
-function dayOf(ymd: string): number | null {
-  const day = parseInt(ymd.split("-")[2], 10);
-  return Number.isInteger(day) ? day : null;
-}
-
 function sortedDays(days: Set<number>): number[] {
   return Array.from(days).sort((a, b) => a - b);
 }
@@ -135,7 +129,7 @@ export function monthDayMarkers(ledger: MonthLedger): MonthDayMarkers {
   const withExpenses = new Set<number>();
 
   for (const b of [...ledger.bills, ...ledger.financing.bills]) {
-    const day = dayOf(b.date);
+    const day = dayOfMonthFromYmd(b.date);
     if (day == null) continue;
     withBills.add(day);
     // The app's one urgency signal, and it belongs to Contas alone: a
@@ -144,12 +138,12 @@ export function monthDayMarkers(ledger: MonthLedger): MonthDayMarkers {
   }
 
   for (const e of [...ledger.expenses, ...ledger.financing.expenses]) {
-    const day = dayOf(e.date);
+    const day = dayOfMonthFromYmd(e.date);
     if (day != null) withExpenses.add(day);
   }
 
   for (const i of ledger.income) {
-    const day = dayOf(i.expected_date);
+    const day = dayOfMonthFromYmd(i.expected_date);
     if (day != null) withIncome.add(day);
   }
 

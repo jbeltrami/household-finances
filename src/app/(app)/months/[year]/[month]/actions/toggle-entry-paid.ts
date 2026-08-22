@@ -1,74 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/helpers/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { monthUrl } from "@/helpers/paths";
 import { installmentPaymentPatch, writeOccurrence } from "@/helpers/occurrences";
+import { readContaFacts, type ContaFacts } from "./_helpers";
 import type { EntryMutationTarget } from "@/helpers/types";
-
-// What the Conta behind an occurrence says, which is what decides whether a
-// payment can cover several parcelas and what one of them is worth. Read
-// from the row's Conta when there is a row, and straight from the Conta when
-// the occurrence is still virtual.
-type ContaFacts = {
-  templateId: string | null;
-  occurrenceDate: string;
-  defaultAmount: number;
-  isInstallment: boolean;
-  currentCovered: number | null;
-};
-
-async function readContaFacts(
-  supabase: SupabaseClient,
-  target: EntryMutationTarget
-): Promise<ContaFacts | null> {
-  if (target.kind === "virtual") {
-    const { data } = await supabase
-      .from("recurring_bill_templates")
-      .select("default_amount, installments_total")
-      .eq("id", target.templateId)
-      .maybeSingle();
-    if (!data) return null;
-
-    return {
-      templateId: target.templateId,
-      occurrenceDate: target.date,
-      defaultAmount: Number(data.default_amount),
-      isInstallment: data.installments_total != null,
-      currentCovered: null,
-    };
-  }
-
-  const { data } = await supabase
-    .from("entries")
-    .select(
-      "template_id, date, installments_covered, recurring_bill_templates(default_amount, installments_total)"
-    )
-    .eq("id", target.entryId)
-    .maybeSingle();
-  if (!data) return null;
-
-  const row = data as unknown as {
-    template_id: string | null;
-    date: string;
-    installments_covered: number;
-    recurring_bill_templates: {
-      default_amount: number | string;
-      installments_total: number | null;
-    } | null;
-  };
-
-  return {
-    templateId: row.template_id,
-    occurrenceDate: row.date,
-    defaultAmount: Number(row.recurring_bill_templates?.default_amount ?? 0),
-    isInstallment: row.recurring_bill_templates?.installments_total != null,
-    currentCovered: row.installments_covered,
-  };
-}
 
 // On unpaid → paid, clear any matching WhatsApp notification log rows so the
 // Conta is alert-eligible again if the user later flips it back to unpaid
@@ -117,7 +56,16 @@ export async function toggleEntryPaid(
   await requireSession(supabase);
 
   const facts = await readContaFacts(supabase, target);
-  if (!facts) throw new Error("Conta recorrente não encontrada");
+  if (!facts) {
+    // Which thing is missing depends on what was aimed at. A row that has
+    // gone is a lançamento; a virtual occurrence with no Conta behind it is
+    // a Conta. CONTEXT.md keeps those words apart and so should this.
+    throw new Error(
+      target.kind === "materialized"
+        ? "Lançamento não encontrado"
+        : "Conta recorrente não encontrada"
+    );
+  }
 
   const result = await writeOccurrence(
     supabase,

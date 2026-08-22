@@ -23,7 +23,6 @@ export async function generateMissingReports(): Promise<GenerateMissingResult> {
   const supabase = await createClient();
   const { spaceId } = await requireSession(supabase);
 
-
   const admin = createAdminClient();
 
   const candidates = await listNonEmptyPastMonths(supabase, spaceId);

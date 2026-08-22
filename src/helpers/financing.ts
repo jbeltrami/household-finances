@@ -8,7 +8,7 @@ import {
   type RatePeriod,
   type Schedule,
 } from "./amortization";
-import { getMonthRange, todayYmd } from "./date";
+import { getMonthRange, todayYmd, yearMonthKey } from "./date";
 
 // Stored financing parameters (the durable inputs — see
 // supabase/migrations/0011_financing.sql). Everything else (payment,
@@ -312,7 +312,7 @@ export function buildFinancingReport(
   installmentRows: ReportFoldRow[];
   extraRows: ReportFoldRow[];
 } {
-  const ym = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+  const ym = yearMonthKey(year, month);
   const { start, end } = getMonthRange(year, month);
   const monthEnd = end;
 
@@ -422,7 +422,7 @@ export function buildMonthItems(
   year: number,
   month: number
 ): { bills: MortgageBillItem[]; expenses: MortgageExpenseItem[] } {
-  const ym = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+  const ym = yearMonthKey(year, month);
   const { start, end } = getMonthRange(year, month);
 
   const bills: MortgageBillItem[] = [];

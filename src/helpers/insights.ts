@@ -213,6 +213,7 @@ export function computeInsights(
   const maxMortgage = avgIncome * settings.max_mortgage_rate;
   const emergencyFund = monthlySpend * settings.emergency_months;
   const financialFreedom = monthlySpend * 12 * settings.freedom_annual_mult;
+  const hasMortgage = avgMortgage > 0;
 
   return [
     {
@@ -235,9 +236,14 @@ export function computeInsights(
       // The Financiamento parcela, which is also counted inside avgBills
       // above — shown separately here because this card is the one asking
       // specifically about housing.
-      actual: avgMortgage,
+      //
+      // A household with no Financiamento has nothing to compare, so the
+      // card stays a bare target as it always was. Reporting a parcela of
+      // zero against the cap would hand them a green pass badge for a
+      // benchmark they are not participating in.
+      actual: hasMortgage ? avgMortgage : null,
       // Cap: the parcela should stay AT OR BELOW this.
-      meets: avgMortgage <= maxMortgage,
+      meets: hasMortgage ? avgMortgage <= maxMortgage : null,
     },
     { key: "emergencyFund", target: emergencyFund, actual: null, meets: null },
     {

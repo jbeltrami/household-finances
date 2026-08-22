@@ -212,7 +212,7 @@ Every route follows the same structure. Apply this pattern when adding new route
 - `types.ts` — exported type vocabulary: `ResolvedEntry`, `TemplateRecurrence`, `InstallmentProgress`, `InstallmentWindow`, `EntryMutationTarget`, `EditCheckResult`. Helper files import their types from here rather than declaring them inline, so the type surface stays grep-able
 - `date.ts` — formatters, range builders, Postgres-date string utilities
 - `lock.ts` — `isMonthLocked`, `checkDateEditable`, `checkEntryEditable`, `fetchMonthUnlock`
-- `ledger.ts` — `getEntriesForMonth`, `expandTemplateForMonth`, `installmentWindow`, `resolveCategoryId`
+- `ledger.ts` — `getEntriesForMonth`, `expandTemplateForMonth`, `installmentWindow`, `computeInstallmentProgress`, `resolveCategoryId`
 - `occurrences.ts` — `writeOccurrence`, `installmentPaymentPatch`. The **only** place a Conta occurrence is written, virtual or not
 - `month-summary.ts` — `summarizeMonth`, `monthDayMarkers`. Saldo, Resumo and the calendar dots, as one pure fold
 - `session.ts` — `requireSession` / `resolveSession`. Who is calling and which space is theirs, in one lookup

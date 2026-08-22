@@ -15,7 +15,6 @@ export async function setMonthlyReportEmailEnabled(
 
   const { spaceId } = await requireSession(supabase);
 
-
   const { error } = await supabase
     .from("monthly_report_settings")
     .upsert(

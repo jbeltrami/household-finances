@@ -136,10 +136,15 @@ describe("computeInsights", () => {
       expect(card(all, "maxMortgage").meets).toBe(false);
     });
 
-    it("passes with no Financiamento at all", () => {
+    it("stays a bare target for a household with no Financiamento", () => {
+      // Not a pass — nothing to compare. Reporting a parcela of zero
+      // against the cap would hand them a green badge for a benchmark they
+      // are not participating in, and the card showed no comparison at all
+      // before the parcela existed.
       const all = computeInsights(averages(), DEFAULT_IDEAL_SETTINGS);
-      expect(card(all, "maxMortgage").actual).toBe(0);
-      expect(card(all, "maxMortgage").meets).toBe(true);
+      expect(card(all, "maxMortgage").actual).toBeNull();
+      expect(card(all, "maxMortgage").meets).toBeNull();
+      expect(card(all, "maxMortgage").target).toBe(3000);
     });
   });
 

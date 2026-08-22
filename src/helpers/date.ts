@@ -124,3 +124,12 @@ export function dueDateFor(
   const day = Math.min(dueDay, daysInMonth);
   return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
+
+// The day-of-month out of a "YYYY-MM-DD" string, or null if it isn't shaped
+// like one. Read off the string rather than parsed into a Date, because
+// `new Date("2026-04-01")` is UTC midnight and formats as 31 March in São
+// Paulo. Returns a number so callers can key a calendar grid by it.
+export function dayOfMonthFromYmd(ymd: string): number | null {
+  const day = parseInt(ymd.split("-")[2], 10);
+  return Number.isInteger(day) ? day : null;
+}

@@ -29,7 +29,6 @@ export async function generateReport(year: number, month: number) {
   const supabase = await createClient();
   const { spaceId } = await requireSession(supabase);
 
-
   const admin = createAdminClient();
   const result = await performReportGeneration(
     supabase,
