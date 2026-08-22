@@ -82,16 +82,22 @@ export default function IncomeEntryRow({
     return (
       <li className="px-3 py-2">
         <form action={handleUpdate} className="flex flex-col gap-3">
-          {/* items-start, not items-center: the Pagador column is taller than
-              the others because of its "Novo pagador" affordance, and
+          {/* Two columns, not four. This row lives inside a half-width card,
+              so a four-across template with fixed rem columns had a hard
+              minimum wider than its container and overflowed into the next
+              one. Tailwind's own grid-cols-* resolve to minmax(0, 1fr),
+              which is what lets these shrink to fit.
+
+              items-start, not items-center: the Pagador column is taller
+              than the others because of its "Novo pagador" affordance, and
               centring would float every other field down to meet it. */}
-          <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(8rem,1fr)_10rem_10rem_9rem]">
+          <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-2">
             <input
               type="text"
               name="name"
               placeholder="Descrição (opcional)"
               defaultValue={entry.name ?? ""}
-              className="field-input mt-0"
+              className="field-input mt-0 sm:col-span-2"
             />
             <PayerSelect
               payers={payers}
@@ -110,29 +116,31 @@ export default function IncomeEntryRow({
               defaultValue={String(entry.amount)}
               className="mt-0"
             />
-          </div>
 
-          {/* Their own row, so they keep a fixed home instead of wrapping to
-              wherever the fields happen to leave space. */}
-          <div className="flex items-center gap-2">
-            <button
-              type="submit"
-              disabled={isUpdating}
-              className="btn-primary py-1.5 text-xs"
-            >
-              {isUpdating ? "Salvando…" : "Salvar"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(false);
-                setUpdateError(null);
-              }}
-              disabled={isUpdating}
-              className="btn-ghost py-1.5 text-xs"
-            >
-              Cancelar
-            </button>
+            {/* In the grid cell beside the amount rather than on a row of
+                their own: a money field stretched across both columns read
+                as a mistake, and this fills the gap it left. Stacks under
+                the amount in the single-column layout. */}
+            <div className="flex items-center gap-2">
+              <button
+                type="submit"
+                disabled={isUpdating}
+                className="btn-primary py-1.5 text-xs"
+              >
+                {isUpdating ? "Salvando…" : "Salvar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false);
+                  setUpdateError(null);
+                }}
+                disabled={isUpdating}
+                className="btn-ghost py-1.5 text-xs"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </form>
         {updateError && (
