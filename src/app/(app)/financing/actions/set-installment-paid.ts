@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
+import { requireSession } from "@/helpers/session";
 import { parseYearMonthFromYmd } from "@/helpers/date";
 import { financingDetailUrl, monthUrl } from "@/helpers/paths";
 import { callerOwnsFinancing, UNIQUE_VIOLATION } from "./_helpers";
@@ -22,12 +22,7 @@ export async function setInstallmentPaid(
 ) {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
-
-  const spaceId = await requirePersonalSpaceId(supabase);
+  const { spaceId } = await requireSession(supabase);
 
   if (!(await callerOwnsFinancing(supabase, financingId))) {
     throw new Error("Financiamento não encontrado");

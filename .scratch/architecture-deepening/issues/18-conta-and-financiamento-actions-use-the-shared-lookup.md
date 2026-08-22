@@ -11,13 +11,13 @@ loan is actually visible to them before touching its child rows.
 
 **Blocked by:** 16.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every Conta template action uses the shared lookup
-- [ ] Every Financiamento action uses the shared lookup
-- [ ] The ownership check on a caller-supplied Financiamento id is untouched
-- [ ] Creating, editing, deactivating and reactivating a Conta still work
-- [ ] A duplicate active Conta name still fails with a friendly message rather
+- [x] Every Conta template action uses the shared lookup
+- [x] Every Financiamento action uses the shared lookup
+- [x] The ownership check on a caller-supplied Financiamento id is untouched
+- [x] Creating, editing, deactivating and reactivating a Conta still work
+- [x] A duplicate active Conta name still fails with a friendly message rather
       than a database error
-- [ ] Recording an amortização, deleting one, and marking a parcela paid still
+- [x] Recording an amortização, deleting one, and marking a parcela paid still
       work

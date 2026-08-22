@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/helpers/session";
 import { financingDetailUrl } from "@/helpers/paths";
 
 // Toggle-style (useTransition) — throws on failure. `financingId` is passed
@@ -9,10 +10,7 @@ import { financingDetailUrl } from "@/helpers/paths";
 export async function deleteExtraPayment(id: string, financingId: string) {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  await requireSession(supabase);
 
   const { error } = await supabase
     .from("financing_extra_payments")

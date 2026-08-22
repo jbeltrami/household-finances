@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
+import { resolveSession } from "@/helpers/session";
 import { financingUrl, financingDetailUrl } from "@/helpers/paths";
 import { type FormState } from "../form-state";
 import { parseFinancingFields } from "./_helpers";
@@ -22,12 +22,9 @@ export async function createFinancing(
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { error: "Não autenticado" };
-
-    const spaceId = await requirePersonalSpaceId(supabase);
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { error: session.error };
+    const { spaceId } = session;
     const f = parseFinancingFields(formData);
 
     newId = crypto.randomUUID();

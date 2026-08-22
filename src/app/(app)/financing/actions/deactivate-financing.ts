@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/helpers/session";
 import { financingUrl } from "@/helpers/paths";
 
 // Soft-removes a financing (keeps the row + its history). Toggle-style
@@ -9,10 +10,7 @@ import { financingUrl } from "@/helpers/paths";
 export async function deactivateFinancing(id: string) {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  await requireSession(supabase);
 
   const { error } = await supabase
     .from("financings")

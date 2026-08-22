@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { resolveSession } from "@/helpers/session";
 import { billsUrl } from "@/helpers/paths";
 import { type FormState } from "../form-state";
 import {
@@ -27,10 +28,8 @@ export async function updateBillTemplate(
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { error: "Não autenticado" };
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { error: session.error };
 
     const {
       name,
