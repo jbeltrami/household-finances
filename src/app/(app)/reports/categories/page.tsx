@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import BillIcon from "@/components/BillIcon";
 import Card from "@/components/Card";
 import { brlFormatter } from "@/helpers/format";
 import { getCategorySpendForYear } from "@/helpers/category-reports";
-import { representativeIconForCategory } from "@/lib/icons/bills";
+import CategoryChip from "@/components/CategoryChip";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 
@@ -53,8 +52,8 @@ export default async function CategoryReportPage({
         Gastos por categoria
       </h1>
       <p className="mt-1 text-sm text-muted">
-        Soma de contas pagas e despesas avulsas, agrupadas pela categoria do
-        ícone escolhido.
+        Soma de contas pagas e despesas avulsas, agrupadas pela categoria de
+        cada lançamento. Financiamentos ainda não entram nesta conta.
       </p>
 
       {/* Year nav */}
@@ -95,8 +94,7 @@ export default async function CategoryReportPage({
         <Card className="mt-5 p-2">
           <ul className="divide-y divide-subtle">
             {summaries.map((s) => {
-              const label = s.category ?? "Sem categoria";
-              const iconKey = representativeIconForCategory(s.category);
+              const label = s.category?.name ?? "Sem categoria";
               const subParts: string[] = [];
               if (s.billsCount > 0) {
                 subParts.push(
@@ -112,12 +110,15 @@ export default async function CategoryReportPage({
 
               return (
                 <li
-                  key={label}
+                  key={s.category?.id ?? "__uncategorised__"}
                   className="flex items-center gap-3 px-3 py-3"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg">
-                    <BillIcon iconKey={iconKey} className="h-5 w-5" />
-                  </span>
+                  {/* The Categoria's own icon and colour now, rather than a
+                      representative icon guessed from a hardcoded name. */}
+                  <CategoryChip
+                    icon={s.category?.icon ?? null}
+                    color={s.category?.color ?? null}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-fg">{label}</p>
                     {subLabel && (

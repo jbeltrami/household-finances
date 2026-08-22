@@ -187,6 +187,30 @@ function normalizeTemplate(row: TemplateRow): TemplateRecurrence {
 }
 
 // ============================================================
+// CATEGORY RESOLUTION
+// ============================================================
+
+// The rule from docs/adr/0001-categories-are-referenced-not-snapshotted.md,
+// in one place: a row's own Categoria wins, and NULL on a template-bound row
+// means "inherit from the template" rather than "uncategorised".
+//
+// Returns the id rather than a resolved Categoria so the rule itself has no
+// dependencies — callers do their own lookup. It lives here, and not beside
+// the aggregation that also needs it, because two copies is exactly how the
+// monthly view and the reports quietly start disagreeing about which
+// Categoria a bill belongs to.
+//
+// `templateCategoryId` is `undefined` for a one-off entry, which has no
+// template to inherit from; the coalesce handles that and "uncategorised"
+// identically, which is correct — both mean no Categoria.
+export function resolveCategoryId(
+  rowCategoryId: string | null,
+  templateCategoryId: string | null | undefined
+): string | null {
+  return rowCategoryId ?? templateCategoryId ?? null;
+}
+
+// ============================================================
 // MAIN RESOLVER
 // ============================================================
 
@@ -304,13 +328,13 @@ export async function getEntriesForMonth(
     }
   }
 
-  // A row's own Categoria wins; null falls through to its template's.
-  // Exactly the pattern `icon` already uses below.
+  // Lookup wrapper around the shared rule above. Exactly the pattern
+  // `icon` already uses below.
   const resolveCategory = (
     rowCategoryId: string | null,
     template: TemplateRecurrence | null
   ): ResolvedCategory | null => {
-    const id = rowCategoryId ?? template?.category_id ?? null;
+    const id = resolveCategoryId(rowCategoryId, template?.category_id);
     return id ? categoryById.get(id) ?? null : null;
   };
 

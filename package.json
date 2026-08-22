@@ -6,7 +6,9 @@
     "dev": "rm -rf .next && next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@react-email/components": "^1.0.12",
@@ -31,6 +33,7 @@
     "eslint": "^10",
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4",
-    "typescript": "^7"
+    "typescript": "^7",
+    "vitest": "^4.1.11"
   }
 }
