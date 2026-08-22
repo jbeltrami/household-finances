@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/helpers/session";
 import { monthUrl } from "@/helpers/paths";
 import { writeOccurrence } from "@/helpers/occurrences";
 import type { EntryMutationTarget } from "@/helpers/types";
@@ -18,10 +19,7 @@ export async function skipEntryOccurrence(
 
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  await requireSession(supabase);
 
   // Both refusals are about the existing row, so they only apply to a
   // materialized target — a virtual one is a template occurrence by
@@ -59,10 +57,7 @@ export async function unskipEntryOccurrence(
 
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  await requireSession(supabase);
 
   const result = await writeOccurrence(
     supabase,

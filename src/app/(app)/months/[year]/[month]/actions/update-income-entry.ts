@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { resolveSession } from "@/helpers/session";
 import { monthUrl } from "@/helpers/paths";
 import { checkIncomeEntryEditable } from "@/helpers/lock";
 import { type FormState } from "../form-state";
@@ -19,10 +20,8 @@ export async function updateIncomeEntry(
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { error: "Não autenticado" };
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { error: session.error };
 
     const check = await checkIncomeEntryEditable(supabase, entryId);
     if (!check.ok) return { error: check.error };

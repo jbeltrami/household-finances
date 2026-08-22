@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { resolveSession } from "@/helpers/session";
 import { monthUrl } from "@/helpers/paths";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { isMonthLocked } from "@/helpers/lock";
 import { type FormState } from "../form-state";
 
@@ -24,12 +24,9 @@ export async function unlockMonth(
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { error: "Não autenticado" };
-
-    const spaceId = await requirePersonalSpaceId(supabase);
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { error: session.error };
+    const { spaceId, userId } = session;
 
     const reason = formData.get("reason")?.toString().trim();
     if (!reason) return { error: "O motivo é obrigatório para desbloquear o mês" };
@@ -49,7 +46,7 @@ export async function unlockMonth(
         year,
         month,
         reason,
-        unlocked_by: user.id,
+        unlocked_by: userId,
       },
       { onConflict: "space_id,year,month" }
     );

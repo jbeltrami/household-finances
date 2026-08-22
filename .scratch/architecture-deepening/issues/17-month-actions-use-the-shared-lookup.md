@@ -10,13 +10,13 @@ looks.
 
 **Blocked by:** 15, 16.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every action behind the monthly view uses the shared lookup
-- [ ] Actions rendered against a form still return their error as state rather
+- [x] Every action behind the monthly view uses the shared lookup
+- [x] Actions rendered against a form still return their error as state rather
       than throwing
-- [ ] Adding, editing and deleting a Receita, a Conta and a Despesa all still work
-- [ ] Marking a Receita received and a Conta paid still work
-- [ ] Unlocking a past month still works and still records its reason
-- [ ] An entry dated into another month still lands in that month and still
+- [x] Adding, editing and deleting a Receita, a Conta and a Despesa all still work
+- [x] Marking a Receita received and a Conta paid still work
+- [x] Unlocking a past month still works and still records its reason
+- [x] An entry dated into another month still lands in that month and still
       refuses when that month is locked

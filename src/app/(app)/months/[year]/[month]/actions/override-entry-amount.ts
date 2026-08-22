@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { resolveSession } from "@/helpers/session";
 import { monthUrl } from "@/helpers/paths";
 import { writeOccurrence } from "@/helpers/occurrences";
 import type { EntryMutationTarget } from "@/helpers/types";
@@ -20,10 +21,8 @@ export async function overrideEntryAmount(
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { error: "Não autenticado" };
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { error: session.error };
 
     const amountRaw = formData.get("amount")?.toString();
     if (!amountRaw) return { error: "O valor é obrigatório" };

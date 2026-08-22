@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/helpers/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { monthUrl } from "@/helpers/paths";
 import { installmentPaymentPatch, writeOccurrence } from "@/helpers/occurrences";
@@ -113,10 +114,7 @@ export async function toggleEntryPaid(
 
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  await requireSession(supabase);
 
   const facts = await readContaFacts(supabase, target);
   if (!facts) throw new Error("Conta recorrente não encontrada");
