@@ -13,8 +13,9 @@
 //     parameters to benchmark values. Trivial to unit-test.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { addMonthsYm, getMonthRange, yearMonthKey } from "./date";
+import { addMonthsYm, getMonthRange, todayYmd, yearMonthKey } from "./date";
 import { getEntriesForMonth } from "./ledger";
+import { summarizeMonth } from "./month-summary";
 import type { BucketAverages, IdealSettings, Insight } from "./types";
 
 // The default scenario — applied when a space has no
@@ -115,6 +116,8 @@ export async function getBucketAveragesForRange(
     0
   );
 
+  const today = todayYmd();
+
   let billsTotal = 0;
   let expensesTotal = 0;
   for (let i = 0; i < monthsUsed; i++) {
@@ -122,10 +125,21 @@ export async function getBucketAveragesForRange(
     const y = Number(ym.slice(0, 4));
     const m = Number(ym.slice(5, 7));
     const entries = await getEntriesForMonth(supabase, [spaceId], y, m);
-    for (const e of entries) {
-      if (e.template_id) billsTotal += e.amount;
-      else expensesTotal += e.amount;
-    }
+    const totals = summarizeMonth({
+      bills: entries.filter((e) => e.template_id != null),
+      expenses: entries.filter((e) => e.template_id == null),
+      // Receitas are summed across the whole range in one query above; no
+      // virtual expansion is involved, so there is nothing to fold per month.
+      income: [],
+      // Financiamento is deliberately not counted here — see ticket 12,
+      // which decides whether the parcela belongs in this average. Passing
+      // empty lists rather than leaving the field out is the point: this is
+      // a decision on the record, not the omission it used to be.
+      financing: { bills: [], expenses: [] },
+      today,
+    });
+    billsTotal += totals.bills.total;
+    expensesTotal += totals.expenses.total;
   }
 
   return {

@@ -10,11 +10,11 @@ rather than omitting by accident. Ticket 12 decides whether to keep doing that.
 
 **Blocked by:** 08.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The per-month sums come from the shared module
-- [ ] Financiamento is excluded by an explicit argument, not by omission
-- [ ] The averages shown for a 3, 6 and 12 month window are unchanged
-- [ ] The window still shrinks to however much history the space actually has
-- [ ] A space with no data at all still reports no data rather than dividing by
+- [x] The per-month sums come from the shared module
+- [x] Financiamento is excluded by an explicit argument, not by omission
+- [x] The averages shown for a 3, 6 and 12 month window are unchanged
+- [x] The window still shrinks to however much history the space actually has
+- [x] A space with no data at all still reports no data rather than dividing by
       zero
