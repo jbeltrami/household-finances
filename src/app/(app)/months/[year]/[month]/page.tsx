@@ -5,7 +5,7 @@ import { fetchMonthUnlock, isMonthLocked } from "@/helpers/lock";
 import { getEntriesForMonth } from "@/helpers/ledger";
 import { getCategories, getPayers } from "@/helpers/taxonomy";
 import { getFinancingMonthItems } from "@/helpers/financing";
-import { summarizeMonth } from "@/helpers/month-summary";
+import { monthDayMarkers, summarizeMonth } from "@/helpers/month-summary";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 import { buildMonthOptions } from "./_helpers";
 import MonthlyViewClient from "./_components/MonthlyViewClient/MonthlyViewClient";
@@ -121,57 +121,18 @@ export default async function MonthlyViewPage({
 
   const today = todayYmd();
 
-  // Calendar-strip day markers, parsed out of "YYYY-MM-DD" strings
-  // directly so we bypass the UTC-midnight trap.
-  const daysWithBillsSet = new Set<number>();
-  const daysWithOverdueBillsSet = new Set<number>();
-  for (const e of billEntries) {
-    const day = parseInt(e.date.split("-")[2], 10);
-    if (!Number.isInteger(day)) continue;
-    daysWithBillsSet.add(day);
-    if (!e.paid && e.date <= today) daysWithOverdueBillsSet.add(day);
-  }
-  for (const b of mortgageBills) {
-    const day = parseInt(b.date.split("-")[2], 10);
-    if (!Number.isInteger(day)) continue;
-    daysWithBillsSet.add(day);
-    if (!b.paid && b.date <= today) daysWithOverdueBillsSet.add(day);
-  }
-  const daysWithBills = Array.from(daysWithBillsSet).sort((a, b) => a - b);
-  const daysWithOverdueBills = Array.from(daysWithOverdueBillsSet).sort(
-    (a, b) => a - b
-  );
-
-  const daysWithIncomeSet = new Set<number>();
-  for (const i of incomeEntries) {
-    const day = parseInt(i.expected_date.split("-")[2], 10);
-    if (Number.isInteger(day)) daysWithIncomeSet.add(day);
-  }
-  const daysWithIncome = Array.from(daysWithIncomeSet).sort((a, b) => a - b);
-
-  const daysWithExpensesSet = new Set<number>();
-  for (const e of expenseEntries) {
-    const day = parseInt(e.date.split("-")[2], 10);
-    if (Number.isInteger(day)) daysWithExpensesSet.add(day);
-  }
-  for (const e of mortgageExpenses) {
-    const day = parseInt(e.date.split("-")[2], 10);
-    if (Number.isInteger(day)) daysWithExpensesSet.add(day);
-  }
-  const daysWithExpenses = Array.from(daysWithExpensesSet).sort(
-    (a, b) => a - b
-  );
-
   // Saldo and the Resumo strip. Every figure below comes out of one pure
   // fold — the page does no arithmetic of its own, so the numbers here and
   // the numbers in the emailed report cannot drift apart.
-  const totals = summarizeMonth({
+  const ledger = {
     bills: billEntries,
     expenses: expenseEntries,
     income: incomeEntries,
     financing: { bills: mortgageBills, expenses: mortgageExpenses },
     today,
-  });
+  };
+  const totals = summarizeMonth(ledger);
+  const calendar = monthDayMarkers(ledger);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
@@ -187,12 +148,7 @@ export default async function MonthlyViewPage({
         monthOptions={monthOptions}
         locked={locked}
         unlockReason={unlock?.reason ?? null}
-        calendar={{
-          daysWithBills,
-          daysWithOverdueBills,
-          daysWithIncome,
-          daysWithExpenses,
-        }}
+        calendar={calendar}
         bills={{
           entries: billEntries,
           mortgages: mortgageBills,

@@ -21,6 +21,15 @@ const bill = (date: string, amount: number, paid = false) => ({
   paid,
 });
 
+// Despesas and Receitas carry dates for the day markers; the totals do not
+// look at them, so tests about totals leave them at a default.
+const expense = (amount: number, date = "2026-04-12") => ({ date, amount });
+const income = (
+  amount: number,
+  received: boolean,
+  expected_date = "2026-04-05"
+) => ({ expected_date, amount, received });
+
 describe("summarizeMonth", () => {
   describe("Contas", () => {
     it("is all zeroes for an empty month", () => {
@@ -56,8 +65,8 @@ describe("summarizeMonth", () => {
       const totals = summarizeMonth(
         ledger({
           income: [
-            { amount: 19000, received: true },
-            { amount: 2000, received: false },
+            income(19000, true),
+            income(2000, false),
           ],
         })
       );
@@ -72,7 +81,7 @@ describe("summarizeMonth", () => {
   describe("Despesas", () => {
     it("totals one-off spending", () => {
       const totals = summarizeMonth(
-        ledger({ expenses: [{ amount: 120 }, { amount: 80 }] })
+        ledger({ expenses: [expense(120), expense(80)] })
       );
       expect(totals.expenses.total).toBe(200);
     });
@@ -80,8 +89,8 @@ describe("summarizeMonth", () => {
     it("counts an amortização extraordinária as a Despesa", () => {
       const totals = summarizeMonth(
         ledger({
-          expenses: [{ amount: 120 }],
-          financing: { bills: [], expenses: [{ amount: 5000 }] },
+          expenses: [expense(120)],
+          financing: { bills: [], expenses: [expense(5000)] },
         })
       );
       expect(totals.expenses.total).toBe(5120);
@@ -92,9 +101,9 @@ describe("summarizeMonth", () => {
     it("is the whole month as planned, settled or not", () => {
       const totals = summarizeMonth(
         ledger({
-          income: [{ amount: 21000, received: false }],
+          income: [income(21000, false)],
           bills: [bill("2026-04-20", 12000)],
-          expenses: [{ amount: 1000 }],
+          expenses: [expense(1000)],
         })
       );
       expect(totals.balance.netExpected).toBe(8000);
@@ -103,10 +112,10 @@ describe("summarizeMonth", () => {
     it("counts Financiamento on both sides", () => {
       const totals = summarizeMonth(
         ledger({
-          income: [{ amount: 21000, received: false }],
+          income: [income(21000, false)],
           financing: {
             bills: [bill("2026-04-10", 3000)],
-            expenses: [{ amount: 2000 }],
+            expenses: [expense(2000)],
           },
         })
       );
@@ -119,8 +128,8 @@ describe("summarizeMonth", () => {
       const totals = summarizeMonth(
         ledger({
           income: [
-            { amount: 19000, received: true },
-            { amount: 2000, received: false },
+            income(19000, true),
+            income(2000, false),
           ],
         })
       );
@@ -130,7 +139,7 @@ describe("summarizeMonth", () => {
     it("subtracts a Conta that was paid", () => {
       const totals = summarizeMonth(
         ledger({
-          income: [{ amount: 1000, received: true }],
+          income: [income(1000, true)],
           bills: [bill("2026-04-20", 300, true)],
         })
       );
@@ -140,7 +149,7 @@ describe("summarizeMonth", () => {
     it("subtracts a Conta that is overdue and unpaid", () => {
       const totals = summarizeMonth(
         ledger({
-          income: [{ amount: 1000, received: true }],
+          income: [income(1000, true)],
           bills: [bill("2026-04-10", 300)],
         })
       );
@@ -150,7 +159,7 @@ describe("summarizeMonth", () => {
     it("treats a Conta due today as already gone", () => {
       const totals = summarizeMonth(
         ledger({
-          income: [{ amount: 1000, received: true }],
+          income: [income(1000, true)],
           bills: [bill(TODAY, 300)],
         })
       );
@@ -160,7 +169,7 @@ describe("summarizeMonth", () => {
     it("leaves a future unpaid Conta alone", () => {
       const totals = summarizeMonth(
         ledger({
-          income: [{ amount: 1000, received: true }],
+          income: [income(1000, true)],
           bills: [bill("2026-04-20", 300)],
         })
       );
@@ -171,7 +180,7 @@ describe("summarizeMonth", () => {
       // Paid AND future: it belongs to the paid filter, not the overdue one.
       const totals = summarizeMonth(
         ledger({
-          income: [{ amount: 1000, received: true }],
+          income: [income(1000, true)],
           bills: [bill("2026-04-20", 300, true)],
         })
       );
@@ -181,7 +190,7 @@ describe("summarizeMonth", () => {
     it("does not subtract a paid past-dated Conta twice", () => {
       const totals = summarizeMonth(
         ledger({
-          income: [{ amount: 1000, received: true }],
+          income: [income(1000, true)],
           bills: [bill("2026-04-01", 300, true)],
         })
       );
@@ -191,8 +200,8 @@ describe("summarizeMonth", () => {
     it("subtracts every Despesa, which is money already gone", () => {
       const totals = summarizeMonth(
         ledger({
-          income: [{ amount: 1000, received: true }],
-          expenses: [{ amount: 250 }],
+          income: [income(1000, true)],
+          expenses: [expense(250)],
         })
       );
       expect(totals.balance.netSoFar).toBe(750);
@@ -201,7 +210,7 @@ describe("summarizeMonth", () => {
     it("applies the overdue rule to an unpaid parcela too", () => {
       const totals = summarizeMonth(
         ledger({
-          income: [{ amount: 5000, received: true }],
+          income: [income(5000, true)],
           financing: { bills: [bill("2026-04-10", 3000)], expenses: [] },
         })
       );
@@ -212,18 +221,18 @@ describe("summarizeMonth", () => {
       const totals = summarizeMonth(
         ledger({
           income: [
-            { amount: 19000, received: true },
-            { amount: 2000, received: false },
+            income(19000, true),
+            income(2000, false),
           ],
           bills: [
             bill("2026-04-05", 470, true),
             bill("2026-04-10", 1200),
             bill("2026-04-25", 1875),
           ],
-          expenses: [{ amount: 300 }],
+          expenses: [expense(300)],
           financing: {
             bills: [bill("2026-04-08", 3000, true)],
-            expenses: [{ amount: 1000 }],
+            expenses: [expense(1000)],
           },
         })
       );

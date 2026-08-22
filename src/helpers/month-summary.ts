@@ -19,10 +19,14 @@
 export type MonthBill = { date: string; amount: number; paid: boolean };
 
 // A Despesa: money already gone, so it carries no paid state.
-export type MonthExpense = { amount: number };
+export type MonthExpense = { date: string; amount: number };
 
-// A Receita: expected, and either received or still pending.
-export type MonthIncome = { amount: number; received: boolean };
+// A Receita: expected on a date, and either received or still pending.
+export type MonthIncome = {
+  expected_date: string;
+  amount: number;
+  received: boolean;
+};
 
 // Everything a month is made of. Financiamento is a required field rather
 // than an optional one: a caller that does not want parcelas counted has to
@@ -36,6 +40,16 @@ export type MonthLedger = {
   // "YYYY-MM-DD". Compared as a string against each Conta's date, which is
   // calendar comparison with no Date construction and no UTC-midnight shift.
   today: string;
+};
+
+// Which days of the month carry a dot on the calendar. Same question as
+// the totals, asked per day rather than per month, which is why it reads
+// the same ledger rather than a second assembly of the same rows.
+export type MonthDayMarkers = {
+  daysWithBills: number[];
+  daysWithOverdueBills: number[];
+  daysWithIncome: number[];
+  daysWithExpenses: number[];
 };
 
 export type MonthTotals = {
@@ -99,5 +113,50 @@ export function summarizeMonth(ledger: MonthLedger): MonthTotals {
       netSoFar:
         receivedIncome - paidBills - overdueUnpaidBills - totalExpenses,
     },
+  };
+}
+
+// The day-of-month out of a "YYYY-MM-DD" string, read directly rather than
+// parsed into a Date — `new Date("2026-04-01")` is UTC midnight, which in
+// São Paulo formats as the previous day.
+function dayOf(ymd: string): number | null {
+  const day = parseInt(ymd.split("-")[2], 10);
+  return Number.isInteger(day) ? day : null;
+}
+
+function sortedDays(days: Set<number>): number[] {
+  return Array.from(days).sort((a, b) => a - b);
+}
+
+export function monthDayMarkers(ledger: MonthLedger): MonthDayMarkers {
+  const withBills = new Set<number>();
+  const overdue = new Set<number>();
+  const withIncome = new Set<number>();
+  const withExpenses = new Set<number>();
+
+  for (const b of [...ledger.bills, ...ledger.financing.bills]) {
+    const day = dayOf(b.date);
+    if (day == null) continue;
+    withBills.add(day);
+    // The app's one urgency signal, and it belongs to Contas alone: a
+    // Despesa records money that already went, so it can never be late.
+    if (!b.paid && b.date <= ledger.today) overdue.add(day);
+  }
+
+  for (const e of [...ledger.expenses, ...ledger.financing.expenses]) {
+    const day = dayOf(e.date);
+    if (day != null) withExpenses.add(day);
+  }
+
+  for (const i of ledger.income) {
+    const day = dayOf(i.expected_date);
+    if (day != null) withIncome.add(day);
+  }
+
+  return {
+    daysWithBills: sortedDays(withBills),
+    daysWithOverdueBills: sortedDays(overdue),
+    daysWithIncome: sortedDays(withIncome),
+    daysWithExpenses: sortedDays(withExpenses),
   };
 }

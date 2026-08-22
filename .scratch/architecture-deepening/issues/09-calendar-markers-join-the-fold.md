@@ -10,13 +10,13 @@ testable, and the page stops doing date arithmetic.
 
 **Blocked by:** 08.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The day markers are produced by the same module as the month's figures
-- [ ] A day carries a Conta marker when a Financiamento parcela falls on it
-- [ ] A day carries a Despesa marker when an amortização falls on it
-- [ ] A day is marked overdue only when a Conta due that day is unpaid and the day
+- [x] The day markers are produced by the same module as the month's figures
+- [x] A day carries a Conta marker when a Financiamento parcela falls on it
+- [x] A day carries a Despesa marker when an amortização falls on it
+- [x] A day is marked overdue only when a Conta due that day is unpaid and the day
       is today or earlier
-- [ ] A Despesa never makes a day overdue
-- [ ] Each of the above is covered by a test
-- [ ] The page builds no sets of its own and the calendar renders as before
+- [x] A Despesa never makes a day overdue
+- [x] Each of the above is covered by a test
+- [x] The page builds no sets of its own and the calendar renders as before
