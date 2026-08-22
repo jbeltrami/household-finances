@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { todayYmd, getMonthRange } from "@/helpers/date";
 import { fetchMonthUnlock, isMonthLocked } from "@/helpers/lock";
 import { getEntriesForMonth } from "@/helpers/ledger";
-import { getCategories } from "@/helpers/taxonomy";
+import { getCategories, getPayers } from "@/helpers/taxonomy";
 import { getFinancingMonthItems } from "@/helpers/financing";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 import { buildMonthOptions } from "./_helpers";
@@ -45,6 +45,10 @@ export default async function MonthlyViewPage({
     rawIncomeRes,
     financingItems,
     outflowCategories,
+    incomeCategories,
+    allIncomeCategories,
+    payers,
+    allPayers,
   ] = await Promise.all([
       fetchMonthUnlock(supabase, spaceId, year, month),
       supabase
@@ -54,7 +58,9 @@ export default async function MonthlyViewPage({
       getEntriesForMonth(supabase, spaceIds, year, month),
       supabase
         .from("income_entries")
-        .select("id, space_id, name, amount, expected_date, received")
+        .select(
+          "id, space_id, name, amount, expected_date, received, category_id, payer_id"
+        )
         .in("space_id", spaceIds)
         .gte("expected_date", start)
         .lte("expected_date", end)
@@ -64,7 +70,17 @@ export default async function MonthlyViewPage({
       // Despesa. Rows already filed under one still render it, because
       // getEntriesForMonth resolves Categorias by id regardless of active.
       getCategories(supabase, spaceId, "outflow"),
+      getCategories(supabase, spaceId, "income"),
+      // The "all" variants resolve Categorias and Pagadores that have since
+      // been deactivated, so existing Receitas keep showing what they were
+      // filed under instead of silently reading as unassigned.
+      getCategories(supabase, spaceId, "income", { includeInactive: true }),
+      getPayers(supabase, spaceId),
+      getPayers(supabase, spaceId, { includeInactive: true }),
     ]);
+
+  const incomeCategoryById = new Map(allIncomeCategories.map((c) => [c.id, c]));
+  const payerById = new Map(allPayers.map((p) => [p.id, p]));
 
   // Financing installments surface as bills; extra payments as expenses.
   const mortgageBills = financingItems.bills;
@@ -96,6 +112,10 @@ export default async function MonthlyViewPage({
     amount: Number(i.amount),
     expected_date: i.expected_date,
     received: i.received,
+    category: i.category_id
+      ? incomeCategoryById.get(i.category_id) ?? null
+      : null,
+    payer: i.payer_id ? payerById.get(i.payer_id) ?? null : null,
   }));
 
   const today = todayYmd();
@@ -181,6 +201,8 @@ export default async function MonthlyViewPage({
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
       <MonthlyViewClient
         outflowCategories={outflowCategories}
+        incomeCategories={incomeCategories}
+        payers={payers}
         // Remount (reset highlighted-day state) whenever the URL
         // points at a different month.
         key={`${year}-${month}`}

@@ -4,7 +4,7 @@ import type {
   MortgageExpenseItem,
 } from "@/helpers/financing";
 import type { ResolvedCategory } from "@/helpers/types";
-import type { CategoryRow } from "@/helpers/taxonomy";
+import type { CategoryRow, PayerRow } from "@/helpers/taxonomy";
 
 export type { ResolvedCategory };
 
@@ -40,10 +40,14 @@ export type EntryRow = {
 export type IncomeRow = {
   id: string;
   space_id: string;
-  name: string;
+  // Nullable since the Pagador and Categoria took over the job the name was
+  // being made to do. A nameless Receita renders as "Pagador · Categoria".
+  name: string | null;
   amount: number;
   expected_date: string;
   received: boolean;
+  category: ResolvedCategory | null;
+  payer: { id: string; name: string; color: string } | null;
 };
 
 export type CalendarGroup = {
@@ -95,9 +99,11 @@ export type EntryMutationTarget =
   | { kind: "virtual"; templateId: string; date: string };
 
 export type MonthlyViewProps = {
-  // Active outflow Categorias, for the Despesa forms. Resolved server-side
-  // once and fanned out, rather than fetched per form.
+  // Active lists for the create/edit forms. Resolved server-side once and
+  // fanned out, rather than fetched per form.
   outflowCategories: CategoryRow[];
+  incomeCategories: CategoryRow[];
+  payers: PayerRow[];
   year: number;
   month: number;
   monthOptions: YearMonth[];

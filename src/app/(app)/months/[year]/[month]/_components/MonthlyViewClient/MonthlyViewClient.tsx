@@ -12,6 +12,8 @@ import type { MonthlyViewProps } from "../../_types";
 
 export default function MonthlyViewClient({
   outflowCategories,
+  incomeCategories,
+  payers,
   year,
   month,
   monthOptions,
@@ -60,6 +62,8 @@ export default function MonthlyViewClient({
       {/* Row 2 — Receitas + Despesas side by side */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <IncomeSection
+          categories={incomeCategories}
+          payers={payers}
           income={income}
           year={year}
           month={month}

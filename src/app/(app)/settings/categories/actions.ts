@@ -11,3 +11,4 @@ export { createPayer } from "./actions/create-payer";
 export { updatePayer } from "./actions/update-payer";
 export { setPayerActive } from "./actions/set-payer-active";
 export { deletePayer } from "./actions/delete-payer";
+export { createPayerInline } from "./actions/create-payer-inline";

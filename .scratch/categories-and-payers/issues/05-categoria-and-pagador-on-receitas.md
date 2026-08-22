@@ -8,13 +8,40 @@ A user adding income from a new client should be able to create that Pagador wit
 
 **Blocked by:** 01, 02.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The Receita form offers an optional Categoria, listing only active income Categorias
-- [ ] The Receita form offers an optional Pagador
-- [ ] A new Pagador can be created from inside the Receita form without losing the form's other input
-- [ ] The name field is optional and a Receita saves without one
-- [ ] A Receita with no name displays as its Pagador and Categoria
-- [ ] A Receita with no name, no Pagador and no Categoria still displays something sensible
-- [ ] A name can still be given, and existing Receita names are unchanged
-- [ ] Outflow Categorias are never offered on the Receita form
+- [x] The Receita form offers an optional Categoria, listing only active income Categorias
+- [x] The Receita form offers an optional Pagador
+- [x] A new Pagador can be created from inside the Receita form without losing the form's other input
+- [x] The name field is optional and a Receita saves without one
+- [x] A Receita with no name displays as its Pagador and Categoria
+- [x] A Receita with no name, no Pagador and no Categoria still displays something sensible
+- [x] A name can still be given, and existing Receita names are unchanged
+- [x] Outflow Categorias are never offered on the Receita form
+
+---
+
+**Done.** Typecheck and production build clean. All 20 existing Receitas verified
+untouched — nothing was parsed or rewritten.
+
+Those 20 names are the case for this ticket, in the user's own data:
+`Sametz | Paycheck 1`, `DEVVV | Salário`, `DEVVV | Salario`, `Restituição IRPF`.
+A Pagador and a Categoria crammed into free text, with the same Categoria spelled
+two ways. They are now expressible as structure, and splitting them is manual
+work the user can do whenever.
+
+Two things beyond the criteria:
+
+- **`createPayerInline` is its own action**, separate from `createPayer`. The
+  management-screen version returns only `FormState`, because a `<form action>`
+  has nowhere to put a returned row; the inline case needs the new row back so
+  the form can select it without navigating. It also reactivates rather than
+  duplicating, since the partial unique index only covers active rows and
+  silently creating a second "Empresa X" would be worse than reviving the first.
+
+- **The emailed PDF was about to print blank rows.** `reports.ts` cast
+  `i.name as string`, which stopped being true the moment the column went
+  nullable — and TypeScript believes a cast. The report now composes the same
+  label the monthly view shows, so `incomeDisplayLabel` moved from the route's
+  `_helpers.ts` into `src/helpers/format.ts`. A blank row in a PDF nobody is
+  watching is a worse failure than a blank row on screen.

@@ -10,8 +10,15 @@ import {
   updateIncomeEntry,
 } from "../../actions";
 import type { IncomeRow } from "../../_types";
+import CategorySelect from "@/components/CategorySelect/CategorySelect";
+import PayerSelect from "@/components/PayerSelect/PayerSelect";
+import PayerChip from "@/components/PayerChip";
+import type { CategoryRow, PayerRow } from "@/helpers/taxonomy";
+import { incomeDisplayLabel } from "@/helpers/format";
 
 type Props = {
+  categories: CategoryRow[];
+  payers: PayerRow[];
   entry: IncomeRow;
   year: number;
   month: number;
@@ -20,6 +27,8 @@ type Props = {
 };
 
 export default function IncomeEntryRow({
+  categories,
+  payers,
   entry,
   year,
   month,
@@ -63,7 +72,7 @@ export default function IncomeEntryRow({
 
   const [isDeleting, startDelete] = useTransition();
   const handleDelete = () => {
-    if (!window.confirm(`Excluir "${entry.name}"?`)) return;
+    if (!window.confirm(`Excluir "${incomeDisplayLabel(entry)}"?`)) return;
     startDelete(async () => {
       await deleteIncomeEntry(entry.id);
     });
@@ -79,10 +88,16 @@ export default function IncomeEntryRow({
           <input
             type="text"
             name="name"
-            required
-            defaultValue={entry.name}
+            placeholder="Descrição (opcional)"
+            defaultValue={entry.name ?? ""}
             className="field-input mt-0 min-w-32 flex-1"
           />
+          <div className="w-40">
+            <PayerSelect payers={payers} current={entry.payer} />
+          </div>
+          <div className="w-40">
+            <CategorySelect categories={categories} current={entry.category} />
+          </div>
           <CurrencyInput
             name="amount"
             required
@@ -126,10 +141,23 @@ export default function IncomeEntryRow({
       }
     >
       <StatusIcon className={`h-5 w-5 shrink-0 ${statusColor}`} strokeWidth={2} />
+      {entry.payer && (
+        <PayerChip
+          name={entry.payer.name}
+          color={entry.payer.color}
+          className="h-7 w-7"
+        />
+      )}
       <div className="min-w-32 flex-1">
-        <p className="text-sm font-medium text-fg">{entry.name}</p>
+        <p className="text-sm font-medium text-fg">
+          {incomeDisplayLabel(entry)}
+        </p>
         <p className="text-xs text-muted">
           Esperado em {dateFormatter.format(new Date(entry.expected_date))}
+          {/* Only shown when the name already used them up — otherwise the
+              headline is these two fields and repeating them is noise. */}
+          {entry.name && entry.payer ? ` · ${entry.payer.name}` : ""}
+          {entry.name && entry.category ? ` · ${entry.category.name}` : ""}
         </p>
       </div>
 

@@ -4,14 +4,21 @@ import { useRef, useState, useTransition } from "react";
 import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { defaultEntryDate } from "@/helpers/date";
 import { createIncomeEntry } from "../../actions";
+import CategorySelect from "@/components/CategorySelect/CategorySelect";
+import PayerSelect from "@/components/PayerSelect/PayerSelect";
+import type { CategoryRow, PayerRow } from "@/helpers/taxonomy";
 
 type Props = {
+  categories: CategoryRow[];
+  payers: PayerRow[];
   year: number;
   month: number;
   onSuccess?: () => void;
 };
 
 export default function CreateIncomeEntryForm({
+  categories,
+  payers,
   year,
   month,
   onSuccess,
@@ -52,17 +59,33 @@ export default function CreateIncomeEntryForm({
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="sm:col-span-2">
           <label htmlFor="income_name" className="field-label">
-            Nome
+            Descrição (opcional)
           </label>
           <input
             id="income_name"
             name="name"
             type="text"
-            required
-            placeholder="ex.: Salário, Freelance"
+            placeholder="ex.: Venda da bicicleta"
             className="field-input"
           />
+          <p className="mt-1 text-xs text-muted">
+            Deixe em branco e a receita aparece como pagador e categoria.
+          </p>
         </div>
+        <div>
+          <label htmlFor="income_payer" className="field-label">
+            Pagador (opcional)
+          </label>
+          <PayerSelect id="income_payer" payers={payers} />
+        </div>
+
+        <div>
+          <label htmlFor="income_category" className="field-label">
+            Categoria (opcional)
+          </label>
+          <CategorySelect id="income_category" categories={categories} />
+        </div>
+
         <div>
           <label htmlFor="income_amount" className="field-label">
             Valor

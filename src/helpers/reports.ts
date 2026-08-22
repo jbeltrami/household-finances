@@ -7,6 +7,8 @@ import { getEntriesForMonth } from "./ledger";
 import { getFinancingReport, type FinancingReportRow } from "./financing";
 import { renderMonthlyReportPdf } from "@/lib/pdf/MonthlyReportPdf";
 import type { ResolvedEntry } from "./types";
+import { getCategories, getPayers } from "./taxonomy";
+import { incomeDisplayLabel } from "./format";
 
 const REPORTS_BUCKET = "monthly-reports";
 
@@ -104,15 +106,30 @@ export async function getMonthlyReportData(
 
   const { data: rawIncome } = await supabase
     .from("income_entries")
-    .select("id, name, amount, expected_date, received")
+    .select("id, name, amount, expected_date, received, category_id, payer_id")
     .eq("space_id", spaceId)
     .gte("expected_date", start)
     .lte("expected_date", end)
     .order("expected_date", { ascending: true });
 
+  // `name` is nullable, so the PDF composes the same label the monthly view
+  // shows rather than printing an empty cell into an emailed report.
+  const [incomeCategories, payers] = await Promise.all([
+    getCategories(supabase, spaceId, "income", { includeInactive: true }),
+    getPayers(supabase, spaceId, { includeInactive: true }),
+  ]);
+  const incomeCategoryById = new Map(incomeCategories.map((c) => [c.id, c]));
+  const payerById = new Map(payers.map((p) => [p.id, p]));
+
   const income: ReportIncomeRow[] = (rawIncome ?? []).map((i) => ({
     id: i.id as string,
-    name: i.name as string,
+    name: incomeDisplayLabel({
+      name: (i.name as string | null) ?? null,
+      payer: i.payer_id ? payerById.get(i.payer_id as string) ?? null : null,
+      category: i.category_id
+        ? incomeCategoryById.get(i.category_id as string) ?? null
+        : null,
+    }),
     amount: Number(i.amount),
     expected_date: i.expected_date as string,
     received: i.received as boolean,

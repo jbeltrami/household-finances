@@ -30,7 +30,7 @@ export async function updateIncomeEntry(
     const name = formData.get("name")?.toString().trim();
     const amountRaw = formData.get("amount")?.toString();
 
-    if (!name) return { error: "O nome é obrigatório" };
+    // Optional — see createIncomeEntry for why.
     if (!amountRaw) return { error: "O valor é obrigatório" };
 
     const amount = Number(amountRaw);
@@ -38,9 +38,17 @@ export async function updateIncomeEntry(
       return { error: "O valor precisa ser um número positivo" };
     }
 
+    const categoryRaw = formData.get("category_id")?.toString().trim();
+    const payerRaw = formData.get("payer_id")?.toString().trim();
+
     const { error } = await supabase
       .from("income_entries")
-      .update({ name, amount })
+      .update({
+        name: name || null,
+        amount,
+        category_id: categoryRaw ? categoryRaw : null,
+        payer_id: payerRaw ? payerRaw : null,
+      })
       .eq("id", entryId);
 
     if (error) return { error: `Falha ao atualizar a receita: ${error.message}` };

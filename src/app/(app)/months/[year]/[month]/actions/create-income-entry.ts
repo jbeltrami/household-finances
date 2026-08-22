@@ -34,7 +34,10 @@ export async function createIncomeEntry(
     const amountRaw = formData.get("amount")?.toString();
     const expectedDateRaw = formData.get("expected_date")?.toString().trim();
 
-    if (!name) return { error: "O nome é obrigatório" };
+    // The name used to be required, and users compensated by cramming the
+    // Pagador and the kind of income into it ("Freelance XYZ"). With both
+    // modelled properly it becomes an optional free-text annotation; a
+    // nameless Receita renders as "Pagador · Categoria".
     if (!amountRaw) return { error: "O valor é obrigatório" };
 
     const amount = Number(amountRaw);
@@ -47,15 +50,24 @@ export async function createIncomeEntry(
       return { error: "Formato de data inválido" };
     }
 
+    // Categoria and Pagador are both optional. Empty string is what an
+    // unselected <select> submits.
+    const categoryRaw = formData.get("category_id")?.toString().trim();
+    const categoryId = categoryRaw ? categoryRaw : null;
+    const payerRaw = formData.get("payer_id")?.toString().trim();
+    const payerId = payerRaw ? payerRaw : null;
+
     const check = await checkDateEditable(supabase, spaceId, expectedDate);
     if (!check.ok) return { error: check.error };
 
     const { error } = await supabase.from("income_entries").insert({
       space_id: spaceId,
       expected_date: expectedDate,
-      name,
+      name: name || null,
       amount,
       currency: "BRL",
+      category_id: categoryId,
+      payer_id: payerId,
       received: false,
     });
 

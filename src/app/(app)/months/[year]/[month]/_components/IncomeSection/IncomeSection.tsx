@@ -7,8 +7,11 @@ import CreateIncomeEntryForm from "../CreateIncomeEntryForm/CreateIncomeEntryFor
 import IncomeEntryRow from "../IncomeEntryRow/IncomeEntryRow";
 import { brlFormatter } from "@/helpers/format";
 import type { IncomeGroup } from "../../_types";
+import type { CategoryRow, PayerRow } from "@/helpers/taxonomy";
 
 type Props = {
+  categories: CategoryRow[];
+  payers: PayerRow[];
   income: IncomeGroup;
   year: number;
   month: number;
@@ -17,6 +20,8 @@ type Props = {
 };
 
 export default function IncomeSection({
+  categories,
+  payers,
   income,
   year,
   month,
@@ -57,6 +62,8 @@ export default function IncomeSection({
       {!locked && showAddForm && (
         <div className="mt-4">
           <CreateIncomeEntryForm
+            categories={categories}
+            payers={payers}
             year={year}
             month={month}
             onSuccess={() => setShowAddForm(false)}
@@ -72,6 +79,8 @@ export default function IncomeSection({
         <ul className="mt-4 divide-y divide-subtle">
           {income.entries.map((entry) => (
             <IncomeEntryRow
+              categories={categories}
+              payers={payers}
               key={entry.id}
               entry={entry}
               year={year}
