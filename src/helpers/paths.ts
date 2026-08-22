@@ -21,6 +21,10 @@ export function settingsUrl(): string {
   return "/settings";
 }
 
+export function settingsCategoriesUrl(): string {
+  return "/settings/categories";
+}
+
 export function reportsUrl(): string {
   return "/reports";
 }

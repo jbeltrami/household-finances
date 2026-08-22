@@ -246,3 +246,13 @@ Route-specific helpers live in the route's `_helpers.ts`. Third-party integratio
 - **Twilio WhatsApp uses direct REST, not the SDK** — `src/lib/whatsapp/client.ts` calls Twilio's Messages endpoint via `fetch` with HTTP Basic auth (Account SID + Auth Token). The full `twilio` SDK is ~5 MB for capabilities we don't use. Sandbox vs production: in sandbox we send free-form text bodies and the recipient must opt in via `join <code>`; in production we'd switch to a Meta-approved Content Template SID and remove the join step. The client function takes a body string today — when we graduate to production, refactor to take a template ID + variables instead
 - **`category_id` is inherited, not snapshotted** — on a template-bound entry (`template_id IS NOT NULL`), `category_id IS NULL` means *inherit from the template*; on a one-off it means *uncategorised*. `template_id` is what disambiguates the overloaded null. This is deliberately unlike `name` and `amount`, which **are** frozen into the row at materialization — an amount is a fact about a payment, a category is a classification of the bill, and freezing the latter splits one bill's history in two the moment the user reorganises their list. Category aggregation therefore has to join `recurring_bill_templates` for the null case; don't "optimise" that join away by reintroducing the copy. Full reasoning in `docs/adr/0001-categories-are-referenced-not-snapshotted.md`
 - **`categories.kind` is `'income' | 'outflow'` — never `'expense'`** — `CONTEXT.md` binds *expense* to Despesas specifically, so an `'expense'` category would read as excluding Contas. *Outflow* is the umbrella: Contas, Despesas and Financiamentos alike. Always read the list through a kind-filtered helper — Postgres cannot enforce that an outflow row points at an outflow category, so that invariant lives in application code
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

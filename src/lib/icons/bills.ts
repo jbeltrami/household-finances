@@ -6,6 +6,7 @@
 
 import {
   Baby,
+  Banknote,
   Brain,
   Briefcase,
   Building,
@@ -18,14 +19,19 @@ import {
   GraduationCap,
   Heart,
   Home,
+  Landmark,
+  Laptop,
   Music,
   PiggyBank,
   Plane,
   Receipt,
+  RotateCcw,
   Shirt,
   ShoppingCart,
   Smartphone,
   Stethoscope,
+  Tag,
+  TrendingUp,
   Utensils,
   Wifi,
   Wrench,
@@ -78,6 +84,24 @@ export const BILL_ICONS: Record<string, BillIconEntry> = {
   briefcase: { Icon: Briefcase, label: "Trabalho", category: "Financeiro" },
 };
 
+// Icons that exist for Categorias but were never bill-flavoured — the
+// income side of the ledger. Deliberately a separate map with no
+// `category` field: `BILL_ICONS` still drives the legacy icon->category
+// derivation, and mixing these in would make that derivation start
+// classifying Contas as income. Both maps are merged for lookup and for
+// the flat picker; only `BILL_ICONS` feeds `categoryFor`.
+//
+// This map disappears into a single flat registry once the derivation is
+// deleted (ticket 08).
+const EXTRA_ICONS: Record<string, { Icon: LucideIcon; label: string }> = {
+  banknote: { Icon: Banknote, label: "Salário" },
+  laptop: { Icon: Laptop, label: "Freelance" },
+  landmark: { Icon: Landmark, label: "Governo" },
+  tag: { Icon: Tag, label: "Vendas" },
+  "trending-up": { Icon: TrendingUp, label: "Investimentos" },
+  "rotate-ccw": { Icon: RotateCcw, label: "Reembolso" },
+};
+
 export type BillIconKey = keyof typeof BILL_ICONS;
 
 export function isBillIconKey(s: unknown): s is BillIconKey {
@@ -88,7 +112,35 @@ export function isBillIconKey(s: unknown): s is BillIconKey {
 // if the key is null/unknown.
 export function iconFor(key: string | null | undefined): LucideIcon {
   if (key && key in BILL_ICONS) return BILL_ICONS[key as BillIconKey].Icon;
+  if (key && key in EXTRA_ICONS) return EXTRA_ICONS[key].Icon;
   return Receipt;
+}
+
+// Every registered key, bill-flavoured or not. Categoria icons are picked
+// from this full set — a Categoria is not a Conta, so restricting it to
+// the bill registry would leave the seeded income Categorias unable to
+// display their own icons.
+export function isIconKey(s: unknown): s is string {
+  return typeof s === "string" && (s in BILL_ICONS || s in EXTRA_ICONS);
+}
+
+// Flat list for pickers that do not group by the legacy categories —
+// which, now that Categorias are user-managed, is the only honest way to
+// present them: the group headings are compiled-in names that may say
+// "Moradia" while the user's own list says something else.
+export function getFlatIconList(): { key: string; label: string; Icon: LucideIcon }[] {
+  return [
+    ...Object.entries(BILL_ICONS).map(([key, e]) => ({
+      key,
+      label: e.label,
+      Icon: e.Icon,
+    })),
+    ...Object.entries(EXTRA_ICONS).map(([key, e]) => ({
+      key,
+      label: e.label,
+      Icon: e.Icon,
+    })),
+  ];
 }
 
 // Returns the budget category an icon belongs to (e.g. "Moradia",

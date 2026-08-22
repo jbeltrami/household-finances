@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
-import { monthUrl } from "@/helpers/paths";
+import { monthUrl, settingsCategoriesUrl } from "@/helpers/paths";
+import Card from "@/components/Card";
+import { Tags, ChevronRight } from "lucide-react";
 import RenameSpaceForm from "./_components/RenameSpaceForm";
 import MonthlyReportEmailToggle from "./_components/MonthlyReportEmailToggle";
 import WhatsAppNotificationToggle from "./_components/WhatsAppNotificationToggle";
@@ -60,6 +62,26 @@ export default async function SpaceSettingsPage() {
 
       <div className="mt-6 flex flex-col gap-5">
         <RenameSpaceForm currentName={space.name} />
+
+        <Card className="p-0">
+          <Link
+            href={settingsCategoriesUrl()}
+            className="flex items-center gap-3 px-5 py-4"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg">
+              <Tags className="h-5 w-5" strokeWidth={2} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-medium text-fg">
+                Categorias
+              </span>
+              <span className="block text-xs text-muted">
+                Gerencie como suas receitas e saídas são agrupadas
+              </span>
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted" strokeWidth={2} />
+          </Link>
+        </Card>
         <MonthlyReportEmailToggle initialEnabled={emailEnabled} />
         <WhatsAppNotificationToggle
           initialPhone={whatsappPhone}
