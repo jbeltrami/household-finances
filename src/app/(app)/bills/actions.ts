@@ -12,3 +12,4 @@
 export { createBillTemplate } from "./actions/create-bill-template";
 export { updateBillTemplate } from "./actions/update-bill-template";
 export { deactivateBillTemplate } from "./actions/deactivate-bill-template";
+export { reactivateBillTemplate } from "./actions/reactivate-bill-template";

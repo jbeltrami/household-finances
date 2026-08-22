@@ -21,10 +21,9 @@ export default async function BillsPage() {
     supabase
       .from("recurring_bill_templates")
       .select(
-        "id, name, default_amount, currency, category_id, icon, cadence, due_day, day_of_week, installments_total, installments_start_month"
+        "id, name, default_amount, currency, category_id, icon, active, cadence, due_day, day_of_week, installments_total, installments_start_month"
       )
       .eq("space_id", spaceId)
-      .eq("active", true)
       .order("name"),
     supabase
       .from("entries")
@@ -50,6 +49,7 @@ export default async function BillsPage() {
     category_id: t.category_id,
     category: t.category_id ? categoryById.get(t.category_id) ?? null : null,
     icon: t.icon,
+    active: t.active,
     cadence: (t.cadence as string) ?? "monthly",
     due_day: t.due_day,
     day_of_week: t.day_of_week,
@@ -74,7 +74,12 @@ export default async function BillsPage() {
 
   const activeTemplates: BillTemplate[] = [];
   const completedTemplates: BillTemplate[] = [];
-  for (const t of templates) {
+  // Deactivated Contas used to be filtered out at the query, which left them
+  // unreachable: their history still renders in past months, but there was no
+  // way to open one — not even to fix its Categoria. Only a hand-typed
+  // /bills/<id>/edit URL got you there.
+  const inactiveTemplates: BillTemplate[] = templates.filter((t) => !t.active);
+  for (const t of templates.filter((t) => t.active)) {
     if (t.installments_total == null) {
       activeTemplates.push(t);
       continue;
@@ -109,6 +114,14 @@ export default async function BillsPage() {
             templates={completedTemplates}
             paidCoveredByTemplate={paidCoveredByTemplate}
             variant="completed"
+          />
+        )}
+
+        {inactiveTemplates.length > 0 && (
+          <ActiveTemplatesSection
+            templates={inactiveTemplates}
+            paidCoveredByTemplate={paidCoveredByTemplate}
+            variant="inactive"
           />
         )}
       </div>

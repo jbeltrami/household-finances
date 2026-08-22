@@ -11,6 +11,7 @@ export type BillTemplate = {
   // deactivated and therefore not in the active list".
   category: CategoryRow | null;
   icon: string | null;
+  active: boolean;
   cadence: string;
   due_day: number | null;
   day_of_week: number | null;

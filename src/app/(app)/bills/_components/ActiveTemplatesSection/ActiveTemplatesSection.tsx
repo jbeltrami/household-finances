@@ -6,6 +6,7 @@ import Card from "@/components/Card";
 import { brlFormatter } from "@/helpers/format";
 import { billEditUrl } from "@/helpers/paths";
 import { deactivateBillTemplate } from "../../actions";
+import ReactivateBillButton from "../ReactivateBillButton/ReactivateBillButton";
 import type { BillTemplate } from "../../_types";
 
 const DAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -38,7 +39,7 @@ function formatStartMonth(ymd: string): string {
 type Props = {
   templates: BillTemplate[];
   paidCoveredByTemplate: Map<string, number>;
-  variant?: "active" | "completed";
+  variant?: "active" | "completed" | "inactive";
 };
 
 export default function ActiveTemplatesSection({
@@ -47,7 +48,11 @@ export default function ActiveTemplatesSection({
   variant = "active",
 }: Props) {
   const heading =
-    variant === "completed" ? "Parcelamentos concluídos" : "Contas ativas";
+    variant === "completed"
+      ? "Parcelamentos concluídos"
+      : variant === "inactive"
+        ? "Contas desativadas"
+        : "Contas ativas";
 
   return (
     <Card className="p-5">
@@ -56,7 +61,9 @@ export default function ActiveTemplatesSection({
         <p className="mt-4 text-sm text-muted">
           {variant === "completed"
             ? "Nenhum parcelamento concluído ainda."
-            : "Nenhuma conta cadastrada. Adicione uma acima."}
+            : variant === "inactive"
+              ? "Nenhuma conta desativada."
+              : "Nenhuma conta cadastrada. Adicione uma acima."}
         </p>
       ) : (
         <ul className="mt-4 divide-y divide-subtle">
@@ -74,7 +81,7 @@ export default function ActiveTemplatesSection({
             return (
               <li
                 key={t.id}
-                className="flex items-center gap-3 px-3 py-3"
+                className="flex flex-wrap items-center gap-3 px-3 py-3"
               >
                 {t.category ? (
                   <CategoryChip
@@ -113,16 +120,20 @@ export default function ActiveTemplatesSection({
                   >
                     <Pencil className="h-4 w-4" strokeWidth={2} />
                   </Link>
-                  <form action={deactivateBillTemplate.bind(null, t.id)}>
-                    <button
-                      type="submit"
-                      className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-danger"
-                      aria-label="Desativar"
-                      data-tooltip="Desativar"
-                    >
-                      <PowerOff className="h-4 w-4" strokeWidth={2} />
-                    </button>
-                  </form>
+                  {variant === "inactive" ? (
+                    <ReactivateBillButton templateId={t.id} name={t.name} />
+                  ) : (
+                    <form action={deactivateBillTemplate.bind(null, t.id)}>
+                      <button
+                        type="submit"
+                        className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-danger"
+                        aria-label="Desativar"
+                        data-tooltip="Desativar"
+                      >
+                        <PowerOff className="h-4 w-4" strokeWidth={2} />
+                      </button>
+                    </form>
+                  )}
                 </div>
               </li>
             );
