@@ -25,6 +25,7 @@ import {
 import type {
   EntryRow,
   InstallmentProgress,
+  InstallmentWindow,
   ResolvedCategory,
   ResolvedEntry,
   TemplateRecurrence,
@@ -88,35 +89,46 @@ function biweeklyDatesInMonth(
   return dates;
 }
 
-// Compute the inclusive [startYm, endYm] window ("YYYY-MM" strings)
-// during which an installment template emits occurrences.
-// The effective end shifts earlier by `paidExtra` months, where
-// `paidExtra = sum(installments_covered - 1) across paid entries`, so
-// the series always covers exactly `installments_total` installments
-// no matter how much the user prepaid. Returns null for non-
-// installment templates (always active).
-function installmentActiveRange(
-  template: TemplateRecurrence,
-  paidExtra: number
-): { startYm: string; endYm: string } | null {
-  if (template.installments_total == null) return null;
-  if (!template.installments_start_month) {
-    return { startYm: "9999-99", endYm: "0000-00" };
-  }
+// The inclusive "YYYY-MM" window during which a template still emits
+// occurrences, given how much of its parcelamento is already paid.
+//
+// A payment can absorb more than one parcela. Every extra parcela a
+// payment covered is one the series no longer has to emit, so the end
+// moves earlier by the total of those extras and the series always
+// covers exactly `installments_total` parcelas no matter how much the
+// user prepaid.
+//
+// Exported because two places need this answer and there is only one
+// right one: occurrence expansion below, and the report's list of
+// non-empty past months. It used to be private here, so the report grew
+// its own copy — which had already drifted, treating a parcelamento with
+// no start month as running forever rather than as unplaceable.
+export function installmentWindow(
+  template: Pick<
+    TemplateRecurrence,
+    "installments_total" | "installments_start_month"
+  >,
+  paidCovered: number,
+  paidRows: number
+): InstallmentWindow {
+  if (template.installments_total == null) return { kind: "unbounded" };
+  if (!template.installments_start_month) return { kind: "empty" };
+
   const startYm = template.installments_start_month.slice(0, 7);
+  const paidExtra = Math.max(0, paidCovered - paidRows);
   const endOffset = template.installments_total - 1 - paidExtra;
+  // Clamped: coverage beyond the declared total leaves the window one
+  // month long rather than running backwards past its own start.
   const endYm = addMonthsYm(startYm, Math.max(0, endOffset));
-  return { startYm, endYm };
+  return { kind: "bounded", startYm, endYm };
 }
 
 // Expand a single template's occurrences that fall within the given
 // calendar month. Returns "YYYY-MM-DD" strings. The caller decides
 // whether each date has a materialized row or is a pure-virtual entry.
 //
-// `paidCoveredForTemplate` and `paidRowsForTemplate` together compute
-// the "extra" installments absorbed by prepayments:
-//   paidExtra = paidCoveredForTemplate - paidRowsForTemplate
-// which is the amount to shift the effective end earlier by.
+// `paidCoveredForTemplate` and `paidRowsForTemplate` are passed straight
+// through to `installmentWindow`, which owns what they mean.
 export function expandTemplateForMonth(
   template: TemplateRecurrence,
   year: number,
@@ -125,14 +137,15 @@ export function expandTemplateForMonth(
   paidRowsForTemplate: number
 ): string[] {
   // Installment window check (monthly cadence only by schema CHECK).
-  const paidExtra = Math.max(
-    0,
-    paidCoveredForTemplate - paidRowsForTemplate
+  const window = installmentWindow(
+    template,
+    paidCoveredForTemplate,
+    paidRowsForTemplate
   );
-  const range = installmentActiveRange(template, paidExtra);
-  if (range) {
+  if (window.kind === "empty") return [];
+  if (window.kind === "bounded") {
     const currentYm = yearMonthKey(year, month);
-    if (currentYm < range.startYm || currentYm > range.endYm) return [];
+    if (currentYm < window.startYm || currentYm > window.endYm) return [];
   }
 
   switch (template.cadence) {

@@ -43,6 +43,16 @@ export type InstallmentProgress = {
   defaultAmount: number;
 };
 
+// The months during which a template emits occurrences, as far as its
+// parcelamento is concerned. Three answers, each named rather than
+// encoded: a Conta with no parcelamento runs forever, a parcelamento
+// that was never given a start month cannot place its series at all,
+// and a configured one runs between two months inclusive.
+export type InstallmentWindow =
+  | { kind: "unbounded" }
+  | { kind: "empty" }
+  | { kind: "bounded"; startYm: string; endYm: string };
+
 // Unified shape the UI consumes. When `id` is null, this is a virtual
 // template occurrence with no materialized row yet; any mutation on
 // it must insert a row first. When `id` is set, it's a real row in

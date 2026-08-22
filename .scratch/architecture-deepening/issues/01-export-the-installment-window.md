@@ -14,18 +14,18 @@ covers 3 parcelas must stop emitting two months early — and nothing verifies i
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The window rule is an exported module taking a template and its paid
+- [x] The window rule is an exported module taking a template and its paid
       coverage, returning the inclusive first and last month it emits
-- [ ] It returns nothing for a Conta without parcelamento, which is always active
-- [ ] Occurrence expansion reads it rather than computing the window inline
-- [ ] A 12× series with no prepayment emits across exactly 12 months
-- [ ] One payment covering 3 parcelas shortens the series by 2 months
-- [ ] Coverage beyond the declared total clamps rather than emitting backwards
-- [ ] A parcelamento with no start month emits nothing
-- [ ] A Conta with an ordinary recurrence is untouched by any of this
-- [ ] Every criterion above is covered by a test against the module's interface
+- [x] It returns nothing for a Conta without parcelamento, which is always active
+- [x] Occurrence expansion reads it rather than computing the window inline
+- [x] A 12× series with no prepayment emits across exactly 12 months
+- [x] One payment covering 3 parcelas shortens the series by 2 months
+- [x] Coverage beyond the declared total clamps rather than emitting backwards
+- [x] A parcelamento with no start month emits nothing
+- [x] A Conta with an ordinary recurrence is untouched by any of this
+- [x] Every criterion above is covered by a test against the module's interface
 
 ## Further notes
 
