@@ -71,7 +71,7 @@ export default function PayerSelect({
         name={name}
         value={selected}
         onChange={(e) => setSelected(e.target.value)}
-        className={`field-input ${className}`}
+        className={`field-input field-select ${className}`}
       >
         <option value="">Sem pagador</option>
         {options.map((payer) => (

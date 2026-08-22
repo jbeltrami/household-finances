@@ -58,8 +58,8 @@ export default function BillTemplateFields({ defaults, categories }: Props) {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="sm:col-span-2">
+      <div className="grid grid-cols-1 items-start gap-x-3 gap-y-4 sm:grid-cols-2">
+        <div>
           <label htmlFor="name" className="field-label">
             Nome
           </label>
@@ -99,17 +99,15 @@ export default function BillTemplateFields({ defaults, categories }: Props) {
             current={defaults?.category ?? null}
           />
           <p className="mt-1 text-xs text-muted">
-            Agrupa a conta nos relatórios. Mudar a categoria move todo o
-            histórico dela junto.
+            Mudar a categoria move todo o histórico junto.
           </p>
         </div>
 
-        <div className="sm:col-span-2">
+        <div>
           <label className="field-label">Ícone (opcional)</label>
           <IconPicker defaultValue={defaults?.icon ?? null} />
           <p className="mt-1 text-xs text-muted">
-            Só aparência — independente da categoria. Sem ícone, a conta usa o
-            da própria categoria.
+            Sem ícone, usa o da categoria.
           </p>
         </div>
 
@@ -122,7 +120,7 @@ export default function BillTemplateFields({ defaults, categories }: Props) {
             name="cadence"
             value={cadence}
             onChange={(e) => setCadence(e.target.value)}
-            className="field-input"
+            className="field-input field-select"
           >
             <option value="monthly">Mensal</option>
             <option value="weekly">Semanal</option>
@@ -160,7 +158,7 @@ export default function BillTemplateFields({ defaults, categories }: Props) {
               defaultValue={
                 defaults?.dayOfWeek != null ? String(defaults.dayOfWeek) : "0"
               }
-              className="field-input"
+              className="field-input field-select"
             >
               {DAY_OPTIONS.map((d) => (
                 <option key={d.value} value={d.value}>

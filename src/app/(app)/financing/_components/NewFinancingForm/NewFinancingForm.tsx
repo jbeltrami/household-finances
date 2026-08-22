@@ -150,7 +150,7 @@ export default function NewFinancingForm({ categories }: Props) {
                 onChange={(e) =>
                   set("system", e.target.value as AmortizationSystem)
                 }
-                className="field-input"
+                className="field-input field-select"
               >
                 <option value="price">Tabela Price (parcela fixa)</option>
                 <option value="sac">SAC (parcela decrescente)</option>
@@ -202,7 +202,7 @@ export default function NewFinancingForm({ categories }: Props) {
                 name="rate_period"
                 value={values.ratePeriod}
                 onChange={(e) => set("ratePeriod", e.target.value as RatePeriod)}
-                className="field-input"
+                className="field-input field-select"
               >
                 <option value="annual">Ao ano (a.a.)</option>
                 <option value="monthly">Ao mês (a.m.)</option>

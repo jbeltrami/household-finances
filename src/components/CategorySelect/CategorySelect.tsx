@@ -49,7 +49,7 @@ export default function CategorySelect({
       defaultValue={current?.id ?? ""}
       onChange={onChange}
       disabled={disabled}
-      className={`field-input ${className}`}
+      className={`field-input field-select ${className}`}
     >
       <option value="">Sem categoria</option>
       {categories.map((category) => (

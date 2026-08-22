@@ -72,6 +72,33 @@ body {
   .field-input {
     @apply mt-1 w-full rounded-lg border border-subtle bg-canvas px-3 py-2 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none;
   }
+
+  /* A native <select> draws its own arrow, and the browser positions it
+     against the element's right edge rather than against our padding — so it
+     sat visibly tighter than the 0.75rem of breathing room the text gets on
+     the left. `appearance-none` removes it; the background chevron is placed
+     at exactly `right 0.75rem`, mirroring `px-3` on the other side.
+
+     Two static SVGs instead of one using currentColor, because
+     background-image cannot inherit it. The strokes are --color-muted's
+     light and dark values, so the arrow reads the same weight as the label
+     above it in either theme. */
+  /* A modifier, applied alongside `field-input` rather than redefining it.
+     Tailwind v4's @apply only takes utilities, not other component classes,
+     so `@apply field-input` is not available — and copying its declaration
+     list here would silently drift the moment field-input changed.
+     `pr-9` overrides field-input's `px-3` because this rule comes later. */
+  .field-select {
+    @apply appearance-none bg-no-repeat pr-9;
+    background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%2364748b'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='m6%209%206%206%206-6'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+    background-size: 1rem 1rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    .field-select {
+      background-image: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%20fill='none'%20stroke='%238b94a8'%20stroke-width='2'%20stroke-linecap='round'%20stroke-linejoin='round'%3E%3Cpath%20d='m6%209%206%206%206-6'/%3E%3C/svg%3E");
+    }
+  }
   .btn-primary {
     @apply rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90 disabled:opacity-50;
   }
