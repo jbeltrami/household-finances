@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { todayYmd, getMonthRange } from "@/helpers/date";
 import { fetchMonthUnlock, isMonthLocked } from "@/helpers/lock";
 import { getEntriesForMonth } from "@/helpers/ledger";
-import { getCategories, getPayers } from "@/helpers/taxonomy";
+import { getTaxonomy } from "@/helpers/taxonomy";
 import { getFinancingMonthItems } from "@/helpers/financing";
 import { monthDayMarkers, summarizeMonth } from "@/helpers/month-summary";
 import { getPersonalSpaceId } from "@/helpers/spaces";
@@ -45,11 +45,7 @@ export default async function MonthlyViewPage({
     resolved,
     rawIncomeRes,
     financingItems,
-    outflowCategories,
-    incomeCategories,
-    allIncomeCategories,
-    payers,
-    allPayers,
+    taxonomy,
   ] = await Promise.all([
       fetchMonthUnlock(supabase, spaceId, year, month),
       supabase
@@ -67,21 +63,11 @@ export default async function MonthlyViewPage({
         .lte("expected_date", end)
         .order("expected_date", { ascending: true }),
       getFinancingMonthItems(supabase, spaceId, year, month),
-      // Active only: a deactivated Categoria must not be offerable on a new
-      // Despesa. Rows already filed under one still render it, because
-      // getEntriesForMonth resolves Categorias by id regardless of active.
-      getCategories(supabase, spaceId, "outflow"),
-      getCategories(supabase, spaceId, "income"),
-      // The "all" variants resolve Categorias and Pagadores that have since
-      // been deactivated, so existing Receitas keep showing what they were
-      // filed under instead of silently reading as unassigned.
-      getCategories(supabase, spaceId, "income", { includeInactive: true }),
-      getPayers(supabase, spaceId),
-      getPayers(supabase, spaceId, { includeInactive: true }),
+      // Both halves of both lists in one read: `active` is what the pickers
+      // may offer, `byId` is what already-filed rows are labelled with, so a
+      // Receita under a retired Categoria still shows it.
+      getTaxonomy(supabase, spaceId),
     ]);
-
-  const incomeCategoryById = new Map(allIncomeCategories.map((c) => [c.id, c]));
-  const payerById = new Map(allPayers.map((p) => [p.id, p]));
 
   // Financing installments surface as bills; extra payments as expenses.
   const mortgageBills = financingItems.bills;
@@ -114,9 +100,9 @@ export default async function MonthlyViewPage({
     expected_date: i.expected_date,
     received: i.received,
     category: i.category_id
-      ? incomeCategoryById.get(i.category_id) ?? null
+      ? taxonomy.income.byId.get(i.category_id) ?? null
       : null,
-    payer: i.payer_id ? payerById.get(i.payer_id) ?? null : null,
+    payer: i.payer_id ? taxonomy.payers.byId.get(i.payer_id) ?? null : null,
   }));
 
   const today = todayYmd();
@@ -137,9 +123,9 @@ export default async function MonthlyViewPage({
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
       <MonthlyViewClient
-        outflowCategories={outflowCategories}
-        incomeCategories={incomeCategories}
-        payers={payers}
+        outflowCategories={taxonomy.outflow.active}
+        incomeCategories={taxonomy.income.active}
+        payers={taxonomy.payers.active}
         // Remount (reset highlighted-day state) whenever the URL
         // points at a different month.
         key={`${year}-${month}`}

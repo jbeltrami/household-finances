@@ -162,3 +162,81 @@ export function payerInitials(name: string): string {
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
+
+// --- The whole taxonomy in one read --------------------------
+// A page almost never wants just one of these lists. It wants the active
+// Categorias to offer in a picker AND a way to resolve one that has since
+// been deactivated, so a row filed under a retired Categoria keeps showing
+// it instead of reading as uncategorised — and then the same pair for
+// Pagadores. Asking for each separately meant five reads of two tables on
+// the monthly view, and three hand-built lookup maps on top.
+//
+// `kind` stays required at the picker level: Postgres cannot enforce that an
+// outflow row points at an outflow Categoria, so `getCategories` refusing to
+// be called without a direction is where that invariant lives. Handing back
+// the two directions as separately named fields keeps it — there is no way
+// to ask this for "categories" in general and get a mixed list.
+
+export type CategoryLookup = {
+  // Active only, sorted: what a picker may offer.
+  active: CategoryRow[];
+  // Every Categoria of this kind by id, deactivated ones included: what a
+  // row already filed under one is labelled with.
+  byId: Map<string, CategoryRow>;
+};
+
+export type PayerLookup = {
+  active: PayerRow[];
+  byId: Map<string, PayerRow>;
+};
+
+export type Taxonomy = {
+  outflow: CategoryLookup;
+  income: CategoryLookup;
+  payers: PayerLookup;
+};
+
+function splitCategories(all: CategoryRow[], kind: CategoryKind): CategoryLookup {
+  const ofKind = all.filter((c) => c.kind === kind);
+  return {
+    active: ofKind.filter((c) => c.active).sort(byName),
+    byId: new Map(ofKind.map((c) => [c.id, c])),
+  };
+}
+
+export async function getTaxonomy(
+  supabase: SupabaseClient,
+  spaceId: string
+): Promise<Taxonomy> {
+  const [categoriesRes, payersRes] = await Promise.all([
+    supabase
+      .from("categories")
+      .select(CATEGORY_COLUMNS)
+      .eq("space_id", spaceId),
+    supabase.from("payers").select(PAYER_COLUMNS).eq("space_id", spaceId),
+  ]);
+
+  if (categoriesRes.error) {
+    throw new Error(
+      `Falha ao carregar categorias: ${categoriesRes.error.message}`
+    );
+  }
+  if (payersRes.error) {
+    throw new Error(`Falha ao carregar pagadores: ${payersRes.error.message}`);
+  }
+
+  const categories = (categoriesRes.data ?? []) as CategoryRow[];
+  const payers = (payersRes.data ?? []) as PayerRow[];
+
+  return {
+    outflow: splitCategories(categories, "outflow"),
+    income: splitCategories(categories, "income"),
+    payers: {
+      active: payers
+        .filter((p) => p.active)
+        .slice()
+        .sort((a, b) => collator.compare(a.name, b.name)),
+      byId: new Map(payers.map((p) => [p.id, p])),
+    },
+  };
+}

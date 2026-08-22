@@ -15,9 +15,10 @@
 type Row = Record<string, unknown>;
 
 export type FakeDb = {
-  // Rows the next `.maybeSingle()` / `.single()` on each table should return.
-  // `null` means "no such row".
-  rows: Record<string, Row | null>;
+  // What each table holds. A single row (or null) is what `.maybeSingle()`
+  // and `.single()` hand back; an array is what awaiting the query directly
+  // hands back as `data`.
+  rows: Record<string, Row | Row[] | null>;
 };
 
 export type Recorded = {
@@ -25,7 +26,7 @@ export type Recorded = {
   updates: { table: string; values: Row; filters: Row }[];
 };
 
-class Query implements PromiseLike<{ data: Row | null; error: null }> {
+class Query implements PromiseLike<{ data: Row | Row[] | null; error: null }> {
   constructor(
     private table: string,
     private db: FakeDb,
@@ -46,11 +47,16 @@ class Query implements PromiseLike<{ data: Row | null; error: null }> {
     this.filters[column] = value;
     return this;
   }
+  private one(): Row | null {
+    const held = this.db.rows[this.table];
+    if (Array.isArray(held)) return held[0] ?? null;
+    return held ?? null;
+  }
   async maybeSingle() {
-    return { data: this.db.rows[this.table] ?? null, error: null };
+    return { data: this.one(), error: null };
   }
   async single() {
-    return { data: this.db.rows[this.table] ?? null, error: null };
+    return { data: this.one(), error: null };
   }
   insert(values: Row) {
     this.recorded.inserts.push({ table: this.table, values });
@@ -68,18 +74,17 @@ class Query implements PromiseLike<{ data: Row | null; error: null }> {
   // to the same shape PostgREST gives back.
   then<R1, R2>(
     onFulfilled?:
-      | ((v: { data: Row | null; error: null }) => R1 | PromiseLike<R1>)
+      | ((v: { data: Row | Row[] | null; error: null }) => R1 | PromiseLike<R1>)
       | null,
     onRejected?: ((reason: unknown) => R2 | PromiseLike<R2>) | null
   ): PromiseLike<R1 | R2> {
-    return Promise.resolve({ data: null, error: null }).then(
-      onFulfilled,
-      onRejected
-    );
+    const held = this.db.rows[this.table];
+    const data = Array.isArray(held) ? held : null;
+    return Promise.resolve({ data, error: null }).then(onFulfilled, onRejected);
   }
 }
 
-export function fakeSupabase(rows: Record<string, Row | null>) {
+export function fakeSupabase(rows: Record<string, Row | Row[] | null>) {
   const db: FakeDb = { rows };
   const recorded: Recorded = { inserts: [], updates: [] };
   const client = {

@@ -15,14 +15,14 @@ side you mean is where that invariant lives.
 
 **Blocked by:** 08.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] One module returns the outflow Categorias, the income Categorias and the
+- [x] One module returns the outflow Categorias, the income Categorias and the
       Pagadores from two reads
-- [ ] Each comes with an active list and a lookup that includes deactivated ones
-- [ ] Direction remains a required argument rather than an optional filter
-- [ ] The monthly page builds no lookup maps of its own
-- [ ] Pickers still offer only active Categorias and Pagadores
-- [ ] A Receita or Despesa filed under a deactivated one still shows it
-- [ ] Ordering still follows Portuguese collation, so accented names sort where a
+- [x] Each comes with an active list and a lookup that includes deactivated ones
+- [x] Direction remains a required argument rather than an optional filter
+- [x] The monthly page builds no lookup maps of its own
+- [x] Pickers still offer only active Categorias and Pagadores
+- [x] A Receita or Despesa filed under a deactivated one still shows it
+- [x] Ordering still follows Portuguese collation, so accented names sort where a
       reader expects them
