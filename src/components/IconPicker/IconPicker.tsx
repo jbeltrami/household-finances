@@ -2,29 +2,28 @@
 
 import { createElement, useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Receipt } from "lucide-react";
-import {
-  type BillIconKey,
-  getBillIconGroups,
-  iconFor,
-} from "@/lib/icons/bills";
+import { getIconList, iconFor } from "@/lib/icons/registry";
 
 type Props = {
-  // Form field name — defaults to "icon" to match parseTemplateFields.
   name?: string;
-  // Initial selection (passed by the edit form). null = no icon picked.
   defaultValue?: string | null;
 };
 
-// Popover icon picker: trigger renders the current icon and chevron;
-// click to open a panel with a grouped grid of icons. Submits the
-// chosen key via a hidden input so it lives in standard FormData.
-export default function IconPicker({ name = "icon", defaultValue = null }: Props) {
+// Flat icon picker: one grid, no group headings.
+//
+// The older grouped picker headed each block with a compiled-in category
+// name ("Moradia", "Lazer"). Now that Categorias are user-managed those
+// headings are just stale strings — they would tell a user "Moradia"
+// while their own list says "Casa". A flat grid with per-icon tooltips
+// says less and lies never.
+export default function IconPicker({
+  name = "icon",
+  defaultValue = null,
+}: Props) {
   const [selected, setSelected] = useState<string | null>(defaultValue);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click. Doing this with a ref + document listener
-  // is the simplest dependency-free pattern for a small popover.
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
@@ -41,10 +40,21 @@ export default function IconPicker({ name = "icon", defaultValue = null }: Props
     };
   }, [open]);
 
-  const groups = getBillIconGroups();
+  // Clear when the surrounding form resets, so a parent calling
+  // form.reset() after a successful submit empties this too. Same
+  // contract CurrencyInput honours.
+  useEffect(() => {
+    const form = rootRef.current?.closest("form");
+    if (!form) return;
+    const onReset = () => setSelected(defaultValue);
+    form.addEventListener("reset", onReset);
+    return () => form.removeEventListener("reset", onReset);
+  }, [defaultValue]);
+
+  const icons = getIconList();
   const selectedIconComponent = selected ? iconFor(selected) : Receipt;
 
-  const handlePick = (key: BillIconKey | null) => {
+  const handlePick = (key: string | null) => {
     setSelected(key);
     setOpen(false);
   };
@@ -83,9 +93,8 @@ export default function IconPicker({ name = "icon", defaultValue = null }: Props
         <div
           role="dialog"
           aria-label="Escolher ícone"
-          className="absolute left-0 right-0 z-30 mt-2 max-h-96 overflow-y-auto rounded-xl border border-subtle bg-surface p-3 shadow-lg"
+          className="absolute left-0 right-0 z-30 mt-2 max-h-80 overflow-y-auto rounded-xl border border-subtle bg-surface p-3 shadow-lg"
         >
-          {/* "No icon" reset row */}
           <button
             type="button"
             onClick={() => handlePick(null)}
@@ -95,42 +104,37 @@ export default function IconPicker({ name = "icon", defaultValue = null }: Props
             }
           >
             <span>Sem ícone</span>
-            {selected === null && <Check className="h-4 w-4 text-accent" strokeWidth={2} />}
+            {selected === null && (
+              <Check className="h-4 w-4 text-accent" strokeWidth={2} />
+            )}
           </button>
 
-          {groups.map((group) => (
-            <div key={group.category} className="mt-3">
-              <p className="px-2 text-xs font-semibold uppercase tracking-wide text-muted">
-                {group.category}
-              </p>
-              <div className="mt-1 grid grid-cols-6 gap-1">
-                {group.items.map((item) => {
-                  const isActive = selected === item.key;
-                  return (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => handlePick(item.key)}
-                      aria-pressed={isActive}
-                      aria-label={item.label}
-                      data-tooltip={item.label}
-                      className={
-                        "flex h-10 w-full items-center justify-center rounded-lg transition-colors " +
-                        (isActive
-                          ? "bg-accent-soft text-accent"
-                          : "text-muted hover:bg-surface-2 hover:text-fg")
-                      }
-                    >
-                      {createElement(item.Icon, {
-                        className: "h-5 w-5",
-                        strokeWidth: 2,
-                      })}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+          <div className="mt-2 grid grid-cols-6 gap-1">
+            {icons.map((item) => {
+              const isActive = selected === item.key;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => handlePick(item.key)}
+                  aria-pressed={isActive}
+                  aria-label={item.label}
+                  data-tooltip={item.label}
+                  className={
+                    "flex h-10 w-full items-center justify-center rounded-lg transition-colors " +
+                    (isActive
+                      ? "bg-accent-soft text-accent"
+                      : "text-muted hover:bg-surface-2 hover:text-fg")
+                  }
+                >
+                  {createElement(item.Icon, {
+                    className: "h-5 w-5",
+                    strokeWidth: 2,
+                  })}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

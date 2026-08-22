@@ -6,7 +6,7 @@ import { monthUrl } from "@/helpers/paths";
 import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { checkDateEditable } from "@/helpers/lock";
 import { todayYmd } from "@/helpers/date";
-import { isBillIconKey } from "@/lib/icons/bills";
+import { isIconKey } from "@/lib/icons/registry";
 import { type FormState } from "../form-state";
 
 // Create a one-off entry (money-out event with no template). The
@@ -60,7 +60,7 @@ export async function createOneOffEntry(
 
     let icon: string | null = null;
     if (iconRaw) {
-      if (!isBillIconKey(iconRaw)) return { error: "Ícone inválido" };
+      if (!isIconKey(iconRaw)) return { error: "Ícone inválido" };
       icon = iconRaw;
     }
 

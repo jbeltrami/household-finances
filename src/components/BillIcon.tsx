@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { iconFor } from "@/lib/icons/bills";
+import { iconFor } from "@/lib/icons/registry";
 
 type Props = {
   iconKey: string | null | undefined;

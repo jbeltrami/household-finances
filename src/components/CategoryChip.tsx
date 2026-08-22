@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { iconFor } from "@/lib/icons/bills";
+import { iconFor } from "@/lib/icons/registry";
 import { colorFor } from "@/lib/colors/palette";
 
 type Props = {

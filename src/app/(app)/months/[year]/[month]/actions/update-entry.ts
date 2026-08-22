@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { monthUrl } from "@/helpers/paths";
 import { checkEntryEditable } from "@/helpers/lock";
-import { isBillIconKey } from "@/lib/icons/bills";
+import { isIconKey } from "@/lib/icons/registry";
 import { type FormState } from "../form-state";
 
 // Update an existing entry row. Covers renames, icon changes, Categoria
@@ -45,7 +45,7 @@ export async function updateEntry(
 
     let icon: string | null = null;
     if (iconRaw) {
-      if (!isBillIconKey(iconRaw)) return { error: "Ícone inválido" };
+      if (!isIconKey(iconRaw)) return { error: "Ícone inválido" };
       icon = iconRaw;
     }
 

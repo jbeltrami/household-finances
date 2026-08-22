@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { Check, Pencil, RotateCcw, Trash2, X } from "lucide-react";
 import CategoryChip from "@/components/CategoryChip";
-import IconGridPicker from "@/components/IconGridPicker/IconGridPicker";
+import IconPicker from "@/components/IconPicker/IconPicker";
 import ColorPicker from "@/components/ColorPicker/ColorPicker";
 import type { CategoryRow as Category } from "@/helpers/taxonomy";
 import { deleteCategory, setCategoryActive, updateCategory } from "../../actions";
@@ -66,7 +66,7 @@ export default function CategoryRow({ category }: Props) {
             </div>
             <div className="sm:w-52">
               <span className="field-label">Ícone</span>
-              <IconGridPicker name="icon" defaultValue={category.icon} />
+              <IconPicker name="icon" defaultValue={category.icon} />
             </div>
           </div>
 

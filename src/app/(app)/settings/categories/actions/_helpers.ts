@@ -1,7 +1,7 @@
 // Shared parsing for the Categoria server actions. Not a "use server"
 // file — exports synchronous utilities and constants.
 
-import { isIconKey } from "@/lib/icons/bills";
+import { isIconKey } from "@/lib/icons/registry";
 import { isCategoryColor, DEFAULT_CATEGORY_COLOR } from "@/lib/colors/palette";
 import type { CategoryKind } from "@/helpers/taxonomy";
 

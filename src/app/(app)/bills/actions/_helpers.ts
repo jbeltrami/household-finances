@@ -1,7 +1,7 @@
 // Shared helpers for bill-template server actions. Not a "use server"
 // file — exports synchronous utilities and types.
 
-import { isBillIconKey } from "@/lib/icons/bills";
+import { isIconKey } from "@/lib/icons/registry";
 
 // Postgres error code for unique_violation (our partial unique index
 // on active template names).
@@ -102,7 +102,7 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
   const iconRaw = formData.get("icon")?.toString().trim();
   let icon: string | null = null;
   if (iconRaw) {
-    if (!isBillIconKey(iconRaw)) {
+    if (!isIconKey(iconRaw)) {
       throw new Error("Ícone inválido");
     }
     icon = iconRaw;

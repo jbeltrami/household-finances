@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import IconGridPicker from "@/components/IconGridPicker/IconGridPicker";
+import IconPicker from "@/components/IconPicker/IconPicker";
 import ColorPicker from "@/components/ColorPicker/ColorPicker";
 import type { CategoryKind } from "@/helpers/taxonomy";
 import { createCategory } from "../../actions";
@@ -58,7 +58,7 @@ export default function CreateCategoryForm({ kind }: Props) {
 
         <div className="sm:w-52">
           <span className="field-label">Ícone</span>
-          <IconGridPicker name="icon" />
+          <IconPicker name="icon" />
         </div>
       </div>
 
