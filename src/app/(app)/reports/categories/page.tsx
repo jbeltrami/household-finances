@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Card from "@/components/Card";
 import { brlFormatter } from "@/helpers/format";
 import { getCategorySpendForYear } from "@/helpers/category-reports";
-import CategoryChip from "@/components/CategoryChip";
+import CategorySpendRow from "./_components/CategorySpendRow/CategorySpendRow";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 
@@ -53,7 +53,8 @@ export default async function CategoryReportPage({
       </h1>
       <p className="mt-1 text-sm text-muted">
         Soma de contas pagas e despesas avulsas, agrupadas pela categoria de
-        cada lançamento. Financiamentos ainda não entram nesta conta.
+        cada lançamento. Toque numa categoria para ver o que a compõe.
+        Financiamentos ainda não entram nesta conta.
       </p>
 
       {/* Year nav */}
@@ -92,53 +93,13 @@ export default async function CategoryReportPage({
         </p>
       ) : (
         <Card className="mt-5 p-2">
-          <ul className="divide-y divide-subtle">
-            {summaries.map((s) => {
-              const label = s.category?.name ?? "Sem categoria";
-              const subParts: string[] = [];
-              if (s.billsCount > 0) {
-                subParts.push(
-                  `${s.billsCount} ${s.billsCount === 1 ? "conta paga" : "contas pagas"}`
-                );
-              }
-              if (s.expensesCount > 0) {
-                subParts.push(
-                  `${s.expensesCount} ${s.expensesCount === 1 ? "despesa avulsa" : "despesas avulsas"}`
-                );
-              }
-              const subLabel = subParts.join(" + ");
-
-              return (
-                <li
-                  key={s.category?.id ?? "__uncategorised__"}
-                  className="flex items-center gap-3 px-3 py-3"
-                >
-                  {/* The Categoria's own icon and colour now, rather than a
-                      representative icon guessed from a hardcoded name. */}
-                  <CategoryChip
-                    icon={s.category?.icon ?? null}
-                    color={s.category?.color ?? null}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-fg">{label}</p>
-                    {subLabel && (
-                      <p className="text-xs text-muted">{subLabel}</p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-fg">
-                      {brlFormatter.format(s.total)}
-                    </p>
-                    {s.billsTotal > 0 && s.expensesTotal > 0 && (
-                      <p className="text-xs text-muted">
-                        {brlFormatter.format(s.billsTotal)} +{" "}
-                        {brlFormatter.format(s.expensesTotal)}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
+          <ul>
+            {summaries.map((s) => (
+              <CategorySpendRow
+                key={s.category?.id ?? "__uncategorised__"}
+                summary={s}
+              />
+            ))}
           </ul>
         </Card>
       )}

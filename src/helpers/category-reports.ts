@@ -32,6 +32,18 @@ import type { ResolvedCategory } from "./types";
 import { resolveCategoryId } from "./ledger";
 import { getCategories } from "./taxonomy";
 
+// One contributing row, kept so the report can show what makes a total up
+// rather than only asserting it. `kind` is the Conta/Despesa distinction the
+// glossary treats as fundamental — obligation vs discretionary — which the
+// merged headline figure deliberately hides.
+export type CategorySpendLine = {
+  id: string;
+  name: string;
+  date: string; // "YYYY-MM-DD"
+  amount: number;
+  kind: "bill" | "expense";
+};
+
 export type CategorySpend = {
   // null is the "Sem categoria" bucket — money with no Categoria, kept as a
   // real row so the totals still reconcile rather than quietly shrinking.
@@ -42,11 +54,18 @@ export type CategorySpend = {
   billsCount: number;
   expensesTotal: number; // one-off entries
   expensesCount: number;
+  // Every row that contributed, largest first. `lines.length` always equals
+  // `count` — if they ever diverge, the totals are lying about their own
+  // composition.
+  lines: CategorySpendLine[];
 };
 
 // The slice of an entry the fold needs. Structural, not the full row type, so
 // tests can construct one without inventing a dozen irrelevant fields.
 export type SpendEntry = {
+  id: string;
+  name: string;
+  date: string;
   template_id: string | null;
   category_id: string | null;
   amount: number | string;
@@ -114,10 +133,18 @@ export function foldCategorySpend(
       billsCount: 0,
       expensesTotal: 0,
       expensesCount: 0,
+      lines: [] as CategorySpendLine[],
     };
 
     existing.total += amount;
     existing.count += 1;
+    existing.lines.push({
+      id: row.id,
+      name: row.name,
+      date: row.date,
+      amount,
+      kind: isBill ? "bill" : "expense",
+    });
     if (isBill) {
       existing.billsTotal += amount;
       existing.billsCount += 1;
@@ -126,6 +153,13 @@ export function foldCategorySpend(
       existing.expensesCount += 1;
     }
     accum.set(key, existing);
+  }
+
+  // Largest contributor first within each Categoria: expanding a row asks
+  // "what is driving this number", and the answer is at the top rather than
+  // somewhere down a chronological list.
+  for (const bucket of accum.values()) {
+    bucket.lines.sort((a, b) => b.amount - a.amount);
   }
 
   return Array.from(accum.values()).sort((a, b) => {
@@ -145,7 +179,7 @@ export async function getCategorySpendForRange(
 ): Promise<CategorySpend[]> {
   const { data, error } = await supabase
     .from("entries")
-    .select("template_id, category_id, amount, paid, skipped")
+    .select("id, name, date, template_id, category_id, amount, paid, skipped")
     .eq("space_id", spaceId)
     .gte("date", start)
     .lte("date", end);

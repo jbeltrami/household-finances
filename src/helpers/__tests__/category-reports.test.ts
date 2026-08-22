@@ -32,8 +32,19 @@ const RETIRED: ResolvedCategory = {
 const CLARO: SpendTemplate = { id: "tpl-claro", category_id: MORADIA.id };
 const UNTAGGED_TEMPLATE: SpendTemplate = { id: "tpl-bare", category_id: null };
 
+// Ids are generated so a test can create several rows without naming each
+// one; the tests that care about identity pass their own.
+let seq = 0;
+function nextId() {
+  seq += 1;
+  return `row-${seq}`;
+}
+
 function bill(over: Partial<SpendEntry> = {}): SpendEntry {
   return {
+    id: nextId(),
+    name: "Claro",
+    date: "2026-03-10",
     template_id: CLARO.id,
     category_id: null,
     amount: 100,
@@ -45,6 +56,9 @@ function bill(over: Partial<SpendEntry> = {}): SpendEntry {
 
 function despesa(over: Partial<SpendEntry> = {}): SpendEntry {
   return {
+    id: nextId(),
+    name: "Almoço",
+    date: "2026-03-05",
     template_id: null,
     category_id: CONSUMO.id,
     amount: 50,
@@ -202,6 +216,73 @@ describe("foldCategorySpend", () => {
 
       expect(byName(result, "Ocam")?.total).toBe(50);
       expect(uncategorised(result)).toBeUndefined();
+    });
+  });
+
+  describe("contributing lines", () => {
+    it("keeps one line per counted row", () => {
+      const result = fold([bill(), bill(), despesa()]);
+      const moradia = byName(result, "Moradia");
+      const consumo = byName(result, "Consumo");
+
+      expect(moradia?.lines).toHaveLength(2);
+      expect(consumo?.lines).toHaveLength(1);
+    });
+
+    it("keeps lines and count in agreement for every bucket", () => {
+      // The invariant that makes the expansion trustworthy: a total can never
+      // claim a composition it does not have.
+      const result = fold([
+        bill(),
+        bill({ category_id: CONSUMO.id }),
+        despesa(),
+        despesa({ category_id: null }),
+        bill({ paid: false }),
+        despesa({ skipped: true }),
+      ]);
+
+      for (const bucket of result) {
+        expect(bucket.lines).toHaveLength(bucket.count);
+        expect(bucket.lines.reduce((s, l) => s + l.amount, 0)).toBeCloseTo(
+          bucket.total
+        );
+      }
+    });
+
+    it("excludes rows the totals excluded", () => {
+      const result = fold([
+        bill({ paid: false, name: "unpaid conta" }),
+        despesa({ skipped: true, name: "skipped despesa" }),
+        despesa({ name: "counted" }),
+      ]);
+      const names = result.flatMap((r) => r.lines.map((l) => l.name));
+
+      expect(names).toEqual(["counted"]);
+    });
+
+    it("marks each line as a Conta or a Despesa", () => {
+      const result = fold([
+        bill({ category_id: CONSUMO.id }),
+        despesa(),
+      ]);
+      const kinds = byName(result, "Consumo")?.lines.map((l) => l.kind);
+
+      expect(kinds).toContain("bill");
+      expect(kinds).toContain("expense");
+    });
+
+    it("orders lines by amount, largest first", () => {
+      const result = fold([
+        despesa({ amount: 10, name: "small" }),
+        despesa({ amount: 300, name: "large" }),
+        despesa({ amount: 50, name: "medium" }),
+      ]);
+
+      expect(byName(result, "Consumo")?.lines.map((l) => l.name)).toEqual([
+        "large",
+        "medium",
+        "small",
+      ]);
     });
   });
 
