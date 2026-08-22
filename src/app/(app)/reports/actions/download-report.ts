@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/helpers/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const SIGNED_URL_TTL_SECONDS = 300;
@@ -13,10 +14,7 @@ const SIGNED_URL_TTL_SECONDS = 300;
 // the bucket is private with deny-all storage policies.
 export async function downloadReport(reportId: string): Promise<string> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  await requireSession(supabase);
 
   const { data: report } = await supabase
     .from("monthly_reports")

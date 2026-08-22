@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/helpers/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { performReportGeneration } from "@/helpers/reports";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
 import { reportsUrl } from "@/helpers/paths";
 import { currentYearMonth, yearMonthKey } from "@/helpers/date";
 
@@ -27,12 +27,8 @@ export async function generateReport(year: number, month: number) {
   }
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  const { spaceId } = await requireSession(supabase);
 
-  const spaceId = await requirePersonalSpaceId(supabase);
 
   const admin = createAdminClient();
   const result = await performReportGeneration(

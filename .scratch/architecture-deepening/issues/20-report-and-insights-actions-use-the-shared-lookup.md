@@ -10,14 +10,14 @@ another user's PDF. It has to survive the move intact.
 
 **Blocked by:** 16.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every report action uses the shared lookup
-- [ ] Saving the Insights parameters uses the shared lookup
-- [ ] The session check still runs before any admin-client work
-- [ ] Generating, regenerating, sending and downloading a report still work
-- [ ] Filling in the missing reports still works
-- [ ] A download still hands back a short-lived signed link rather than a public
+- [x] Every report action uses the shared lookup
+- [x] Saving the Insights parameters uses the shared lookup
+- [x] The session check still runs before any admin-client work
+- [x] Generating, regenerating, sending and downloading a report still work
+- [x] Filling in the missing reports still works
+- [x] A download still hands back a short-lived signed link rather than a public
       one
-- [ ] The cron entry points are untouched — they authenticate by token, not by
+- [x] The cron entry points are untouched — they authenticate by token, not by
       session, and must not start depending on one

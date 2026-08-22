@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/helpers/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { reportsUrl } from "@/helpers/paths";
 import { performMonthlyReportSend } from "@/lib/email/send-monthly-report";
@@ -14,10 +15,7 @@ import { performMonthlyReportSend } from "@/lib/email/send-monthly-report";
 // orchestrator without going through this action.
 export async function sendMonthlyReportEmail(reportId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  const { userId } = await requireSession(supabase);
 
   // RLS-gated lookup confirms the user has access to this report.
   const { data: report } = await supabase
@@ -33,7 +31,7 @@ export async function sendMonthlyReportEmail(reportId: string) {
     .eq("id", report.space_id)
     .single();
   if (!space) throw new Error("Espaço não encontrado");
-  if (space.created_by !== user.id) {
+  if (space.created_by !== userId) {
     throw new Error("Apenas o dono do espaço pode enviar relatórios");
   }
 
