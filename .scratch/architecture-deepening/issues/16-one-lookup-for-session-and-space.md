@@ -16,11 +16,11 @@ Tickets 17–20 migrate the call sites in batches, so nothing has to change at o
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] One module returns the calling user and their space from a single lookup
-- [ ] It offers a throwing form and a state-returning form
-- [ ] Both use one Portuguese wording for the unauthenticated case
-- [ ] The per-request memoisation on the space lookup is preserved, so callers in
+- [x] One module returns the calling user and their space from a single lookup
+- [x] It offers a throwing form and a state-returning form
+- [x] Both use one Portuguese wording for the unauthenticated case
+- [x] The per-request memoisation on the space lookup is preserved, so callers in
       one request still share a round trip
-- [ ] Existing helpers keep working and no call site changes in this ticket
+- [x] Existing helpers keep working and no call site changes in this ticket
