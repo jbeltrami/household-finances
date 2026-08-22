@@ -4,13 +4,23 @@
 
 **Blocked by:** 01 (shares the management screen shell and the CRUD action shape).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The management screen has a third tab for Pagadores
-- [ ] Pagadores are listed alphabetically, each showing its initials on its colour
-- [ ] A Pagador can be created with a name and a colour
-- [ ] A Pagador can be renamed and recoloured
-- [ ] Creating a second active Pagador with an existing name is refused with a readable message
-- [ ] A Pagador can be deactivated, and its name then reused
-- [ ] A Pagador with no references can be permanently deleted; one with references is refused with a count
-- [ ] A brand-new space has no Pagadores
+- [x] The management screen has a third tab for Pagadores
+- [x] Pagadores are listed alphabetically, each showing its initials on its colour
+- [x] A Pagador can be created with a name and a colour
+- [x] A Pagador can be renamed and recoloured
+- [x] Creating a second active Pagador with an existing name is refused with a readable message
+- [x] A Pagador can be deactivated, and its name then reused
+- [x] A Pagador with no references can be permanently deleted; one with references is refused with a count
+- [x] A brand-new space has no Pagadores
+
+---
+
+**Done.** Typecheck and production build clean; `payerInitials` checked against
+one-word, multi-word, single-character and whitespace-only names. Interactive
+criteria are implemented but not click-tested — that needs a signed-in session.
+
+Note: the "create a Pagador from inside the Receita form" story is **not** here —
+it belongs to ticket 05, which builds that form. This ticket delivers the
+management screen only.

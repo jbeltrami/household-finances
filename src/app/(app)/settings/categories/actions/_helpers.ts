@@ -48,3 +48,24 @@ export function parseCategoryFields(formData: FormData): CategoryFields {
 export function kindLabel(kind: CategoryKind): string {
   return kind === "income" ? "de receita" : "de saída";
 }
+
+// --- Pagadores ------------------------------------------------
+
+export type PayerFields = {
+  name: string;
+  color: string;
+};
+
+export function parsePayerFields(formData: FormData): PayerFields {
+  const name = formData.get("name")?.toString().trim();
+  if (!name) throw new Error("O nome é obrigatório");
+  if (name.length < 2) {
+    throw new Error("O nome precisa ter pelo menos 2 caracteres");
+  }
+
+  const colorRaw = formData.get("color")?.toString().trim();
+  const color =
+    colorRaw && isCategoryColor(colorRaw) ? colorRaw : DEFAULT_CATEGORY_COLOR;
+
+  return { name, color };
+}
