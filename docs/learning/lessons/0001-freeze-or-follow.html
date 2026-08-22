@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 01 — Freeze or Follow</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<p class="eyebrow">Lesson 01 · Data modelling</p>
+<h1>Freeze or Follow</h1>
+<p class="standfirst">You made this call correctly last week. This is the rule
+underneath it, so the next one isn't a coin flip.</p>
+
+<h2>The decision you already made</h2>
+
+<p>When you mark a Conta paid, the app writes a row into <code>entries</code>.
+That row <strong>copies</strong> the name and the amount from the template, and
+<strong>points at</strong> the Categoria. Two attributes, two different
+treatments, in the same insert.</p>
+
+<p>That asymmetry looks like an oversight. It is the entire design. And the
+reason it is right generalises to every schema you will ever write.</p>
+
+<h2>The wrong question</h2>
+
+<p>The instinct is to ask <em>“is this data duplicated?”</em> — and then feel
+guilty about the copy, because normalisation says duplication is bad.</p>
+
+<p>But that question mislabels the copy. Kenneth Downs makes the sharp version
+of this argument about order lines:</p>
+
+<blockquote>
+  If the price changes 5 minutes after the customer places the order, they will
+  expect to get the price as it was when they put it in the cart, and so you are
+  actually doing the right thing by writing it to the order.
+  <cite>Kenneth Downs, <a href="http://database-programmer.blogspot.com/2008/04/denormalization-patterns.html">“Denormalization Patterns”</a> (2008)</cite>
+</blockquote>
+
+<p>His point is stronger than “it's a justified exception.” He argues copying
+the price <em>isn't denormalization at all</em>. “The price this customer pays on
+this order” and “the current catalogue price” are <strong>two different
+facts</strong> that happen to have had the same value for a moment. Storing both
+isn't redundancy — it's storing two things.</p>
+
+<div class="rule">
+  <p class="rule-label">The rule</p>
+  <p>Ask whether the event <strong>created a new fact</strong> or merely
+  <strong>restated an existing one</strong>.</p>
+  <p>New fact → <strong>freeze it</strong> into the row.<br>
+  Restated fact → <strong>follow it</strong> with a reference.</p>
+</div>
+
+<p>Apply it to your own insert. <em>You paid R$470 on 10 March</em> — that fact
+did not exist before the payment. Freeze. <em>This bill is Moradia</em> — that
+was already true of the template; the payment restated it. Follow.</p>
+
+<h2>Why getting it backwards hurts in two different ways</h2>
+
+<p>These fail asymmetrically, which is why one rule beats two instincts.</p>
+
+<p><strong>Followed when you should have frozen:</strong> the past rewrites
+itself. Change a template's amount and every historical payment silently
+reprints at the new number. Kimball is blunt about the stakes — in regulated
+environments, overwriting like this
+<a href="https://www.kimballgroup.com/2008/08/slowly-changing-dimensions/">“may be
+outlawed”</a>.</p>
+
+<p><strong>Froze when you should have followed:</strong> one thing becomes two.
+Rename Consumo to Alimentação and every row written before today keeps saying
+Consumo. Your report grows a second line for the same category, split at an
+arbitrary date, and no amount of squinting reconciles it.</p>
+
+<h2>Try it</h2>
+
+<p>Five calls. Answer before you read the feedback — the guess is what makes it
+stick, and being wrong here is cheaper than being wrong in a migration.</p>
+
+<div class="quiz" data-answer="freeze">
+  <p class="quiz-q"><span class="n">01</span>An invoice records the VAT rate applied to it. The government raises VAT next year. Does the invoice row copy the rate, or reference the rate table?</p>
+  <div class="quiz-choices">
+    <button data-choice="freeze">Freeze it</button>
+    <button data-choice="follow">Follow it</button>
+  </div>
+  <div class="quiz-fb" data-for="freeze"><p><strong>Right.</strong> The rate in force on the invoice date is a fact about that invoice. Following would retroactively re-tax every historical document the day the law changed — which is the case Kimball says can be literally illegal.</p></div>
+  <div class="quiz-fb" data-for="follow"><p><strong>Not this one.</strong> Tempting, because a rate table feels like the single source of truth. But “the rate that applied to this invoice” is a different fact from “the current rate.” Following rewrites tax history the day the law changes.</p></div>
+</div>
+
+<div class="quiz" data-answer="follow">
+  <p class="quiz-q"><span class="n">02</span>A Receita points at a Pagador. You misspelled the employer's name when you created it and want to fix it. Does the Receita copy the name, or reference the Pagador?</p>
+  <div class="quiz-choices">
+    <button data-choice="freeze">Freeze it</button>
+    <button data-choice="follow">Follow it</button>
+  </div>
+  <div class="quiz-fb" data-for="freeze"><p><strong>Not this one.</strong> Freezing means the typo is now permanent on every Receita already written, and fixing it going forward forks one employer into two names that never reconcile in a report.</p></div>
+  <div class="quiz-fb" data-for="follow"><p><strong>Right.</strong> The institution's name is one fact with one current answer. Nobody wants “the spelling at the time of payment.” This is exactly why <code>income_entries</code> carries <code>payer_id</code> and not a name string.</p></div>
+</div>
+
+<div class="quiz" data-answer="freeze">
+  <p class="quiz-q"><span class="n">03</span>An order shipped in March to an address the customer has since moved away from. Does the order row copy the address, or reference the customer's address?</p>
+  <div class="quiz-choices">
+    <button data-choice="freeze">Freeze it</button>
+    <button data-choice="follow">Follow it</button>
+  </div>
+  <div class="quiz-fb" data-for="freeze"><p><strong>Right.</strong> “Where this parcel went” is a fact created by the shipment. Following would make every past order claim it was delivered to an address that did not exist yet — and destroy your ability to answer a “where did you send it?” dispute.</p></div>
+  <div class="quiz-fb" data-for="follow"><p><strong>Not this one.</strong> Try the tell: “the address at the time of shipping” is a phrase a support agent would genuinely use. That is the signal to freeze.</p></div>
+</div>
+
+<div class="quiz" data-answer="follow">
+  <p class="quiz-q"><span class="n">04</span>A Categoria has a colour, shown as its bar in a spending report. You change Moradia from blue to teal. Do the historical rows copy the colour, or reference the Categoria?</p>
+  <div class="quiz-choices">
+    <button data-choice="freeze">Freeze it</button>
+    <button data-choice="follow">Follow it</button>
+  </div>
+  <div class="quiz-fb" data-for="freeze"><p><strong>Not this one.</strong> Freezing produces a chart where Moradia is blue until March and teal after — the one thing a colour is supposed to prevent. Presentation is never a fact about a transaction.</p></div>
+  <div class="quiz-fb" data-for="follow"><p><strong>Right.</strong> Colour is a property of the Categoria, restated at render time. It follows, which is why <code>categories.color</code> exists at all rather than a colour column on every row.</p></div>
+</div>
+
+<div class="quiz" data-answer="freeze">
+  <p class="quiz-q"><span class="n">05</span>The hardest one. A recurring Conta's template says R$1.000. In March you overrode it and actually paid R$1.200. Does the March row copy the amount, or reference the template?</p>
+  <div class="quiz-choices">
+    <button data-choice="freeze">Freeze it</button>
+    <button data-choice="follow">Follow it</button>
+  </div>
+  <div class="quiz-fb" data-for="freeze"><p><strong>Right</strong> — and notice this one has to freeze even though nothing changed on the template. The override <em>is</em> the new fact. This is why the ledger materialises a row at all: a row in <code>entries</code> exists precisely when reality diverged from the template.</p></div>
+  <div class="quiz-fb" data-for="follow"><p><strong>Not this one.</strong> Following would mean the March payment reports as R$1.000 — the amount you didn't pay. The whole reason that row was materialised is that reality diverged from the template, and a divergence is a new fact by definition.</p></div>
+</div>
+
+<p class="quiz-score" data-quiz-score></p>
+
+<h2>The one that stays hard</h2>
+
+<p>Question 5 points at the real subtlety. The <em>same column</em> on the
+<em>same table</em> can want both treatments depending on which attribute you're
+looking at — <code>amount</code> freezes, <code>category_id</code> follows, and
+they sit side by side in one row.</p>
+
+<p>So the rule isn't applied per table, or even per row. It's applied
+<strong>per attribute</strong>. Every column is its own decision.</p>
+
+<h2>Where this leaves a gap</h2>
+
+<p>Freeze and follow are the two ends. There is a middle you have not needed
+yet: <strong>versioning the source</strong> so rows can reference a specific
+version and get history <em>and</em> a single source of truth. That is Kimball's
+Type 2, and it is what you would reach for if you ever needed “what did the
+Moradia category mean in 2024?” It costs a lot more machinery. Worth knowing it
+exists; not worth building until something demands it.</p>
+
+<div class="footer">
+  <h3>Read next</h3>
+  <ul>
+    <li><strong>Primary source:</strong> <a href="http://database-programmer.blogspot.com/2008/04/denormalization-patterns.html">Kenneth Downs, “Denormalization Patterns”</a> — read the sidebar “Is FETCH Really Denormalizing?”. It is four paragraphs and it is the whole lesson, argued harder.</li>
+    <li><a href="https://www.kimballgroup.com/2008/08/slowly-changing-dimensions/">Kimball, “Slowly Changing Dimensions”</a> — for the industry vocabulary.</li>
+  </ul>
+
+  <h3>In this workspace</h3>
+  <ul>
+    <li><a href="../reference/snapshot-vs-reference.html">Reference card: Freeze or Follow</a> — the compressed version, prints on one page.</li>
+    <li><code>docs/adr/0001-categories-are-referenced-not-snapshotted.md</code> — the decision this lesson is drawn from.</li>
+  </ul>
+
+  <div class="ask">
+    <p><strong>Stuck on something, or disagree?</strong> Ask me. I'm your
+    teacher here, not just the thing that generated the page — if question 5
+    still feels arbitrary, or you want to argue that the Categoria should have
+    frozen after all, say so. That argument is worth more than the lesson.</p>
+  </div>
+</div>
+
+<script src="../assets/quiz.js"></script>
+</div>
+</body>
+</html>

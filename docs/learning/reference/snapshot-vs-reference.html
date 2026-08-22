@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freeze or Follow — reference card</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<p class="eyebrow">Reference card</p>
+<h1>Freeze or Follow</h1>
+<p class="standfirst">When a row should copy a value, and when it should point at one.</p>
+
+<div class="rule">
+  <p class="rule-label">The question</p>
+  <p>When the event happened, did it <strong>create a new fact</strong>, or
+  did it just <strong>restate an existing one</strong>?</p>
+  <p>New fact → <strong>freeze</strong> (copy the value in).<br>
+  Restated fact → <strong>follow</strong> (reference the source).</p>
+</div>
+
+<h2>The two failure modes</h2>
+
+<table>
+  <thead>
+    <tr><th>Mistake</th><th>What it looks like later</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Followed when you should have frozen</td>
+      <td>History rewrites itself. Last year's invoice reprints at this year's
+      price. Nobody notices until an audit.</td>
+    </tr>
+    <tr>
+      <td>Froze when you should have followed</td>
+      <td>The same thing splits into two. A rename leaves half the rows under
+      the old name forever, and no report ever adds up again.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Worked examples</h2>
+
+<table>
+  <thead>
+    <tr><th>Value</th><th>Call</th><th>Why</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Price on an order line</td><td><strong>Freeze</strong></td>
+        <td>What they agreed to pay is a different fact from the catalogue price today.</td></tr>
+    <tr><td>Amount paid on a Conta</td><td><strong>Freeze</strong></td>
+        <td>You paid R$470. That is an event, not a description of the bill.</td></tr>
+    <tr><td>Tax rate on an invoice</td><td><strong>Freeze</strong></td>
+        <td>The rate in force that day. Legally the past cannot move.</td></tr>
+    <tr><td>Shipping address on a shipped order</td><td><strong>Freeze</strong></td>
+        <td>Where the parcel actually went. Not where the customer lives now.</td></tr>
+    <tr><td>Categoria of a Conta</td><td><strong>Follow</strong></td>
+        <td>A classification of the bill, not a fact about any one payment.</td></tr>
+    <tr><td>A Pagador's name</td><td><strong>Follow</strong></td>
+        <td>Fixing a typo should fix it everywhere, not fork the institution in two.</td></tr>
+    <tr><td>A user's display name</td><td><strong>Follow</strong></td>
+        <td>They renamed themselves. There is only ever one current answer.</td></tr>
+  </tbody>
+</table>
+
+<h2>The tell</h2>
+
+<p>Try saying the value out loud with the word <em>“at the time”</em> in it.</p>
+
+<p><em>“The price at the time of the order”</em> — that phrase names a real
+thing someone might ask about. <strong>Freeze.</strong></p>
+
+<p><em>“The Categoria at the time of the payment”</em> — nobody has ever wanted
+that. They want to know what Moradia costs, using whatever Moradia means now.
+<strong>Follow.</strong></p>
+
+<h2>Industry names</h2>
+
+<p>Warehouse people have called this <strong>Slowly Changing Dimensions</strong>
+since the nineties. Follow is <strong>Type 1</strong> (overwrite, no history).
+Freeze — done by versioning the source rather than copying into the row — is
+<strong>Type 2</strong>. Knowing the numbers is mostly useful for reading other
+people's designs without having to reverse-engineer their intent.
+(<a href="https://www.kimballgroup.com/2008/08/slowly-changing-dimensions/">Kimball</a>)</p>
+
+<h2>In this codebase</h2>
+
+<p>Every materialised <code>entries</code> row freezes <code>name</code> and
+<code>amount</code>, and follows <code>category_id</code>. The null on
+<code>category_id</code> means <em>inherit from the template</em>, which is what
+makes recategorising a Conta move its whole history.</p>
+
+<p>Written up in
+<code>docs/adr/0001-categories-are-referenced-not-snapshotted.md</code>.</p>
+
+<div class="footer">
+  <p><a href="../lessons/0001-freeze-or-follow.html">← Lesson 01: Freeze or Follow</a></p>
+</div>
+
+</div>
+</body>
+</html>
