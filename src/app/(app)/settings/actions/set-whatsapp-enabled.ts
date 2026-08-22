@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
+import { requireSession } from "@/helpers/session";
 import { settingsUrl } from "@/helpers/paths";
 
 // Toggle WhatsApp alerts on/off. Refuses enabling if no phone is
@@ -11,12 +11,8 @@ import { settingsUrl } from "@/helpers/paths";
 export async function setWhatsAppEnabled(enabled: boolean): Promise<void> {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  const { spaceId } = await requireSession(supabase);
 
-  const spaceId = await requirePersonalSpaceId(supabase);
 
   if (enabled) {
     const { data: existing } = await supabase

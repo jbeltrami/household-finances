@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
+import { resolveSession } from "@/helpers/session";
 import { settingsUrl } from "@/helpers/paths";
 
 type FormState = { error: string | null };
@@ -16,12 +16,10 @@ export async function renameSpace(
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { error: "Não autenticado" };
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { error: session.error };
 
-    const spaceId = await requirePersonalSpaceId(supabase);
+    const { spaceId } = session;
 
     const name = formData.get("name")?.toString().trim();
     if (!name) return { error: "O nome é obrigatório" };

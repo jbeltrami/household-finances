@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { resolveSession } from "@/helpers/session";
 import { settingsCategoriesUrl } from "@/helpers/paths";
 import { countCategoryReferences } from "@/helpers/taxonomy";
 import { type FormState } from "../form-state";
@@ -21,10 +22,8 @@ export async function deleteCategory(id: string): Promise<FormState> {
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { error: "Não autenticado" };
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { error: session.error };
 
     const references = await countCategoryReferences(supabase, id);
     if (references > 0) {

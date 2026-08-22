@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { resolveSession } from "@/helpers/session";
 import { settingsCategoriesUrl } from "@/helpers/paths";
 import { type FormState } from "../form-state";
 import { UNIQUE_VIOLATION } from "./_helpers";
@@ -21,10 +22,8 @@ export async function setCategoryActive(
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { error: "Não autenticado" };
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { error: session.error };
 
     const { error } = await supabase
       .from("categories")

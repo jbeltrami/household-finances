@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
+import { requireSession } from "@/helpers/session";
 import { settingsUrl } from "@/helpers/paths";
 
 // RLS (is_active_member) gates the upsert; there's no extra
@@ -13,12 +13,8 @@ export async function setMonthlyReportEmailEnabled(
 ): Promise<void> {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Não autenticado");
+  const { spaceId } = await requireSession(supabase);
 
-  const spaceId = await requirePersonalSpaceId(supabase);
 
   const { error } = await supabase
     .from("monthly_report_settings")

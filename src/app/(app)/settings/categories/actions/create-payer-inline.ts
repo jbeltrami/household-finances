@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
+import { resolveSession } from "@/helpers/session";
 import { settingsCategoriesUrl } from "@/helpers/paths";
 import type { PayerRow } from "@/helpers/taxonomy";
 import { UNIQUE_VIOLATION } from "./_helpers";
@@ -30,10 +30,8 @@ export async function createPayerInline(
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { error: "Não autenticado", payer: null };
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { error: session.error, payer: null };
 
     const trimmed = name.trim();
     if (!trimmed) return { error: "O nome é obrigatório", payer: null };
@@ -41,7 +39,7 @@ export async function createPayerInline(
       return { error: "O nome precisa ter pelo menos 2 caracteres", payer: null };
     }
 
-    const spaceId = await requirePersonalSpaceId(supabase);
+    const { spaceId } = session;
 
     const { data: existing } = await supabase
       .from("payers")

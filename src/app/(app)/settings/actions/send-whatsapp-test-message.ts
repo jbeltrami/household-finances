@@ -1,8 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { resolveSession } from "@/helpers/session";
 import { sendWhatsAppText } from "@/lib/whatsapp/client";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
 
 // Send a one-off test WhatsApp message to the saved phone. Uses
 // the user's RLS-bound session client to read the phone, so a user
@@ -16,12 +16,10 @@ export async function sendWhatsAppTestMessage(): Promise<{
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { ok: false, error: "Não autenticado" };
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { ok: false, error: session.error };
 
-    const spaceId = await requirePersonalSpaceId(supabase);
+    const { spaceId } = session;
 
     const { data: settings } = await supabase
       .from("whatsapp_notification_settings")

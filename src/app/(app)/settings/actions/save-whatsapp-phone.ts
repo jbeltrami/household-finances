@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
+import { resolveSession } from "@/helpers/session";
 import { settingsUrl } from "@/helpers/paths";
 
 // E.164 — leading +, country code 1-9, then 6-14 more digits.
@@ -21,12 +21,10 @@ export async function saveWhatsAppPhone(
   try {
     const supabase = await createClient();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return { error: "Não autenticado", phone: null };
+    const session = await resolveSession(supabase);
+    if (!session.ok) return { error: session.error, phone: null };
 
-    const spaceId = await requirePersonalSpaceId(supabase);
+    const { spaceId } = session;
 
     const raw = formData.get("phone")?.toString().trim() ?? "";
     if (!raw) return { error: "O número de telefone é obrigatório", phone: null };
