@@ -52,9 +52,9 @@ export default async function CategoryReportPage({
         Gastos por categoria
       </h1>
       <p className="mt-1 text-sm text-muted">
-        Soma de contas pagas e despesas avulsas, agrupadas pela categoria de
-        cada lançamento. Toque numa categoria para ver o que a compõe.
-        Financiamentos ainda não entram nesta conta.
+        Soma de contas pagas, despesas avulsas e parcelas de financiamento já
+        pagas, agrupadas pela categoria de cada lançamento. Toque numa
+        categoria para ver o que a compõe.
       </p>
 
       {/* Year nav */}

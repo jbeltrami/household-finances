@@ -21,16 +21,20 @@
 // construction they're absent — exactly what a "what I actually spent" report
 // wants.
 //
-// NOT counted: Financiamento installments and extra payments. Those live in a
-// parallel ledger computed from loan parameters rather than written to
-// `entries`, so for most households this understates total outflow by its
-// largest line. Folding them in belongs with the date-range report (ticket 09),
-// where the per-month schedule machinery is being built anyway.
+//   - Financiamento: paid installments count as Contas, amortizações
+//     extraordinárias as Despesas, both under the Financiamento's own
+//     Categoria. They live in a parallel ledger computed from loan
+//     parameters rather than written to `entries`, so they are flattened
+//     into the same SpendEntry shape by getFinancingSpendForRange before
+//     reaching the fold — which therefore needs no knowledge of financing
+//     at all. Without this the report would omit the largest single outflow
+//     in most households while presenting a confident total.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ResolvedCategory } from "./types";
 import { resolveCategoryId } from "./ledger";
 import { getCategories } from "./taxonomy";
+import { getFinancingSpendForRange } from "./financing";
 
 // One contributing row, kept so the report can show what makes a total up
 // rather than only asserting it. `kind` is the Conta/Despesa distinction the
@@ -66,9 +70,21 @@ export type SpendEntry = {
   id: string;
   name: string;
   date: string;
+  // Which side of the obligation/discretionary split this row sits on.
+  // Explicit rather than inferred from `template_id`, because the two
+  // questions came apart once Financiamento spend joined: an installment is
+  // an obligation with no template behind it to inherit from. Keeping them
+  // as one column meant a financing row had to pretend to be template-bound
+  // to be counted as a Conta.
+  kind: "bill" | "expense";
+  // Only for inheritance. NULL on a template-bound row means "take the
+  // template's Categoria" (ADR 0001); NULL on anything else just means the
+  // row has no template to inherit from.
   template_id: string | null;
   category_id: string | null;
   amount: number | string;
+  // Contas count only once settled. Always true for rows that are already
+  // events by nature — Despesas and recorded financing payments.
   paid: boolean;
   skipped: boolean;
 };
@@ -102,8 +118,8 @@ export function foldCategorySpend(
   for (const row of entries) {
     if (row.skipped) continue;
 
-    const isBill = row.template_id != null;
-    // Bills count only when paid; one-offs always count.
+    const isBill = row.kind === "bill";
+    // Contas count only when paid; Despesas always count.
     if (isBill && !row.paid) continue;
 
     const amount = Number(row.amount);
@@ -143,7 +159,7 @@ export function foldCategorySpend(
       name: row.name,
       date: row.date,
       amount,
-      kind: isBill ? "bill" : "expense",
+      kind: row.kind,
     });
     if (isBill) {
       existing.billsTotal += amount;
@@ -177,18 +193,28 @@ export async function getCategorySpendForRange(
   start: string,
   end: string
 ): Promise<CategorySpend[]> {
-  const { data, error } = await supabase
-    .from("entries")
-    .select("id, name, date, template_id, category_id, amount, paid, skipped")
-    .eq("space_id", spaceId)
-    .gte("date", start)
-    .lte("date", end);
+  const [{ data, error }, financingRows] = await Promise.all([
+    supabase
+      .from("entries")
+      .select("id, name, date, template_id, category_id, amount, paid, skipped")
+      .eq("space_id", spaceId)
+      .gte("date", start)
+      .lte("date", end),
+    getFinancingSpendForRange(supabase, spaceId, start, end),
+  ]);
 
   if (error) {
     throw new Error(`Falha ao agregar categorias: ${error.message}`);
   }
 
-  const entries = (data ?? []) as SpendEntry[];
+  // `kind` is derived here, at the boundary, rather than inside the fold:
+  // for an `entries` row it is exactly "does it have a template", but that
+  // equivalence does not hold for financing, which is why the fold takes it
+  // as a field instead of working it out.
+  const entries: SpendEntry[] = (data ?? []).map((row) => ({
+    ...(row as Omit<SpendEntry, "kind">),
+    kind: row.template_id != null ? ("bill" as const) : ("expense" as const),
+  }));
 
   // Only the templates actually referenced in the range, so a space with
   // years of retired Contas doesn't pay for all of them on every report.
@@ -208,7 +234,7 @@ export async function getCategorySpendForRange(
   ]);
 
   return foldCategorySpend(
-    entries,
+    [...entries, ...financingRows],
     (templatesRes.data ?? []) as SpendTemplate[],
     categories
   );

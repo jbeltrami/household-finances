@@ -45,6 +45,7 @@ function bill(over: Partial<SpendEntry> = {}): SpendEntry {
     id: nextId(),
     name: "Claro",
     date: "2026-03-10",
+    kind: "bill",
     template_id: CLARO.id,
     category_id: null,
     amount: 100,
@@ -59,6 +60,7 @@ function despesa(over: Partial<SpendEntry> = {}): SpendEntry {
     id: nextId(),
     name: "Almoço",
     date: "2026-03-05",
+    kind: "expense",
     template_id: null,
     category_id: CONSUMO.id,
     amount: 50,
@@ -283,6 +285,63 @@ describe("foldCategorySpend", () => {
         "medium",
         "small",
       ]);
+    });
+  });
+
+  describe("Financiamento rows", () => {
+    // An installment is an obligation with no template to inherit from —
+    // the case that forced `kind` to stop being inferred from template_id.
+    function installment(over: Partial<SpendEntry> = {}): SpendEntry {
+      return {
+        id: nextId(),
+        name: "Casa — parcela 3",
+        date: "2026-03-08",
+        kind: "bill",
+        template_id: null,
+        category_id: MORADIA.id,
+        amount: 3000,
+        paid: true,
+        skipped: false,
+        ...over,
+      };
+    }
+
+    it("counts a paid installment as a Conta despite having no template", () => {
+      const result = fold([installment()]);
+      const moradia = byName(result, "Moradia");
+
+      expect(moradia?.billsTotal).toBe(3000);
+      expect(moradia?.expensesTotal).toBe(0);
+    });
+
+    it("does not treat a template-less Conta as uncategorised", () => {
+      // Its Categoria comes from the financing itself, set directly on the
+      // row, so the inheritance lookup must not overwrite it with null.
+      const result = fold([installment()]);
+
+      expect(uncategorised(result)).toBeUndefined();
+      expect(byName(result, "Moradia")?.lines[0].kind).toBe("bill");
+    });
+
+    it("counts an amortização extraordinária as a Despesa", () => {
+      const result = fold([
+        installment({ kind: "expense", name: "Casa — amortização" }),
+      ]);
+
+      expect(byName(result, "Moradia")?.expensesTotal).toBe(3000);
+    });
+
+    it("merges financing spend into the same bucket as entries", () => {
+      const result = fold([
+        installment({ amount: 3000 }),
+        bill({ category_id: MORADIA.id, amount: 470 }),
+        despesa({ category_id: MORADIA.id, amount: 30 }),
+      ]);
+      const moradia = byName(result, "Moradia");
+
+      expect(moradia?.total).toBe(3500);
+      expect(moradia?.count).toBe(3);
+      expect(moradia?.lines).toHaveLength(3);
     });
   });
 

@@ -480,3 +480,118 @@ export async function getFinancingMonthItems(
 
   return { bills, expenses };
 }
+
+// --- Spend reporting -----------------------------------------
+// Financiamento is a parallel ledger: installments are computed from the
+// stored loan parameters rather than written to `entries`, so nothing that
+// groups spending by Categoria could see it. For most households that means
+// omitting the single largest outflow.
+//
+// This flattens a date range of financing activity into the same shape the
+// category fold already consumes, so the fold itself needs no knowledge of
+// financing at all — it just receives more rows.
+//
+// The schedule is built ONCE per financing and filtered by date. An earlier
+// note assumed a range meant rebuilding it per month; it does not, because
+// every row already carries its own date.
+
+export type FinancingSpendRow = {
+  id: string;
+  name: string;
+  date: string;
+  kind: "bill" | "expense";
+  template_id: null;
+  category_id: string | null;
+  amount: number;
+  paid: boolean;
+  skipped: false;
+};
+
+// The pure half: given a financing, its computed schedule, which
+// installments are marked paid and its extra payments, produce the spend
+// rows falling inside an inclusive date range. Separated from the fetch so
+// the range boundaries and the paid filter are testable without a database —
+// off-by-one date bugs are the whole risk here.
+export function buildFinancingSpendRows(
+  financing: Pick<FinancingRow, "id" | "name" | "category_id">,
+  scheduleRows: { number: number; date: string; payment: number }[],
+  paidNumbers: Set<number>,
+  extras: Pick<ExtraPaymentRow, "id" | "date" | "amount">[],
+  start: string,
+  end: string
+): FinancingSpendRow[] {
+  const rows: FinancingSpendRow[] = [];
+  // Dates are "YYYY-MM-DD", so string comparison is calendar comparison —
+  // no Date construction, no UTC-midnight shift. Both ends inclusive, to
+  // match the `gte`/`lte` the entries query uses.
+  const inRange = (d: string) => d >= start && d <= end;
+
+  // Installments count as Contas, and only once marked paid — the same rule
+  // the fold applies to every other obligation. An unpaid future installment
+  // is a commitment, not money that left.
+  for (const row of scheduleRows) {
+    if (!inRange(row.date)) continue;
+    if (!paidNumbers.has(row.number)) continue;
+    rows.push({
+      id: `financing:${financing.id}:${row.number}`,
+      name: `${financing.name} — parcela ${row.number}`,
+      date: row.date,
+      kind: "bill",
+      template_id: null,
+      category_id: financing.category_id,
+      amount: row.payment,
+      paid: true,
+      skipped: false,
+    });
+  }
+
+  // Amortizações extraordinárias are money already gone, recorded after the
+  // fact — Despesas by the same reasoning one-off entries are, which is also
+  // how the monthly view already presents them.
+  for (const extra of extras) {
+    if (!inRange(extra.date)) continue;
+    rows.push({
+      id: `financing-extra:${extra.id}`,
+      name: `${financing.name} — amortização extraordinária`,
+      date: extra.date,
+      kind: "expense",
+      template_id: null,
+      category_id: financing.category_id,
+      amount: extra.amount,
+      paid: true,
+      skipped: false,
+    });
+  }
+
+  return rows;
+}
+
+export async function getFinancingSpendForRange(
+  supabase: SupabaseClient,
+  spaceId: string,
+  start: string,
+  end: string
+): Promise<FinancingSpendRow[]> {
+  const financings = await getFinancings(supabase, spaceId);
+  if (financings.length === 0) return [];
+
+  const perFinancing = await Promise.all(
+    financings.map(async (f) => {
+      const [extras, paidNumbers] = await Promise.all([
+        getExtraPayments(supabase, f.id),
+        getPaidInstallments(supabase, f.id),
+      ]);
+      const schedule = buildFinancingSchedule(f, extras);
+      return buildFinancingSpendRows(
+        f,
+        schedule.rows,
+        paidNumbers,
+        extras,
+        start,
+        end
+      );
+    })
+  );
+
+  return perFinancing.flat();
+}
