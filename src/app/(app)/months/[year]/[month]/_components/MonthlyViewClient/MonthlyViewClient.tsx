@@ -84,7 +84,7 @@ export default function MonthlyViewClient({
       />
 
       {/* Row 4 — Resumo, full width */}
-      <ResumoCard income={income} bills={bills} />
+      <ResumoCard income={income} bills={bills} expenses={expenses} />
     </div>
   );
 }

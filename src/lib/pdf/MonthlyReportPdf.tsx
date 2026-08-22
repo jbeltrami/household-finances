@@ -329,7 +329,7 @@ function MonthlyReportPdf({ data, generatedAt }: Props) {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Despesas avulsas</Text>
+          <Text style={styles.sectionTitle}>Despesas</Text>
           <EntryRows entries={expenses} showStatus={false} />
           {expenses.length > 0 ? (
             <View style={styles.summary}>
@@ -345,7 +345,7 @@ function MonthlyReportPdf({ data, generatedAt }: Props) {
         ) : null}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Resumo</Text>
+          <Text style={styles.sectionTitle}>Saldo</Text>
           <View style={styles.balanceCard}>
             <View style={styles.balanceRow}>
               <Text style={styles.balanceLabel}>Saldo esperado</Text>
