@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addMonthsYm, getMonthRange, todayYmd } from "./date";
 import { getEntriesForMonth } from "./ledger";
+import { foldNonEmptyMonths } from "./report-months";
 import { getFinancingReport, type FinancingReportRow } from "./financing";
 import { renderMonthlyReportPdf } from "@/lib/pdf/MonthlyReportPdf";
 import type { ResolvedEntry } from "./types";
@@ -218,15 +219,12 @@ export async function listNonEmptyPastMonths(
   const startDate = `${spaceStartYm}-01`;
   const currentMonthFirst = `${currentYm}-01`;
 
-  const yms = new Set<string>();
-
   const { data: entries } = await supabase
     .from("entries")
     .select("date")
     .eq("space_id", spaceId)
     .gte("date", startDate)
     .lt("date", currentMonthFirst);
-  for (const r of entries ?? []) yms.add((r.date as string).slice(0, 7));
 
   const { data: income } = await supabase
     .from("income_entries")
@@ -234,8 +232,6 @@ export async function listNonEmptyPastMonths(
     .eq("space_id", spaceId)
     .gte("expected_date", startDate)
     .lt("expected_date", currentMonthFirst);
-  for (const r of income ?? [])
-    yms.add((r.expected_date as string).slice(0, 7));
 
   // Active templates: every month their virtual expansion covers
   // counts as non-empty, since the report would include those rows.
@@ -270,39 +266,20 @@ export async function listNonEmptyPastMonths(
     }
   }
 
-  for (const tpl of templates) {
-    let tplStartYm = spaceStartYm;
-    let tplEndYm = endYm;
-
-    if (tpl.installments_total != null && tpl.installments_start_month) {
-      const startMonth = tpl.installments_start_month.slice(0, 7);
-      tplStartYm = startMonth > spaceStartYm ? startMonth : spaceStartYm;
-
-      const paidCovered = paidCoveredByTpl.get(tpl.id) ?? 0;
-      const paidRows = paidRowsByTpl.get(tpl.id) ?? 0;
-      const paidExtra = Math.max(0, paidCovered - paidRows);
-      const offset = tpl.installments_total - 1 - paidExtra;
-      const installEndYm = addMonthsYm(startMonth, Math.max(0, offset));
-      if (installEndYm < tplEndYm) tplEndYm = installEndYm;
-    }
-
-    if (tplStartYm > tplEndYm) continue;
-
-    let cursor = tplStartYm;
-    while (cursor <= tplEndYm) {
-      yms.add(cursor);
-      cursor = addMonthsYm(cursor, 1);
-    }
-  }
-
-  return Array.from(yms)
-    .filter((ym) => ym >= spaceStartYm && ym <= endYm)
-    .sort()
-    .reverse()
-    .map((ym) => {
-      const [y, m] = ym.split("-").map(Number);
-      return { year: y, month: m };
-    });
+  return foldNonEmptyMonths({
+    spaceStartYm,
+    endYm,
+    datedMonths: [
+      ...(entries ?? []).map((r) => (r.date as string).slice(0, 7)),
+      ...(income ?? []).map((r) => (r.expected_date as string).slice(0, 7)),
+    ],
+    templates: templates.map((t) => ({
+      installments_total: t.installments_total,
+      installments_start_month: t.installments_start_month,
+      paidCovered: paidCoveredByTpl.get(t.id) ?? 0,
+      paidRows: paidRowsByTpl.get(t.id) ?? 0,
+    })),
+  });
 }
 
 // Render a PDF for the given month and persist it to storage + the

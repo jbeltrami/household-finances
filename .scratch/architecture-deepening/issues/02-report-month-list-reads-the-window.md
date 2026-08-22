@@ -11,10 +11,10 @@ month list should agree without anyone maintaining that agreement by hand.
 
 **Blocked by:** 01.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The month list reads the shared window module
-- [ ] Its inline copy of the prepayment arithmetic is deleted
-- [ ] A month that is non-empty only because a parcelamento covers it still lists
-- [ ] A month past a prepaid series' shortened end no longer lists
-- [ ] The listed months are unchanged for a space with no parcelamentos
+- [x] The month list reads the shared window module
+- [x] Its inline copy of the prepayment arithmetic is deleted
+- [x] A month that is non-empty only because a parcelamento covers it still lists
+- [x] A month past a prepaid series' shortened end no longer lists
+- [x] The listed months are unchanged for a space with no parcelamentos
