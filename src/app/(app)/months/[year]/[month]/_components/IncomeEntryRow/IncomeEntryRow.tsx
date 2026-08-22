@@ -81,45 +81,59 @@ export default function IncomeEntryRow({
   if (editing && !noEdit) {
     return (
       <li className="px-3 py-2">
-        <form
-          action={handleUpdate}
-          className="flex flex-wrap items-center gap-2"
-        >
-          <input
-            type="text"
-            name="name"
-            placeholder="Descrição (opcional)"
-            defaultValue={entry.name ?? ""}
-            className="field-input mt-0 min-w-32 flex-1"
-          />
-          <div className="w-40">
-            <PayerSelect payers={payers} current={entry.payer} />
+        <form action={handleUpdate} className="flex flex-col gap-3">
+          {/* items-start, not items-center: the Pagador column is taller than
+              the others because of its "Novo pagador" affordance, and
+              centring would float every other field down to meet it. */}
+          <div className="grid grid-cols-1 items-start gap-2 sm:grid-cols-[minmax(8rem,1fr)_10rem_10rem_9rem]">
+            <input
+              type="text"
+              name="name"
+              placeholder="Descrição (opcional)"
+              defaultValue={entry.name ?? ""}
+              className="field-input mt-0"
+            />
+            <PayerSelect
+              payers={payers}
+              current={entry.payer}
+              className="mt-0"
+            />
+            <CategorySelect
+              categories={categories}
+              current={entry.category}
+              className="mt-0"
+            />
+            <CurrencyInput
+              name="amount"
+              required
+              autoFocus
+              defaultValue={String(entry.amount)}
+              className="mt-0"
+            />
           </div>
-          <div className="w-40">
-            <CategorySelect categories={categories} current={entry.category} />
+
+          {/* Their own row, so they keep a fixed home instead of wrapping to
+              wherever the fields happen to leave space. */}
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="btn-primary py-1.5 text-xs"
+            >
+              {isUpdating ? "Salvando…" : "Salvar"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setUpdateError(null);
+              }}
+              disabled={isUpdating}
+              className="btn-ghost py-1.5 text-xs"
+            >
+              Cancelar
+            </button>
           </div>
-          <CurrencyInput
-            name="amount"
-            required
-            autoFocus
-            defaultValue={String(entry.amount)}
-            wrapperClassName="relative w-36"
-            className="mt-0"
-          />
-          <button type="submit" disabled={isUpdating} className="btn-primary py-1.5 text-xs">
-            {isUpdating ? "Salvando…" : "Salvar"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(false);
-              setUpdateError(null);
-            }}
-            disabled={isUpdating}
-            className="btn-ghost py-1.5 text-xs"
-          >
-            Cancelar
-          </button>
         </form>
         {updateError && (
           <p className="mt-2 text-xs text-danger" role="alert">

@@ -10,6 +10,8 @@ type Props = {
   current?: { id: string; name: string } | null;
   name?: string;
   id?: string;
+  // See CategorySelect — `field-input` bakes in `mt-1` for the label case.
+  className?: string;
 };
 
 // The Pagador dropdown, with inline creation.
@@ -26,6 +28,7 @@ export default function PayerSelect({
   current = null,
   name = "payer_id",
   id,
+  className = "",
 }: Props) {
   const [added, setAdded] = useState<PayerRow[]>([]);
   const [selected, setSelected] = useState<string>(current?.id ?? "");
@@ -68,7 +71,7 @@ export default function PayerSelect({
         name={name}
         value={selected}
         onChange={(e) => setSelected(e.target.value)}
-        className="field-input"
+        className={`field-input ${className}`}
       >
         <option value="">Sem pagador</option>
         {options.map((payer) => (

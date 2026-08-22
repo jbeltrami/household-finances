@@ -15,6 +15,10 @@ type Props = {
   // uncontrolled field that a plain <form> submission picks up.
   onChange?: (event: React.ChangeEvent<HTMLSelectElement>) => void;
   disabled?: boolean;
+  // Appended to `field-input`. Mostly used to pass `mt-0` when the select
+  // sits in a row rather than under a label — `field-input` bakes in the
+  // `mt-1` that spaces it from its label, which misaligns it otherwise.
+  className?: string;
 };
 
 // The Categoria dropdown, shared by every form that assigns one.
@@ -33,6 +37,7 @@ export default function CategorySelect({
   id,
   onChange,
   disabled = false,
+  className = "",
 }: Props) {
   const currentIsRetired =
     current != null && !categories.some((c) => c.id === current.id);
@@ -44,7 +49,7 @@ export default function CategorySelect({
       defaultValue={current?.id ?? ""}
       onChange={onChange}
       disabled={disabled}
-      className="field-input"
+      className={`field-input ${className}`}
     >
       <option value="">Sem categoria</option>
       {categories.map((category) => (
