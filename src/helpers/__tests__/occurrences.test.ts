@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { writeOccurrence } from "../occurrences";
+import { installmentPaymentPatch, writeOccurrence } from "../occurrences";
 import { fakeSupabase } from "./fake-supabase";
 
 // `isMonthLocked` reads the real clock: a past month with no unlock row is
@@ -207,6 +207,106 @@ describe("writeOccurrence", () => {
         error: "Lançamento não encontrado",
       });
       expect(recorded.updates).toEqual([]);
+    });
+  });
+});
+
+describe("installmentPaymentPatch", () => {
+  const conta = {
+    covered: 1,
+    isInstallment: false,
+    defaultAmount: 470,
+    currentCovered: 1,
+  };
+  const parcelada = { ...conta, isInstallment: true };
+
+  it("marks an ordinary Conta paid without touching its amount", () => {
+    // The row may be carrying an override the user typed; paying it is not
+    // the moment to overwrite that.
+    const patch = installmentPaymentPatch({ ...conta, newPaid: true });
+    expect(patch).toEqual({ paid: true, installments_covered: 1 });
+  });
+
+  it("marks an ordinary Conta unpaid without touching its amount", () => {
+    const patch = installmentPaymentPatch({ ...conta, newPaid: false });
+    expect(patch).toEqual({ paid: false, installments_covered: 1 });
+  });
+
+  it("scales the amount when one payment covers several parcelas", () => {
+    const patch = installmentPaymentPatch({
+      ...parcelada,
+      newPaid: true,
+      covered: 3,
+    });
+    expect(patch).toEqual({
+      paid: true,
+      installments_covered: 3,
+      amount: 1410,
+    });
+  });
+
+  it("treats covering one parcela as an ordinary payment", () => {
+    const patch = installmentPaymentPatch({
+      ...parcelada,
+      newPaid: true,
+      covered: 1,
+    });
+    expect(patch).toEqual({ paid: true, installments_covered: 1 });
+  });
+
+  it("ignores coverage on a Conta with no parcelamento", () => {
+    // Nothing in the UI offers this, but the number arrives from the client.
+    const patch = installmentPaymentPatch({
+      ...conta,
+      newPaid: true,
+      covered: 5,
+    });
+    expect(patch).toEqual({ paid: true, installments_covered: 1 });
+  });
+
+  it("puts the amount back when a prepayment is undone", () => {
+    const patch = installmentPaymentPatch({
+      ...parcelada,
+      newPaid: false,
+      currentCovered: 3,
+    });
+    expect(patch).toEqual({
+      paid: false,
+      installments_covered: 1,
+      amount: 470,
+    });
+  });
+
+  it("leaves the amount alone when undoing an ordinary payment", () => {
+    const patch = installmentPaymentPatch({
+      ...parcelada,
+      newPaid: false,
+      currentCovered: 1,
+    });
+    expect(patch).toEqual({ paid: false, installments_covered: 1 });
+  });
+
+  it("says nothing about the amount for a row that does not exist yet", () => {
+    // A new row takes the Conta's default from `writeOccurrence`.
+    const patch = installmentPaymentPatch({
+      ...parcelada,
+      newPaid: false,
+      currentCovered: null,
+    });
+    expect(patch).toEqual({ paid: false, installments_covered: 1 });
+  });
+
+  it("scales the amount on a prepayment of an occurrence with no row yet", () => {
+    const patch = installmentPaymentPatch({
+      ...parcelada,
+      newPaid: true,
+      covered: 4,
+      currentCovered: null,
+    });
+    expect(patch).toEqual({
+      paid: true,
+      installments_covered: 4,
+      amount: 1880,
     });
   });
 });

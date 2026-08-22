@@ -1,20 +1,102 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { monthUrl } from "@/helpers/paths";
-import { requirePersonalSpaceId } from "@/helpers/spaces";
-import {
-  checkDateEditable,
-  checkEntryEditable,
-} from "@/helpers/lock";
-import type { EntryMutationTarget } from "../_types";
+import { installmentPaymentPatch, writeOccurrence } from "@/helpers/occurrences";
+import type { EntryMutationTarget } from "@/helpers/types";
 
-// `covered` only matters for installment templates. A prepayment with
-// covered > 1 represents one payment absorbing multiple installments;
-// amount auto-scales to default × covered. Unpaying a previously-
-// prepaid row resets coverage to 1 and amount to the template default.
+// What the Conta behind an occurrence says, which is what decides whether a
+// payment can cover several parcelas and what one of them is worth. Read
+// from the row's Conta when there is a row, and straight from the Conta when
+// the occurrence is still virtual.
+type ContaFacts = {
+  templateId: string | null;
+  occurrenceDate: string;
+  defaultAmount: number;
+  isInstallment: boolean;
+  currentCovered: number | null;
+};
+
+async function readContaFacts(
+  supabase: SupabaseClient,
+  target: EntryMutationTarget
+): Promise<ContaFacts | null> {
+  if (target.kind === "virtual") {
+    const { data } = await supabase
+      .from("recurring_bill_templates")
+      .select("default_amount, installments_total")
+      .eq("id", target.templateId)
+      .maybeSingle();
+    if (!data) return null;
+
+    return {
+      templateId: target.templateId,
+      occurrenceDate: target.date,
+      defaultAmount: Number(data.default_amount),
+      isInstallment: data.installments_total != null,
+      currentCovered: null,
+    };
+  }
+
+  const { data } = await supabase
+    .from("entries")
+    .select(
+      "template_id, date, installments_covered, recurring_bill_templates(default_amount, installments_total)"
+    )
+    .eq("id", target.entryId)
+    .maybeSingle();
+  if (!data) return null;
+
+  const row = data as unknown as {
+    template_id: string | null;
+    date: string;
+    installments_covered: number;
+    recurring_bill_templates: {
+      default_amount: number | string;
+      installments_total: number | null;
+    } | null;
+  };
+
+  return {
+    templateId: row.template_id,
+    occurrenceDate: row.date,
+    defaultAmount: Number(row.recurring_bill_templates?.default_amount ?? 0),
+    isInstallment: row.recurring_bill_templates?.installments_total != null,
+    currentCovered: row.installments_covered,
+  };
+}
+
+// On unpaid → paid, clear any matching WhatsApp notification log rows so the
+// Conta is alert-eligible again if the user later flips it back to unpaid
+// (typo, undo). Two key shapes to cover: the row's own id, and the
+// (template, date) pair it was logged under while still virtual. The cron
+// checks both, so both have to be cleared.
+//
+// Admin client because the log has no user-write policies; ownership was
+// already established by the write above.
+async function clearOverdueAlerts(facts: ContaFacts, entryId: string) {
+  const admin = createAdminClient();
+
+  await admin
+    .from("whatsapp_notifications_sent")
+    .delete()
+    .eq("entry_id", entryId);
+
+  if (facts.templateId) {
+    await admin
+      .from("whatsapp_notifications_sent")
+      .delete()
+      .eq("template_id", facts.templateId)
+      .eq("occurrence_date", facts.occurrenceDate);
+  }
+}
+
+// `covered` only matters for a Conta parcelada. A payment with covered > 1
+// is a prepayment — one payment absorbing several parcelas — and the amount
+// scales to match.
 export async function toggleEntryPaid(
   target: EntryMutationTarget,
   newPaid: boolean,
@@ -24,7 +106,9 @@ export async function toggleEntryPaid(
   void formData;
 
   if (!Number.isInteger(covered) || covered < 1) {
-    throw new Error("A quantidade de parcelas pagas precisa ser um inteiro positivo");
+    throw new Error(
+      "A quantidade de parcelas pagas precisa ser um inteiro positivo"
+    );
   }
 
   const supabase = await createClient();
@@ -34,145 +118,23 @@ export async function toggleEntryPaid(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Não autenticado");
 
-  if (target.kind === "materialized") {
-    const check = await checkEntryEditable(supabase, target.entryId);
-    if (!check.ok) throw new Error(check.error);
+  const facts = await readContaFacts(supabase, target);
+  if (!facts) throw new Error("Conta recorrente não encontrada");
 
-    const { data: row } = await supabase
-      .from("entries")
-      .select(
-        "template_id, date, space_id, installments_covered, amount, recurring_bill_templates(default_amount, installments_total)"
-      )
-      .eq("id", target.entryId)
-      .single();
+  const result = await writeOccurrence(
+    supabase,
+    target,
+    installmentPaymentPatch({
+      newPaid,
+      covered,
+      isInstallment: facts.isInstallment,
+      defaultAmount: facts.defaultAmount,
+      currentCovered: facts.currentCovered,
+    })
+  );
+  if (!result.ok) throw new Error(result.error);
 
-    if (!row) throw new Error("Lançamento não encontrado");
+  if (newPaid) await clearOverdueAlerts(facts, result.entryId);
 
-    const joined = row as unknown as {
-      template_id: string | null;
-      date: string;
-      space_id: string;
-      installments_covered: number;
-      amount: number | string;
-      recurring_bill_templates: {
-        default_amount: number | string;
-        installments_total: number | null;
-      } | null;
-    };
-
-    const isInstallment =
-      joined.recurring_bill_templates?.installments_total != null;
-    const defaultAmount = Number(
-      joined.recurring_bill_templates?.default_amount ?? 0
-    );
-
-    const updates: {
-      paid: boolean;
-      installments_covered: number;
-      amount?: number;
-    } = { paid: newPaid, installments_covered: 1 };
-
-    if (newPaid) {
-      if (isInstallment && covered > 1) {
-        updates.installments_covered = covered;
-        updates.amount = defaultAmount * covered;
-      }
-    } else if (joined.installments_covered > 1) {
-      // Unpaying a prepayment: reset coverage and amount to defaults so
-      // the next time the user pays, they get a fresh slate.
-      updates.amount = defaultAmount;
-    }
-
-    const { error } = await supabase
-      .from("entries")
-      .update(updates)
-      .eq("id", target.entryId);
-
-    if (error) throw new Error(`Falha ao atualizar o lançamento: ${error.message}`);
-
-    // On unpaid → paid, clear any matching WhatsApp notification log
-    // rows so the bill is alert-eligible again if the user later flips
-    // it back to unpaid (typo, undo, etc.). Two key shapes to cover:
-    //   (1) entry_id = the materialized row's id
-    //   (2) (template_id, occurrence_date) = the row's logical key
-    //       when it was a virtual occurrence (logged before being
-    //       materialized). The cron checks both shapes too.
-    // Admin client because the log table has no user-write policies;
-    // ownership is already validated above via checkEntryEditable.
-    if (newPaid) {
-      const admin = createAdminClient();
-      await admin
-        .from("whatsapp_notifications_sent")
-        .delete()
-        .eq("entry_id", target.entryId);
-      if (joined.template_id) {
-        await admin
-          .from("whatsapp_notifications_sent")
-          .delete()
-          .eq("template_id", joined.template_id)
-          .eq("occurrence_date", joined.date);
-      }
-    }
-
-    revalidatePath(monthUrl(check.year, check.month));
-    return;
-  }
-
-  // Virtual occurrence → materialize. Fetch template for defaults.
-  const spaceId = await requirePersonalSpaceId(supabase);
-
-  const check = await checkDateEditable(supabase, spaceId, target.date);
-  if (!check.ok) throw new Error(check.error);
-
-  const { data: template } = await supabase
-    .from("recurring_bill_templates")
-    .select(
-      "name, default_amount, currency, installments_total"
-    )
-    .eq("id", target.templateId)
-    .single();
-
-  if (!template) throw new Error("Conta recorrente não encontrada");
-
-  const isInstallment = template.installments_total != null;
-  const defaultAmount = Number(template.default_amount);
-  const effectiveCovered = newPaid && isInstallment && covered > 1 ? covered : 1;
-  const amount =
-    newPaid && isInstallment && covered > 1
-      ? defaultAmount * covered
-      : defaultAmount;
-
-  const { error } = await supabase.from("entries").insert({
-    space_id: spaceId,
-    date: target.date,
-    name: template.name,
-    amount,
-    currency: template.currency,
-    // No `category_id` here on purpose. Leaving it NULL is what makes this
-    // row inherit its Categoria from the template, so recategorising the
-    // Conta later moves this payment with it instead of stranding it under
-    // the old name. The amount above IS copied, because what was paid is a
-    // fact about this payment rather than a description of the bill.
-    // See docs/adr/0001-categories-are-referenced-not-snapshotted.md
-    paid: newPaid,
-    skipped: false,
-    template_id: target.templateId,
-    installments_covered: effectiveCovered,
-  });
-
-  if (error) throw new Error(`Falha ao registrar o pagamento: ${error.message}`);
-
-  // Same alert-eligibility reset as the materialized branch — but
-  // here only the (template_id, occurrence_date) key can have a log
-  // row, since the entry_id only just came into existence above.
-  if (newPaid) {
-    const admin = createAdminClient();
-    await admin
-      .from("whatsapp_notifications_sent")
-      .delete()
-      .eq("template_id", target.templateId)
-      .eq("occurrence_date", target.date);
-  }
-
-  revalidatePath(monthUrl(check.year, check.month));
+  revalidatePath(monthUrl(result.year, result.month));
 }

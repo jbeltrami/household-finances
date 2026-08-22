@@ -10,14 +10,14 @@ fourth mutation gets it right by construction rather than by copying a comment.
 
 **Blocked by:** 13.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Marking a virtual occurrence paid goes through the module
-- [ ] A payment covering several parcelas still scales the amount and records the
+- [x] Marking a virtual occurrence paid goes through the module
+- [x] A payment covering several parcelas still scales the amount and records the
       coverage
-- [ ] Unmarking a prepayment still resets its coverage and amount
-- [ ] The paid row still inherits its Categoria from the Conta
-- [ ] The WhatsApp alert log is still cleared on unpaid to paid, for both key
+- [x] Unmarking a prepayment still resets its coverage and amount
+- [x] The paid row still inherits its Categoria from the Conta
+- [x] The WhatsApp alert log is still cleared on unpaid to paid, for both key
       shapes
-- [ ] Marking paid in a locked month is still refused
-- [ ] The last copy of the ADR-0001 insert comment is gone
+- [x] Marking paid in a locked month is still refused
+- [x] The last copy of the ADR-0001 insert comment is gone

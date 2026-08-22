@@ -117,3 +117,46 @@ export async function writeOccurrence(
     month: check.month,
   };
 }
+
+// What marking an occurrence paid (or unpaid) should write.
+//
+// Pure, and separated from the action because the rules read as fiddly and
+// are easy to get subtly wrong: a payment can absorb several parcelas of a
+// Conta parcelada, which scales the amount, and undoing one has to put the
+// amount back — but only if it was scaled in the first place. On an
+// ordinary Conta the amount is left out of the patch entirely, because the
+// row may be carrying an override the user typed and nothing here should
+// overwrite it.
+//
+// `currentCovered` is null when no row exists yet. A row being created
+// takes the Conta's default amount from `writeOccurrence`, so there is
+// nothing for the patch to say.
+export function installmentPaymentPatch(args: {
+  newPaid: boolean;
+  covered: number;
+  isInstallment: boolean;
+  defaultAmount: number;
+  currentCovered: number | null;
+}): OccurrencePatch {
+  const { newPaid, covered, isInstallment, defaultAmount, currentCovered } =
+    args;
+
+  // Covering more than one parcela only means anything on a Conta parcelada,
+  // and only when paying.
+  const prepaying = newPaid && isInstallment && covered > 1;
+
+  const patch: OccurrencePatch = {
+    paid: newPaid,
+    installments_covered: prepaying ? covered : 1,
+  };
+
+  if (prepaying) {
+    patch.amount = defaultAmount * covered;
+  } else if (!newPaid && currentCovered != null && currentCovered > 1) {
+    // Undoing a prepayment: put the amount back to one parcela, so paying
+    // again starts from a clean slate.
+    patch.amount = defaultAmount;
+  }
+
+  return patch;
+}
