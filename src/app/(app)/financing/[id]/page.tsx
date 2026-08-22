@@ -8,11 +8,8 @@ import { financingUrl } from "@/helpers/paths";
 import { brlFormatter } from "@/helpers/format";
 import Collapsible from "@/components/Collapsible/Collapsible";
 import {
-  getFinancingById,
-  getExtraPayments,
-  getPaidInstallments,
-  buildFinancingSchedule,
-  summarizeFinancing,
+  getFinancingLedger,
+  buildSummary,
   toAmortizationInput,
 } from "@/helpers/financing";
 import { ratePeriodLabel, systemLabel, formatYmd } from "../_helpers";
@@ -33,8 +30,13 @@ export default async function FinancingDetailPage({
   const spaceId = await getPersonalSpaceId(supabase);
   if (!spaceId) notFound();
 
-  const financing = await getFinancingById(supabase, id);
-  if (!financing || !financing.active) notFound();
+  // The hydration is space-scoped and returns only active loans, so an id
+  // belonging to another space — or to a deactivated Financiamento — simply
+  // isn't in it, which is the 404 this page already wanted.
+  const ledger = await getFinancingLedger(supabase, spaceId);
+  const hydrated = ledger.find((h) => h.financing.id === id);
+  if (!hydrated) notFound();
+  const { financing, extras, paidNumbers } = hydrated;
 
   // Active for the picker, full list to resolve a Categoria that has since
   // been deactivated — CategorySelect renders it so saving is not destructive.
@@ -45,12 +47,7 @@ export default async function FinancingDetailPage({
   const currentCategory =
     allCategories.find((c) => c.id === financing.category_id) ?? null;
 
-  const [extras, paid] = await Promise.all([
-    getExtraPayments(supabase, id),
-    getPaidInstallments(supabase, id),
-  ]);
-  const schedule = buildFinancingSchedule(financing, extras);
-  const summary = summarizeFinancing(schedule, paid, extras);
+  const summary = buildSummary(hydrated);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
@@ -140,7 +137,7 @@ export default async function FinancingDetailPage({
             amount: e.amount,
             effect: e.effect,
           }))}
-          paidNumbers={Array.from(paid)}
+          paidNumbers={Array.from(paidNumbers)}
         />
       </div>
     </div>

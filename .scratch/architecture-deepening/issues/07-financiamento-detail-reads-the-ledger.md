@@ -9,10 +9,10 @@ render today.
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The page hydrates through the shared module
-- [ ] Saldo devedor, parcela atual and progresso are unchanged
-- [ ] The amortization table renders the same rows, with paid parcelas highlighted
+- [x] The page hydrates through the shared module
+- [x] Saldo devedor, parcela atual and progresso are unchanged
+- [x] The amortization table renders the same rows, with paid parcelas highlighted
       as before
-- [ ] The simulator still starts from the loan's recorded extras and paid parcelas
+- [x] The simulator still starts from the loan's recorded extras and paid parcelas

@@ -125,58 +125,6 @@ export function buildFinancingSchedule(
   return buildSchedule(toAmortizationInput(f), toExtraInputs(extras));
 }
 
-// Active financings for a space, newest first.
-export async function getFinancings(
-  supabase: SupabaseClient,
-  spaceId: string
-): Promise<FinancingRow[]> {
-  const { data } = await supabase
-    .from("financings")
-    .select(FINANCING_COLUMNS)
-    .eq("space_id", spaceId)
-    .eq("active", true)
-    .order("created_at", { ascending: false });
-  return (data ?? []).map(mapFinancing);
-}
-
-// One financing by id (RLS scopes it to the caller's space). Returns null
-// if not found / not visible / inactive-but-requested handled by caller.
-export async function getFinancingById(
-  supabase: SupabaseClient,
-  financingId: string
-): Promise<FinancingRow | null> {
-  const { data } = await supabase
-    .from("financings")
-    .select(FINANCING_COLUMNS)
-    .eq("id", financingId)
-    .maybeSingle();
-  return data ? mapFinancing(data) : null;
-}
-
-export async function getExtraPayments(
-  supabase: SupabaseClient,
-  financingId: string
-): Promise<ExtraPaymentRow[]> {
-  const { data } = await supabase
-    .from("financing_extra_payments")
-    .select("id, financing_id, date, amount, effect, notes")
-    .eq("financing_id", financingId)
-    .order("date", { ascending: true });
-  return (data ?? []).map(mapExtraPayment);
-}
-
-// Set of paid installment numbers for a financing.
-export async function getPaidInstallments(
-  supabase: SupabaseClient,
-  financingId: string
-): Promise<Set<number>> {
-  const { data } = await supabase
-    .from("financing_installment_payments")
-    .select("installment_number")
-    .eq("financing_id", financingId);
-  return new Set((data ?? []).map((r) => Number(r.installment_number)));
-}
-
 // Progress + outstanding balance.
 //
 // Outstanding balance is what's still owed *today*: the original principal
