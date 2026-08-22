@@ -20,16 +20,16 @@ arithmetic gone from the page.
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] One pure module returns Saldo esperado, Saldo até o momento and the five
+- [x] One pure module returns Saldo esperado, Saldo até o momento and the five
       Resumo figures from plain arrays
-- [ ] Financiamento parcelas count as Contas and amortizações as Despesas
-- [ ] Saldo até o momento subtracts paid Contas and overdue unpaid Contas without
+- [x] Financiamento parcelas count as Contas and amortizações as Despesas
+- [x] Saldo até o momento subtracts paid Contas and overdue unpaid Contas without
       counting a paid future-dated Conta twice
-- [ ] Each of those behaviours is covered by a test against the module's interface
-- [ ] The monthly page computes no totals of its own
-- [ ] Every figure on screen is unchanged for a month carrying Contas, Despesas,
+- [x] Each of those behaviours is covered by a test against the module's interface
+- [x] The monthly page computes no totals of its own
+- [x] Every figure on screen is unchanged for a month carrying Contas, Despesas,
       Receitas and a Financiamento
 
 ## Further notes

@@ -5,6 +5,7 @@ import { fetchMonthUnlock, isMonthLocked } from "@/helpers/lock";
 import { getEntriesForMonth } from "@/helpers/ledger";
 import { getCategories, getPayers } from "@/helpers/taxonomy";
 import { getFinancingMonthItems } from "@/helpers/financing";
+import { summarizeMonth } from "@/helpers/month-summary";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 import { buildMonthOptions } from "./_helpers";
 import MonthlyViewClient from "./_components/MonthlyViewClient/MonthlyViewClient";
@@ -161,41 +162,16 @@ export default async function MonthlyViewPage({
     (a, b) => a - b
   );
 
-  // Bill totals fold the regular entries together with mortgage
-  // installments (a financing's payment behaves like a bill for the month).
-  const totalBills =
-    billEntries.reduce((s, e) => s + e.amount, 0) +
-    mortgageBills.reduce((s, b) => s + b.amount, 0);
-  const paidBills =
-    billEntries.filter((e) => e.paid).reduce((s, e) => s + e.amount, 0) +
-    mortgageBills.filter((b) => b.paid).reduce((s, b) => s + b.amount, 0);
-  const remainingBills = totalBills - paidBills;
-
-  // Unpaid bills whose date is on or before today count as money that
-  // should already be gone from the account — "net so far" subtracts
-  // them alongside the explicitly-paid ones.
-  const overdueUnpaidBills =
-    billEntries
-      .filter((e) => !e.paid && e.date <= today)
-      .reduce((s, e) => s + e.amount, 0) +
-    mortgageBills
-      .filter((b) => !b.paid && b.date <= today)
-      .reduce((s, b) => s + b.amount, 0);
-
-  const totalIncome = incomeEntries.reduce((s, e) => s + e.amount, 0);
-  const receivedIncome = incomeEntries
-    .filter((e) => e.received)
-    .reduce((s, e) => s + e.amount, 0);
-  const stillToReceive = totalIncome - receivedIncome;
-
-  // Mortgage extra payments are real cash out → fold into expenses.
-  const totalExpenses =
-    expenseEntries.reduce((s, e) => s + e.amount, 0) +
-    mortgageExpenses.reduce((s, e) => s + e.amount, 0);
-
-  const netExpected = totalIncome - totalBills - totalExpenses;
-  const netSoFar =
-    receivedIncome - paidBills - overdueUnpaidBills - totalExpenses;
+  // Saldo and the Resumo strip. Every figure below comes out of one pure
+  // fold — the page does no arithmetic of its own, so the numbers here and
+  // the numbers in the emailed report cannot drift apart.
+  const totals = summarizeMonth({
+    bills: billEntries,
+    expenses: expenseEntries,
+    income: incomeEntries,
+    financing: { bills: mortgageBills, expenses: mortgageExpenses },
+    today,
+  });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
@@ -220,22 +196,15 @@ export default async function MonthlyViewPage({
         bills={{
           entries: billEntries,
           mortgages: mortgageBills,
-          total: totalBills,
-          paid: paidBills,
-          remaining: remainingBills,
+          ...totals.bills,
         }}
-        income={{
-          entries: incomeEntries,
-          total: totalIncome,
-          received: receivedIncome,
-          stillExpected: stillToReceive,
-        }}
+        income={{ entries: incomeEntries, ...totals.income }}
         expenses={{
           entries: expenseEntries,
           mortgages: mortgageExpenses,
-          total: totalExpenses,
+          ...totals.expenses,
         }}
-        balance={{ netExpected, netSoFar }}
+        balance={totals.balance}
       />
     </div>
   );
