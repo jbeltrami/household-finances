@@ -12,14 +12,14 @@ protecting, and it becomes testable once the fetching is out of the way.
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The report's Financiamento rows are a pure projection over the hydration
-- [ ] Its own copy of the fetch-and-group code is deleted
-- [ ] An extra dated after the report month does not move that month's saldo
+- [x] The report's Financiamento rows are a pure projection over the hydration
+- [x] Its own copy of the fetch-and-group code is deleted
+- [x] An extra dated after the report month does not move that month's saldo
       devedor
-- [ ] A parcela paid after the report month does not count as paid in it
-- [ ] A loan settled before the report month is left out
-- [ ] A loan that had not started by the report month is left out
-- [ ] Each of the above is covered by a test
-- [ ] The PDF for a past month is unchanged
+- [x] A parcela paid after the report month does not count as paid in it
+- [x] A loan settled before the report month is left out
+- [x] A loan that had not started by the report month is left out
+- [x] Each of the above is covered by a test
+- [x] The PDF for a past month is unchanged
