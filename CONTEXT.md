@@ -30,6 +30,28 @@ _Avoid_: Gastos, compras, despesas avulsas, purchases
 Contas and Despesas are both outflows. The split is **obligation vs.
 discretionary**, not scheduled vs. unscheduled and not money vs. not-money.
 
+**Categoria** (code: _category_):
+A user-defined bucket that groups money by kind. Each space manages its own
+list. A Categoria is direction-scoped: it belongs either to Receitas or to the
+outflows — Contas, Despesas and Financiamentos alike — never to both. Categorising a flow is
+optional, and money left uncategorised is reported as its own bucket rather
+than hidden.
+_Avoid_: Fonte, tipo, grupo, tag, rubrica
+
+**Pagador** (code: _payer_):
+The named institution behind a Receita — an employer, a client, the
+government. A Pagador answers _who paid_; a Categoria answers _what kind of
+money it was_. The two are independent: one Pagador can send both a Salário and
+a Restituição. Outflows have no Pagador; the counterparty of a Conta is carried
+by the Conta's own name.
+_Avoid_: Fonte, origem, source, cliente
+
+**Fonte** is deliberately absent from this vocabulary. In pt-BR _fonte de
+renda_ reads as the kind of income ("minha fonte de renda é freelance"), which
+is Categoria, while the word is equally reachable for the institution, which is
+Pagador. It cannot name one without being misread as the other, so it names
+neither.
+
 **Saldo**:
 What's left after everything. Scoped to all three flows: Receitas minus Contas
 minus Despesas. Appears in two forms — _Saldo esperado_ (the whole month as
