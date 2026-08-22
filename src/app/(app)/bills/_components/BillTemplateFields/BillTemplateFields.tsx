@@ -3,6 +3,7 @@
 import { useState } from "react";
 import IconPicker from "@/components/IconPicker/IconPicker";
 import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
+import type { CategoryRow } from "@/helpers/taxonomy";
 
 const DAY_OPTIONS = [
   { value: "0", label: "Dom" },
@@ -27,6 +28,7 @@ export type BillTemplateFieldDefaults = {
   name?: string;
   defaultAmount?: number | string;
   icon?: string | null;
+  categoryId?: string | null;
   cadence?: string;
   dueDay?: number | null;
   dayOfWeek?: number | null;
@@ -36,9 +38,13 @@ export type BillTemplateFieldDefaults = {
 
 type Props = {
   defaults?: BillTemplateFieldDefaults;
+  // Active outflow Categorias, resolved by the page. Passed in rather than
+  // fetched here because this is a client component and the list is the
+  // same for every form on the page.
+  categories: CategoryRow[];
 };
 
-export default function BillTemplateFields({ defaults }: Props) {
+export default function BillTemplateFields({ defaults, categories }: Props) {
   const [cadence, setCadence] = useState(defaults?.cadence ?? "monthly");
   const [installmentsEnabled, setInstallmentsEnabled] = useState(
     defaults?.installmentsTotal != null
@@ -80,12 +86,35 @@ export default function BillTemplateFields({ defaults }: Props) {
           />
         </div>
 
-        <div className="sm:col-span-3">
+        <div>
+          <label htmlFor="category_id" className="field-label">
+            Categoria (opcional)
+          </label>
+          <select
+            id="category_id"
+            name="category_id"
+            defaultValue={defaults?.categoryId ?? ""}
+            className="field-input"
+          >
+            <option value="">Sem categoria</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-muted">
+            Agrupa a conta nos relatórios. Mudar a categoria move todo o
+            histórico dela junto.
+          </p>
+        </div>
+
+        <div className="sm:col-span-2">
           <label className="field-label">Ícone (opcional)</label>
           <IconPicker defaultValue={defaults?.icon ?? null} />
           <p className="mt-1 text-xs text-muted">
-            A categoria da conta é definida pelo ícone (Moradia, Saúde, etc.) —
-            usada para agrupar relatórios.
+            Só aparência — independente da categoria. Sem ícone, a conta usa o
+            da própria categoria.
           </p>
         </div>
 

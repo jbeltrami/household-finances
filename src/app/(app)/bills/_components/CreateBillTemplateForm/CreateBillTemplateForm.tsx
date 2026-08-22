@@ -5,8 +5,13 @@ import Card from "@/components/Card";
 import { createBillTemplate } from "../../actions";
 import { initialFormState } from "../../form-state";
 import BillTemplateFields from "../BillTemplateFields/BillTemplateFields";
+import type { CategoryRow } from "@/helpers/taxonomy";
 
-export default function CreateBillTemplateForm() {
+type Props = {
+  categories: CategoryRow[];
+};
+
+export default function CreateBillTemplateForm({ categories }: Props) {
   const [state, formAction, isPending] = useActionState(
     createBillTemplate,
     initialFormState
@@ -19,7 +24,7 @@ export default function CreateBillTemplateForm() {
           Adicionar conta recorrente
         </h2>
         <div className="mt-4">
-          <BillTemplateFields />
+          <BillTemplateFields categories={categories} />
         </div>
 
         {state.error && (

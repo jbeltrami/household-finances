@@ -8,14 +8,40 @@ The inheritance change is deliberately part of this ticket rather than a follow-
 
 **Blocked by:** 01.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The Conta template create form offers an optional Categoria, listing only active outflow Categorias
-- [ ] The Conta template edit form offers the same, pre-filled with the current value
-- [ ] A Conta's Categoria is visible on the bills page and on its occurrences in the monthly view
-- [ ] Occurrences with no database row of their own display their template's Categoria
-- [ ] Marking an occurrence paid, overriding its amount, or skipping it leaves the resulting row inheriting rather than carrying a copied Categoria
-- [ ] Changing a template's Categoria moves already-paid past occurrences to the new Categoria
-- [ ] Changing a template's Categoria leaves the recorded amount of past payments untouched
-- [ ] A Conta left without a Categoria still saves and displays
-- [ ] Deactivated Categorias do not appear in the picker
+- [x] The Conta template create form offers an optional Categoria, listing only active outflow Categorias
+- [x] The Conta template edit form offers the same, pre-filled with the current value
+- [x] A Conta's Categoria is visible on the bills page and on its occurrences in the monthly view
+- [x] Occurrences with no database row of their own display their template's Categoria
+- [x] Marking an occurrence paid, overriding its amount, or skipping it leaves the resulting row inheriting rather than carrying a copied Categoria
+- [x] Changing a template's Categoria moves already-paid past occurrences to the new Categoria
+- [x] Changing a template's Categoria leaves the recorded amount of past payments untouched
+- [x] A Conta left without a Categoria still saves and displays
+- [x] Deactivated Categorias do not appear in the picker
+
+---
+
+**Done.** Typecheck and production build clean. Inheritance verified against real
+production rows: 80 template-bound entries, 20 of which resolve a Categoria
+through their template and 0 of which carry their own — so recategorising any
+Conta moves its whole history as one block, with amounts untouched because those
+live on the row.
+
+Two things this ticket also fixed that were not in its criteria:
+
+- **The clobbering bug.** `parseTemplateFields` derived the legacy `category`
+  text from the icon on every save, so an ordinary edit silently overwrote it —
+  one template's "Occam" had already become "Financeiro" this way. The
+  derivation is gone and `category` is now omitted from the update payload
+  entirely, freezing it as the read-only record it is until 0013.
+- **An `[object Object]` render.** `ResolvedEntry.category` went from a string to
+  an object, and the Despesa row interpolated it into a template literal.
+  TypeScript permits that, so the build stayed green while the UI would have
+  shown `[object Object]`.
+
+**Known temporary regression, resolved by ticket 07.** The annual report at
+`/reports/categories` still aggregates the old `category` text. Newly
+materialised bill rows no longer write it, so bills paid from now on will read
+as "Sem categoria" on that page until the aggregation moves to `category_id`.
+This is the expand half of expand–contract behaving as expected, not a defect.

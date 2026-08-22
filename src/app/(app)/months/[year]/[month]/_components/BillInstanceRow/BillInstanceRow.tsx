@@ -1,6 +1,7 @@
 'use client';
 
 import BillIcon from '@/components/BillIcon';
+import CategoryChip from '@/components/CategoryChip';
 import CurrencyInput from '@/components/CurrencyInput/CurrencyInput';
 import { brlFormatter } from '@/helpers/format';
 import { Pencil, RotateCcw, SkipForward } from 'lucide-react';
@@ -169,11 +170,19 @@ export default function BillInstanceRow({
         'flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 ' +
         (isHighlighted ? 'bg-accent-soft' : '')
       }>
-      <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg"
-        aria-hidden="true">
-        <BillIcon iconKey={entry.icon} className="h-4 w-4" />
-      </span>
+      {entry.category ? (
+        <CategoryChip
+          icon={entry.icon ?? entry.category.icon}
+          color={entry.category.color}
+          className="h-8 w-8"
+        />
+      ) : (
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg"
+          aria-hidden="true">
+          <BillIcon iconKey={entry.icon} className="h-4 w-4" />
+        </span>
+      )}
 
       <div className="min-w-32 flex-1">
         <p className="flex min-w-0 items-center gap-1.5 text-sm font-medium text-fg">
@@ -186,9 +195,15 @@ export default function BillInstanceRow({
             </span>
           )}
         </p>
-        {entry.paid && entry.installments_covered > 1 && (
+        {(entry.category || (entry.paid && entry.installments_covered > 1)) && (
           <p className="text-xs text-muted">
-            ×{entry.installments_covered} parcelas neste mês
+            {entry.category?.name}
+            {entry.category && entry.paid && entry.installments_covered > 1
+              ? ' · '
+              : ''}
+            {entry.paid && entry.installments_covered > 1
+              ? `×${entry.installments_covered} parcelas neste mês`
+              : ''}
           </p>
         )}
       </div>

@@ -56,7 +56,7 @@ export async function overrideEntryAmount(
 
     const { data: template } = await supabase
       .from("recurring_bill_templates")
-      .select("name, currency, category")
+      .select("name, currency")
       .eq("id", target.templateId)
       .single();
 
@@ -68,7 +68,12 @@ export async function overrideEntryAmount(
       name: template.name,
       amount,
       currency: template.currency,
-      category: template.category,
+      // No `category_id` here on purpose. Leaving it NULL is what makes this
+      // row inherit its Categoria from the template, so recategorising the
+      // Conta later moves this payment with it instead of stranding it under
+      // the old name. The amount above IS copied, because what was paid is a
+      // fact about this payment rather than a description of the bill.
+      // See docs/adr/0001-categories-are-referenced-not-snapshotted.md
       paid: false,
       skipped: false,
       template_id: target.templateId,

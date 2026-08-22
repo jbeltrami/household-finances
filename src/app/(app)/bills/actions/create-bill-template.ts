@@ -30,7 +30,7 @@ export async function createBillTemplate(
     const {
       name,
       defaultAmount,
-      category,
+      categoryId,
       icon,
       cadence,
       dueDay,
@@ -46,7 +46,7 @@ export async function createBillTemplate(
         name,
         default_amount: defaultAmount,
         currency: "BRL",
-        category,
+        category_id: categoryId,
         icon,
         cadence,
         due_day: cadence === "monthly" ? dueDay : null,

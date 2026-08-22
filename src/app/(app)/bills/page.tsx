@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
+import { getCategories } from "@/helpers/taxonomy";
 import CreateBillTemplateForm from "./_components/CreateBillTemplateForm/CreateBillTemplateForm";
 import ActiveTemplatesSection from "./_components/ActiveTemplatesSection/ActiveTemplatesSection";
 import type { BillTemplate } from "./_types";
@@ -16,11 +17,11 @@ export default async function BillsPage() {
   // filter by installment template IDs — instead we query all paid
   // template-linked entries for this space (a small set per user)
   // and bucket them client-side.
-  const [templatesRes, paidRowsRes] = await Promise.all([
+  const [templatesRes, paidRowsRes, allCategories] = await Promise.all([
     supabase
       .from("recurring_bill_templates")
       .select(
-        "id, name, default_amount, currency, category, icon, cadence, due_day, day_of_week, installments_total, installments_start_month"
+        "id, name, default_amount, currency, category_id, icon, cadence, due_day, day_of_week, installments_total, installments_start_month"
       )
       .eq("space_id", spaceId)
       .eq("active", true)
@@ -31,14 +32,23 @@ export default async function BillsPage() {
       .eq("space_id", spaceId)
       .eq("paid", true)
       .not("template_id", "is", null),
+    // Inactive included on purpose: a deactivated Categoria must still
+    // label the Contas already filed under it, or retiring one would make
+    // those bills silently read as uncategorised. The picker gets the
+    // active subset below.
+    getCategories(supabase, spaceId, "outflow", { includeInactive: true }),
   ]);
+
+  const categoryById = new Map(allCategories.map((c) => [c.id, c]));
+  const activeCategories = allCategories.filter((c) => c.active);
 
   const templates: BillTemplate[] = (templatesRes.data ?? []).map((t) => ({
     id: t.id,
     name: t.name,
     default_amount: t.default_amount,
     currency: t.currency,
-    category: t.category,
+    category_id: t.category_id,
+    category: t.category_id ? categoryById.get(t.category_id) ?? null : null,
     icon: t.icon,
     cadence: (t.cadence as string) ?? "monthly",
     due_day: t.due_day,
@@ -87,7 +97,7 @@ export default async function BillsPage() {
       </p>
 
       <div className="mt-6 flex flex-col gap-5">
-        <CreateBillTemplateForm />
+        <CreateBillTemplateForm categories={activeCategories} />
 
         <ActiveTemplatesSection
           templates={activeTemplates}

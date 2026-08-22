@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Pencil, PowerOff } from "lucide-react";
 import BillIcon from "@/components/BillIcon";
+import CategoryChip from "@/components/CategoryChip";
 import Card from "@/components/Card";
 import { brlFormatter } from "@/helpers/format";
 import { billEditUrl } from "@/helpers/paths";
@@ -75,16 +76,27 @@ export default function ActiveTemplatesSection({
                 key={t.id}
                 className="flex items-center gap-3 px-3 py-3"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg">
-                  <BillIcon iconKey={t.icon} className="h-5 w-5" />
-                </span>
+                {t.category ? (
+                  <CategoryChip
+                    icon={t.icon ?? t.category.icon}
+                    color={t.category.color}
+                  />
+                ) : (
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg">
+                    <BillIcon iconKey={t.icon} className="h-5 w-5" />
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-fg">
                     {t.name}
                   </p>
-                  {cadText && (
-                    <p className="text-xs text-muted">{cadText}</p>
-                  )}
+                  <p className="text-xs text-muted">
+                    {t.category ? t.category.name : "Sem categoria"}
+                    {!t.category?.active && t.category
+                      ? " (desativada)"
+                      : ""}
+                    {cadText ? ` · ${cadText}` : ""}
+                  </p>
                   {installmentText && (
                     <p className="text-xs text-muted">{installmentText}</p>
                   )}

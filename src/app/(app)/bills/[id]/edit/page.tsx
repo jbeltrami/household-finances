@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { billsUrl } from "@/helpers/paths";
+import { getPersonalSpaceId } from "@/helpers/spaces";
+import { getCategories } from "@/helpers/taxonomy";
 import EditBillTemplateForm from "./_components/EditBillTemplateForm/EditBillTemplateForm";
 
 export default async function EditBillTemplatePage({
@@ -15,12 +17,17 @@ export default async function EditBillTemplatePage({
   const { data: template } = await supabase
     .from("recurring_bill_templates")
     .select(
-      "id, name, default_amount, category, icon, due_day, cadence, day_of_week, installments_total, installments_start_month"
+      "id, name, default_amount, category_id, icon, due_day, cadence, day_of_week, installments_total, installments_start_month"
     )
     .eq("id", id)
     .single();
 
   if (!template) notFound();
+
+  const spaceId = await getPersonalSpaceId(supabase);
+  if (!spaceId) notFound();
+
+  const categories = await getCategories(supabase, spaceId, "outflow");
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
@@ -32,7 +39,7 @@ export default async function EditBillTemplatePage({
       </h1>
 
       <div className="mt-6">
-        <EditBillTemplateForm template={template} />
+        <EditBillTemplateForm template={template} categories={categories} />
       </div>
     </div>
   );

@@ -3,6 +3,9 @@ import type {
   MortgageBillItem,
   MortgageExpenseItem,
 } from "@/helpers/financing";
+import type { ResolvedCategory } from "@/helpers/types";
+
+export type { ResolvedCategory };
 
 export type { MortgageBillItem, MortgageExpenseItem };
 
@@ -18,7 +21,9 @@ export type EntryRow = {
   name: string;
   amount: number;
   currency: string;
-  category: string | null;
+  // Already resolved through template inheritance by getEntriesForMonth —
+  // components never learn whether it came from the row or the template.
+  category: ResolvedCategory | null;
   notes: string | null;
   paid: boolean;
   installments_covered: number;

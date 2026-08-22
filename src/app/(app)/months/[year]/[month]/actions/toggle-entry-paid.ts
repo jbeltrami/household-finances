@@ -127,7 +127,7 @@ export async function toggleEntryPaid(
   const { data: template } = await supabase
     .from("recurring_bill_templates")
     .select(
-      "name, default_amount, currency, category, installments_total"
+      "name, default_amount, currency, installments_total"
     )
     .eq("id", target.templateId)
     .single();
@@ -148,7 +148,12 @@ export async function toggleEntryPaid(
     name: template.name,
     amount,
     currency: template.currency,
-    category: template.category,
+    // No `category_id` here on purpose. Leaving it NULL is what makes this
+    // row inherit its Categoria from the template, so recategorising the
+    // Conta later moves this payment with it instead of stranding it under
+    // the old name. The amount above IS copied, because what was paid is a
+    // fact about this payment rather than a description of the bill.
+    // See docs/adr/0001-categories-are-referenced-not-snapshotted.md
     paid: newPaid,
     skipped: false,
     template_id: target.templateId,

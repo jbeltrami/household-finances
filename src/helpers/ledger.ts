@@ -25,6 +25,7 @@ import {
 import type {
   EntryRow,
   InstallmentProgress,
+  ResolvedCategory,
   ResolvedEntry,
   TemplateRecurrence,
   TemplateRow,
@@ -174,7 +175,7 @@ function normalizeTemplate(row: TemplateRow): TemplateRecurrence {
     name: row.name,
     default_amount: Number(row.default_amount),
     currency: row.currency,
-    category: row.category,
+    category_id: row.category_id,
     icon: row.icon,
     cadence: row.cadence as TemplateRecurrence["cadence"],
     due_day: row.due_day,
@@ -216,7 +217,7 @@ export async function getEntriesForMonth(
     supabase
       .from("entries")
       .select(
-        "id, space_id, template_id, date, name, amount, currency, category, notes, paid, skipped, installments_covered, icon"
+        "id, space_id, template_id, date, name, amount, currency, category_id, notes, paid, skipped, installments_covered, icon"
       )
       .in("space_id", spaceIds)
       .gte("date", start)
@@ -224,7 +225,7 @@ export async function getEntriesForMonth(
     supabase
       .from("recurring_bill_templates")
       .select(
-        "id, space_id, name, default_amount, currency, category, icon, active, cadence, due_day, day_of_week, biweekly_anchor, installments_total, installments_start_month"
+        "id, space_id, name, default_amount, currency, category_id, icon, active, cadence, due_day, day_of_week, biweekly_anchor, installments_total, installments_start_month"
       )
       .in("space_id", spaceIds)
       .eq("active", true),
@@ -237,7 +238,7 @@ export async function getEntriesForMonth(
   );
 
   // 3. Fetch every template referenced by a materialized row in this
-  //    month (active OR inactive) so we can resolve its name/category
+  //    month (active OR inactive) so we can resolve its name/Categoria
   //    for display and compute installment progress.
   const referencedTemplateIds = Array.from(
     new Set(
@@ -254,7 +255,7 @@ export async function getEntriesForMonth(
     const inactiveRes = await supabase
       .from("recurring_bill_templates")
       .select(
-        "id, space_id, name, default_amount, currency, category, icon, active, cadence, due_day, day_of_week, biweekly_anchor, installments_total, installments_start_month"
+        "id, space_id, name, default_amount, currency, category_id, icon, active, cadence, due_day, day_of_week, biweekly_anchor, installments_total, installments_start_month"
       )
       .in("id", missingTemplateIds);
     templates = [
@@ -268,6 +269,50 @@ export async function getEntriesForMonth(
   const templateById = new Map<string, TemplateRecurrence>(
     templates.map((t) => [t.id, t])
   );
+
+  // 3b. Resolve every Categoria referenced by a row or a template in one
+  //     read. This is the join ADR 0001 pays for: because a template-bound
+  //     row inherits rather than snapshotting, the row alone cannot say
+  //     which Categoria it belongs to. Do not "optimise" this away by
+  //     copying the Categoria onto the row at materialization — that
+  //     re-fragments a bill's history the moment the user reorganises.
+  //
+  //     Inactive Categorias are deliberately included: a retired Categoria
+  //     must keep labelling the history that was filed under it.
+  const referencedCategoryIds = Array.from(
+    new Set(
+      [
+        ...materialized.map((e) => e.category_id),
+        ...templates.map((t) => t.category_id),
+      ].filter((id): id is string => !!id)
+    )
+  );
+
+  const categoryById = new Map<string, ResolvedCategory>();
+  if (referencedCategoryIds.length > 0) {
+    const categoriesRes = await supabase
+      .from("categories")
+      .select("id, name, icon, color")
+      .in("id", referencedCategoryIds);
+    for (const c of categoriesRes.data ?? []) {
+      categoryById.set(c.id as string, {
+        id: c.id as string,
+        name: c.name as string,
+        icon: (c.icon as string | null) ?? null,
+        color: (c.color as string) ?? "slate",
+      });
+    }
+  }
+
+  // A row's own Categoria wins; null falls through to its template's.
+  // Exactly the pattern `icon` already uses below.
+  const resolveCategory = (
+    rowCategoryId: string | null,
+    template: TemplateRecurrence | null
+  ): ResolvedCategory | null => {
+    const id = rowCategoryId ?? template?.category_id ?? null;
+    return id ? categoryById.get(id) ?? null : null;
+  };
 
   // 4. Compute total paid coverage per installment template. Needed
   //    for the effective-end calculation AND for installment progress
@@ -328,7 +373,7 @@ export async function getEntriesForMonth(
         name: template.name,
         amount: template.default_amount,
         currency: template.currency,
-        category: template.category,
+        category: resolveCategory(null, template),
         notes: null,
         paid: false,
         installments_covered: 1,
@@ -356,7 +401,7 @@ export async function getEntriesForMonth(
       name: row.name,
       amount: Number(row.amount),
       currency: row.currency,
-      category: row.category,
+      category: resolveCategory(row.category_id, template),
       notes: row.notes,
       paid: row.paid,
       installments_covered: row.installments_covered,

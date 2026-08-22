@@ -35,7 +35,7 @@ export async function updateBillTemplate(
     const {
       name,
       defaultAmount,
-      category,
+      categoryId,
       icon,
       cadence,
       dueDay,
@@ -71,7 +71,13 @@ export async function updateBillTemplate(
       .update({
         name,
         default_amount: defaultAmount,
-        category,
+        category_id: categoryId,
+        // `category` (the legacy text column) is deliberately absent from
+        // this payload. It used to be rewritten from the icon on every save,
+        // which silently destroyed pre-migration values — one template's
+        // "Occam" became "Financeiro" through an ordinary edit. Omitting it
+        // freezes the column as the read-only record it now is, until 0013
+        // drops it.
         icon,
         cadence,
         due_day: cadence === "monthly" ? dueDay : null,

@@ -1,7 +1,7 @@
 // Shared helpers for bill-template server actions. Not a "use server"
 // file — exports synchronous utilities and types.
 
-import { categoryFor, isBillIconKey } from "@/lib/icons/bills";
+import { isBillIconKey } from "@/lib/icons/bills";
 
 // Postgres error code for unique_violation (our partial unique index
 // on active template names).
@@ -10,7 +10,7 @@ export const UNIQUE_VIOLATION = "23505";
 export type TemplateFields = {
   name: string;
   defaultAmount: number;
-  category: string | null;
+  categoryId: string | null;
   icon: string | null;
   cadence: "monthly" | "weekly" | "biweekly";
   dueDay: number | null;
@@ -90,9 +90,15 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
 
   // Icon: optional, must be a registered key when set. We reject any
   // unknown key so we don't end up storing junk that the renderer will
-  // silently fall back on. The icon also drives `category` — categorizing
-  // is purely a function of the picked icon, so reports can group reliably
-  // without an extra free-text field.
+  // silently fall back on.
+  //
+  // The icon no longer derives the Categoria. It used to — `categoryFor(icon)`
+  // wrote the old `category` text column on every save, which meant picking a
+  // wifi icon silently filed the Conta under "Moradia" and an ordinary edit
+  // could overwrite a category the user had never seen. Categoria is now its
+  // own field, and the legacy text column is deliberately left untouched here
+  // so it survives as the record of what pre-migration rows used to say until
+  // 0013 drops it.
   const iconRaw = formData.get("icon")?.toString().trim();
   let icon: string | null = null;
   if (iconRaw) {
@@ -101,12 +107,16 @@ export function parseTemplateFields(formData: FormData): TemplateFields {
     }
     icon = iconRaw;
   }
-  const category = categoryFor(icon);
+
+  // Empty string is what an unselected <select> submits; treat it as null
+  // rather than trying to insert "" into a uuid column.
+  const categoryRaw = formData.get("category_id")?.toString().trim();
+  const categoryId = categoryRaw ? categoryRaw : null;
 
   return {
     name,
     defaultAmount,
-    category,
+    categoryId,
     icon,
     cadence,
     dueDay,

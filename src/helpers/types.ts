@@ -4,6 +4,16 @@
 
 // --- Ledger -------------------------------------------------
 
+// A Categoria as the UI consumes it: already resolved through template
+// inheritance, so a component never has to know whether the value came
+// from the row or from the template behind it. null means uncategorised.
+export type ResolvedCategory = {
+  id: string;
+  name: string;
+  icon: string | null;
+  color: string;
+};
+
 // Normalized shape of a recurring_bill_templates row as the ledger
 // helpers want to consume it (numeric fields coerced to number,
 // cadence narrowed to the three valid literals).
@@ -13,7 +23,7 @@ export type TemplateRecurrence = {
   name: string;
   default_amount: number;
   currency: string;
-  category: string | null;
+  category_id: string | null;
   icon: string | null;
   cadence: "monthly" | "weekly" | "biweekly";
   due_day: number | null;
@@ -45,7 +55,10 @@ export type ResolvedEntry = {
   name: string;
   amount: number;
   currency: string;
-  category: string | null;
+  // Resolved, not raw. For a template-bound row this is the template's
+  // Categoria unless the row carries its own — see ADR 0001. The UI is
+  // deliberately not told which of the two it got.
+  category: ResolvedCategory | null;
   notes: string | null;
   paid: boolean;
   installments_covered: number;
@@ -67,7 +80,10 @@ export type EntryRow = {
   name: string;
   amount: number | string;
   currency: string;
-  category: string | null;
+  // NULL on a template-bound row means "inherit from the template";
+  // NULL on a one-off means "uncategorised". `template_id` is what
+  // disambiguates. See ADR 0001.
+  category_id: string | null;
   notes: string | null;
   paid: boolean;
   skipped: boolean;
@@ -81,7 +97,7 @@ export type TemplateRow = {
   name: string;
   default_amount: number | string;
   currency: string;
-  category: string | null;
+  category_id: string | null;
   icon: string | null;
   active: boolean;
   cadence: string;

@@ -7,12 +7,14 @@ import { billsUrl } from "@/helpers/paths";
 import { updateBillTemplate } from "../../../../actions";
 import { initialFormState } from "../../../../form-state";
 import BillTemplateFields from "../../../../_components/BillTemplateFields/BillTemplateFields";
+import type { CategoryRow } from "@/helpers/taxonomy";
 
 type Template = {
   id: string;
   name: string;
   default_amount: number | string;
   icon: string | null;
+  category_id: string | null;
   due_day: number | null;
   cadence: string | null;
   day_of_week: number | null;
@@ -22,9 +24,10 @@ type Template = {
 
 type Props = {
   template: Template;
+  categories: CategoryRow[];
 };
 
-export default function EditBillTemplateForm({ template }: Props) {
+export default function EditBillTemplateForm({ template, categories }: Props) {
   const boundAction = updateBillTemplate.bind(null, template.id);
   const [state, formAction, isPending] = useActionState(
     boundAction,
@@ -35,10 +38,12 @@ export default function EditBillTemplateForm({ template }: Props) {
     <Card className="p-5">
       <form action={formAction}>
         <BillTemplateFields
+          categories={categories}
           defaults={{
             name: template.name,
             defaultAmount: template.default_amount,
             icon: template.icon,
+            categoryId: template.category_id,
             cadence: template.cadence ?? undefined,
             dueDay: template.due_day,
             dayOfWeek: template.day_of_week,

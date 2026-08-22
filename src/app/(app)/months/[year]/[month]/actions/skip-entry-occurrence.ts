@@ -65,7 +65,7 @@ export async function skipEntryOccurrence(
 
   const { data: template } = await supabase
     .from("recurring_bill_templates")
-    .select("name, default_amount, currency, category")
+    .select("name, default_amount, currency")
     .eq("id", target.templateId)
     .single();
 
@@ -77,7 +77,12 @@ export async function skipEntryOccurrence(
     name: template.name,
     amount: template.default_amount,
     currency: template.currency,
-    category: template.category,
+    // No `category_id` here on purpose. Leaving it NULL is what makes this
+    // row inherit its Categoria from the template, so recategorising the
+    // Conta later moves this payment with it instead of stranding it under
+    // the old name. The amount above IS copied, because what was paid is a
+    // fact about this payment rather than a description of the bill.
+    // See docs/adr/0001-categories-are-referenced-not-snapshotted.md
     paid: false,
     skipped: true,
     template_id: target.templateId,

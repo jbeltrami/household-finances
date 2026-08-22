@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import BillIcon from "@/components/BillIcon";
+import CategoryChip from "@/components/CategoryChip";
 import IconPicker from "@/components/IconPicker/IconPicker";
 import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
@@ -151,17 +152,25 @@ export default function ExpenseEntryRow({
         (isHighlighted ? "bg-accent-soft" : "")
       }
     >
-      <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg"
-        aria-hidden="true"
-      >
-        <BillIcon iconKey={expense.icon} className="h-4 w-4" />
-      </span>
+      {expense.category ? (
+        <CategoryChip
+          icon={expense.icon ?? expense.category.icon}
+          color={expense.category.color}
+          className="h-8 w-8"
+        />
+      ) : (
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-fg"
+          aria-hidden="true"
+        >
+          <BillIcon iconKey={expense.icon} className="h-4 w-4" />
+        </span>
+      )}
       <div className="min-w-32 flex-1">
         <p className="text-sm font-medium text-fg">{expense.name}</p>
         <p className="text-xs text-muted">
           {dateFormatter.format(new Date(expense.date))}
-          {expense.category && ` · ${expense.category}`}
+          {expense.category && ` · ${expense.category.name}`}
           {expense.notes && ` · ${expense.notes}`}
         </p>
       </div>
