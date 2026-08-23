@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/helpers/session";
+import { recordEmailSend } from "@/helpers/email-log";
 import { reportsUrl, settingsUrl } from "@/helpers/paths";
 import { formatMonthLabel } from "@/helpers/date";
 import { getFromAddress, getTransport } from "./transport";
@@ -83,6 +84,8 @@ export async function sendMonthlyReportForId(
       },
     ],
   });
+
+  await recordEmailSend(admin, report.space_id, "monthly_report");
 
   const { error: updateError } = await admin
     .from("monthly_reports")

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/helpers/session";
+import { recordEmailSend } from "@/helpers/email-log";
 import { buildAlertLedger } from "@/helpers/alerts";
 import { parseYearMonthFromYmd, previousYmd } from "@/helpers/date";
 import { buildMonthItems, getFinancingLedger } from "@/helpers/financing";
@@ -96,6 +97,8 @@ export async function sendOverdueAlertForSpace(
     html,
     text,
   });
+
+  await recordEmailSend(admin, spaceId, "overdue_alert");
 
   // A receipt, written only after the send succeeded. Configurações shows it
   // so that silence can be told apart from breakage; nothing above reads it,

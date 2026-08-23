@@ -23,13 +23,13 @@ never **reads** here, so the Aviso stays a pure function of today's data.
 
 **Blocked by:** 01.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every successful email leaves a record naming the space and the moment
-- [ ] A send that fails leaves no record
-- [ ] Both crons and both manual buttons are covered
-- [ ] The record is written by server-side code only, with no policy under which
+- [x] Every successful email leaves a record naming the space and the moment
+- [x] A send that fails leaves no record
+- [x] Both crons and both manual buttons are covered
+- [x] The record is written by server-side code only, with no policy under which
       a browser could forge one
-- [ ] The table's comment states what it is for and that a send decision must
+- [x] The table's comment states what it is for and that a send decision must
       never read it, and points at ADR-0002
-- [ ] The daily Aviso still sends purely on what is Vencida today, unchanged
+- [x] The daily Aviso still sends purely on what is Vencida today, unchanged
