@@ -28,14 +28,14 @@ against than a single timestamp does.
 
 **Blocked by:** 02.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Configurações shows when the last Aviso went out, read from the send log
-- [ ] A space that has never had one sent is still shown as such, distinctly
+- [x] Configurações shows when the last Aviso went out, read from the send log
+- [x] A space that has never had one sent is still shown as such, distinctly
       from a date
-- [ ] The reading uses the caller's own session rather than the admin client,
+- [x] The reading uses the caller's own session rather than the admin client,
       since row-level security already scopes the log to its own space
-- [ ] Only Avisos count towards it — a monthly report is not an Aviso
-- [ ] Nothing writes the old timestamp, and no database has a column for it
-- [ ] ADR-0002 makes its point about the send log, and still says plainly that
+- [x] Only Avisos count towards it — a monthly report is not an Aviso
+- [x] Nothing writes the old timestamp, and no database has a column for it
+- [x] ADR-0002 makes its point about the send log, and still says plainly that
       nothing may read it to decide whether to send

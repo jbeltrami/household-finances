@@ -35,13 +35,27 @@ export default async function SpaceSettingsPage() {
   // creates the row on first interaction.
   const { data: settings } = await supabase
     .from("notification_settings")
-    .select("monthly_report_enabled, overdue_alert_enabled, last_alert_sent_at")
+    .select("monthly_report_enabled, overdue_alert_enabled")
     .eq("space_id", spaceId)
     .maybeSingle();
 
   const emailEnabled = settings?.monthly_report_enabled ?? true;
   const alertEnabled = settings?.overdue_alert_enabled ?? true;
-  const lastAlertSentAt = settings?.last_alert_sent_at ?? null;
+  // When the last Aviso actually went out, read from the send log rather than
+  // from a timestamp beside the settings: one fact, one home. Row-level
+  // security already scopes email_sends to this space, so the session client
+  // is the right one and the admin client would be reaching past a boundary
+  // that is doing its job.
+  const { data: lastAlert } = await supabase
+    .from("email_sends")
+    .select("sent_at")
+    .eq("space_id", spaceId)
+    .eq("kind", "overdue_alert")
+    .order("sent_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lastAlertSentAt = lastAlert?.sent_at ?? null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">

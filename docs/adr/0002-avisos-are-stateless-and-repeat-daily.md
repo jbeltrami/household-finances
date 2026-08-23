@@ -43,11 +43,20 @@ A Conta paid in real life but never ticked paid in the app generates a daily
 email until the ledger is corrected. This is a feature: the alternative designs
 notify once and then leave the wrong data sitting quietly forever.
 
-`notification_settings.last_alert_sent_at` records when the last Aviso went out
-and is displayed in Configurações. It is a receipt, not state: the send decision
-never reads it. Without it, silence would be ambiguous between "nothing is
-Vencida" and "the cron is broken". Anything that starts consulting it to decide
-whether to send has reintroduced the design this ADR rejects.
+Configurações shows when the last Aviso went out, because otherwise silence
+would be ambiguous between "nothing is Vencida" and "the cron is broken". It
+reads that from `email_sends`, the log of mail this app has actually sent.
+
+That log is a receipt, not state. **Nothing may read it to decide whether to
+send.** The cron writes there and never reads there, and that one-way traffic is
+what keeps the Aviso a pure function of what is Vencida today.
+
+The warning belongs here rather than in passing, because `email_sends` is a
+table of past sends and therefore looks exactly like something you could
+deduplicate against — far more so than the single timestamp this rule used to be
+written about. Someone will find the daily repeat, reasonably conclude it is a
+bug, notice the log, and fix the "bug" by reading it. That is this decision
+being undone, and it will not look like a mistake at the time.
 
 ## Considered and rejected
 
