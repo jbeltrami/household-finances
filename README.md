@@ -68,7 +68,7 @@ Migrations live in `supabase/migrations/` and apply in filename order. Either:
 - Paste each file's contents into Supabase **SQL Editor** in order, or
 - Run `supabase db push` if you have the Supabase CLI wired up.
 
-Current head: `0015_email_sends.sql`.
+Current head: `0016_drop_last_alert_sent_at.sql`.
 
 ### 4. Create the Storage bucket
 

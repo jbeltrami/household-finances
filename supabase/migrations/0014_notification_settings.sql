@@ -17,6 +17,16 @@ alter table public.notification_settings
 alter table public.notification_settings
   add column overdue_alert_enabled boolean not null default true;
 
+-- A receipt, not state. The daily Aviso is deliberately stateless —
+-- it re-reads what is Vencida each run and never consults this — so
+-- this column exists only so Configurações can show when the last
+-- one went out, and tell "nothing is Vencida" apart from "the cron
+-- is broken". See docs/adr/0002-avisos-are-stateless-and-repeat-daily.md.
+-- Anything that reads this to decide whether to send has undone that
+-- decision.
+alter table public.notification_settings
+  add column last_alert_sent_at timestamptz;
+
 -- The policies survive the table rename, but their names still say
 -- "report settings" and would misdescribe the Aviso flag.
 alter policy "Members can view report settings in their spaces"

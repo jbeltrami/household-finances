@@ -1,0 +1,25 @@
+-- --- drop notification_settings.last_alert_sent_at ------------
+-- 0014 added this column so Configurações could show when the last
+-- Aviso went out, and tell "nothing is Vencida" apart from "the
+-- cron is broken". 0015 then added email_sends, which records the
+-- same fact along with which kind of mail it was and every send
+-- before the most recent one.
+--
+-- Two homes for one fact, and this was the copy that would drift:
+-- it was written in a single place a refactor can move or forget,
+-- while email_sends is written by the one function both the cron
+-- and the manual paths funnel through. Configurações now reads the
+-- log instead, so nothing writes or reads this column any more.
+--
+-- The warning 0014 attached to this column has not gone away — it
+-- moved to email_sends, where it matters more. A table of past
+-- sends looks far more like something you could deduplicate
+-- against than a lone timestamp does, and deduplicating is exactly
+-- the design that
+-- docs/adr/0002-avisos-are-stateless-and-repeat-daily.md rejects.
+-- The cron writes to email_sends and never reads it.
+--
+-- `if exists` so this is safe to run against a database where 0014
+-- landed and against one where it somehow did not.
+alter table public.notification_settings
+  drop column if exists last_alert_sent_at;

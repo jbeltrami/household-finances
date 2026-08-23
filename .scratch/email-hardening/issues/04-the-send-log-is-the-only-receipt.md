@@ -12,13 +12,12 @@ through.
 
 Configurações should read the log. The timestamp should stop existing.
 
-**A note on how to remove it.** The migration that adds this column has not been
-applied to any database yet — the whole notification-settings rename is still
-pending. So the column should be removed from that migration rather than added
-by it and dropped by a later one. Shipping a column whose entire history is
-"created, then deleted, unused" is worse than never having written it. Confirm
-the migration really is unapplied before doing this; if it has run anywhere, add
-a new migration instead.
+**A note on how to remove it.** Removed by a new migration, because the one that
+added it had already been applied. It was first taken out of that migration
+instead, on an inference that it was still pending — an inference that was
+wrong, and that would have left the file claiming a schema the database did not
+have. An applied migration is a record of what ran and cannot be edited
+afterwards, whatever it would be tidier to say.
 
 **Keep the warning alive.** ADR-0002 currently uses this timestamp as its worked
 example of a receipt that a send decision must never read. That warning does not
