@@ -16,9 +16,9 @@ export async function setMonthlyReportEmailEnabled(
   const { spaceId } = await requireSession(supabase);
 
   const { error } = await supabase
-    .from("monthly_report_settings")
+    .from("notification_settings")
     .upsert(
-      { space_id: spaceId, enabled },
+      { space_id: spaceId, monthly_report_enabled: enabled },
       { onConflict: "space_id" }
     );
 

@@ -17,20 +17,20 @@ longer offers WhatsApp.
 
 **Blocked by:** None (can start immediately, in parallel with 01).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The settings table is named for notifications, with one flag per
+- [x] The settings table is named for notifications, with one flag per
       notification rather than a shared `enabled`
-- [ ] Avisos default to on for every space, including spaces with no settings row
-- [ ] A nullable last-Aviso timestamp exists, unused for now
-- [ ] Both WhatsApp tables are dropped
-- [ ] The WhatsApp client, its three settings actions, its settings component and
+- [x] Avisos default to on for every space, including spaces with no settings row
+- [x] A nullable last-Aviso timestamp exists, unused for now
+- [x] Both WhatsApp tables are dropped
+- [x] The WhatsApp client, its three settings actions, its settings component and
       the alert-clearing path in the paid toggle are gone
-- [ ] The WhatsApp cron route and its schedule entry are gone
-- [ ] Nothing in the tree references Twilio, and the Twilio variables are out of
+- [x] The WhatsApp cron route and its schedule entry are gone
+- [x] Nothing in the tree references Twilio, and the Twilio variables are out of
       the documented environment
-- [ ] Monthly report generation, sending and the opt-out toggle behave as before
-- [ ] Configurações renders without the WhatsApp card
-- [ ] README's Twilio section, its stack table entry and its cron schedule no
+- [x] Monthly report generation, sending and the opt-out toggle behave as before
+- [x] Configurações renders without the WhatsApp card
+- [x] README's Twilio section, its stack table entry and its cron schedule no
       longer mention WhatsApp, and the documented environment lists only
       variables the app still reads

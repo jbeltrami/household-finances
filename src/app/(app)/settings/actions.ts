@@ -4,6 +4,3 @@
 
 export { renameSpace } from "./actions/rename-space";
 export { setMonthlyReportEmailEnabled } from "./actions/set-monthly-report-email-enabled";
-export { saveWhatsAppPhone } from "./actions/save-whatsapp-phone";
-export { setWhatsAppEnabled } from "./actions/set-whatsapp-enabled";
-export { sendWhatsAppTestMessage } from "./actions/send-whatsapp-test-message";

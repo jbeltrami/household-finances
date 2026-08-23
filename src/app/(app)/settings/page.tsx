@@ -7,7 +7,6 @@ import Card from "@/components/Card";
 import { Tags, ChevronRight } from "lucide-react";
 import RenameSpaceForm from "./_components/RenameSpaceForm";
 import MonthlyReportEmailToggle from "./_components/MonthlyReportEmailToggle";
-import WhatsAppNotificationToggle from "./_components/WhatsAppNotificationToggle";
 
 export default async function SpaceSettingsPage() {
   const supabase = await createClient();
@@ -34,23 +33,12 @@ export default async function SpaceSettingsPage() {
   // Absence of a row = enabled (default-on behavior). The toggle
   // creates the row on first interaction.
   const { data: settings } = await supabase
-    .from("monthly_report_settings")
-    .select("enabled")
+    .from("notification_settings")
+    .select("monthly_report_enabled")
     .eq("space_id", spaceId)
     .maybeSingle();
 
-  const emailEnabled = settings?.enabled ?? true;
-
-  // WhatsApp settings: row may be absent (never set up). Default
-  // is enabled=false, phone=null in that case.
-  const { data: whatsappSettings } = await supabase
-    .from("whatsapp_notification_settings")
-    .select("enabled, phone_e164")
-    .eq("space_id", spaceId)
-    .maybeSingle();
-
-  const whatsappEnabled = whatsappSettings?.enabled ?? false;
-  const whatsappPhone = whatsappSettings?.phone_e164 ?? null;
+  const emailEnabled = settings?.monthly_report_enabled ?? true;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
@@ -83,10 +71,6 @@ export default async function SpaceSettingsPage() {
           </Link>
         </Card>
         <MonthlyReportEmailToggle initialEnabled={emailEnabled} />
-        <WhatsAppNotificationToggle
-          initialPhone={whatsappPhone}
-          initialEnabled={whatsappEnabled}
-        />
       </div>
     </div>
   );

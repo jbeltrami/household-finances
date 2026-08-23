@@ -3,36 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/helpers/session";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { monthUrl } from "@/helpers/paths";
 import { installmentPaymentPatch, writeOccurrence } from "@/helpers/occurrences";
-import { readContaFacts, type ContaFacts } from "./_helpers";
+import { readContaFacts } from "./_helpers";
 import type { EntryMutationTarget } from "@/helpers/types";
-
-// On unpaid → paid, clear any matching WhatsApp notification log rows so the
-// Conta is alert-eligible again if the user later flips it back to unpaid
-// (typo, undo). Two key shapes to cover: the row's own id, and the
-// (template, date) pair it was logged under while still virtual. The cron
-// checks both, so both have to be cleared.
-//
-// Admin client because the log has no user-write policies; ownership was
-// already established by the write above.
-async function clearOverdueAlerts(facts: ContaFacts, entryId: string) {
-  const admin = createAdminClient();
-
-  await admin
-    .from("whatsapp_notifications_sent")
-    .delete()
-    .eq("entry_id", entryId);
-
-  if (facts.templateId) {
-    await admin
-      .from("whatsapp_notifications_sent")
-      .delete()
-      .eq("template_id", facts.templateId)
-      .eq("occurrence_date", facts.occurrenceDate);
-  }
-}
 
 // `covered` only matters for a Conta parcelada. A payment with covered > 1
 // is a prepayment — one payment absorbing several parcelas — and the amount
@@ -79,8 +53,6 @@ export async function toggleEntryPaid(
     })
   );
   if (!result.ok) throw new Error(result.error);
-
-  if (newPaid) await clearOverdueAlerts(facts, result.entryId);
 
   revalidatePath(monthUrl(result.year, result.month));
 }

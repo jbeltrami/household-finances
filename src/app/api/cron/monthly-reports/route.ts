@@ -33,9 +33,9 @@ export async function GET(request: NextRequest) {
   }
 
   const { data: optedOut } = await admin
-    .from("monthly_report_settings")
+    .from("notification_settings")
     .select("space_id")
-    .eq("enabled", false);
+    .eq("monthly_report_enabled", false);
 
   const optedOutSet = new Set(
     (optedOut ?? []).map((r) => r.space_id as string)

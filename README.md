@@ -10,8 +10,7 @@ A personal finance planner. Each user manages their own monthly finances — inc
 - **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS
 - **PDF rendering**: `@react-pdf/renderer`
 - **Email**: Hostinger SMTP via `nodemailer`
-- **WhatsApp notifications**: Twilio WhatsApp (sandbox) — daily overdue-bill alerts, opt-in
-- **Cron**: Vercel Cron — monthly reports (`0 11 1 * *`) + daily WhatsApp overdue check (`0 11 * * *`), both 08:00 São Paulo
+- **Cron**: Vercel Cron — monthly reports (`0 11 1 * *`), 08:00 São Paulo
 - **Hosting**: Vercel
 - **Auth**: Google OAuth only (no email/password)
 
@@ -47,11 +46,6 @@ SMTP_FROM_NAME=Home Finances
 
 # Cron auth
 CRON_SECRET=<32+-char random string>
-
-# Twilio WhatsApp (sandbox)
-TWILIO_ACCOUNT_SID=AC<your-account-sid>
-TWILIO_AUTH_TOKEN=<your-auth-token>
-TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 ```
 
 Where the Supabase values come from (**Project Settings → API**):
@@ -64,8 +58,6 @@ Where the Supabase values come from (**Project Settings → API**):
 
 The SMTP values come from your Hostinger control panel under **Emails → [your domain] → Connect Apps & Devices**. Generate `CRON_SECRET` with e.g. `openssl rand -hex 32`.
 
-The Twilio values come from your Twilio Console: **Account SID** and **Auth Token** are on the dashboard home; **WhatsApp From** uses the shared sandbox number (`whatsapp:+14155238886`) until you graduate to a production WhatsApp Sender. Each recipient phone must opt into the sandbox once by sending `join <your-code>` to that number — find your code under **Messaging → Try it out → Send a WhatsApp message**.
-
 For Vercel, set all of these under **Project Settings → Environment Variables** (Production / Preview / Development).
 
 ### 3. Apply migrations
@@ -75,7 +67,7 @@ Migrations live in `supabase/migrations/` and apply in filename order. Either:
 - Paste each file's contents into Supabase **SQL Editor** in order, or
 - Run `supabase db push` if you have the Supabase CLI wired up.
 
-Current head: `0003_monthly_report_settings.sql`.
+Current head: `0014_notification_settings.sql`.
 
 ### 4. Create the Storage bucket
 
@@ -112,7 +104,7 @@ Open [http://localhost:3000](http://localhost:3000). All routes are protected �
 | `/months/[y]/[m]` | Monthly view — income, recurring bills, one-off expenses, balance |
 | `/bills` | Recurring bill templates (create / edit / deactivate) |
 | `/reports` | Monthly PDF reports — per-month generate, bulk backfill, download |
-| `/settings` | Per-user settings — rename space, monthly-report email, WhatsApp alerts |
+| `/settings` | Per-user settings — rename space, monthly-report email |
 
 ## Architecture and conventions
 
@@ -139,7 +131,6 @@ Never rely on the proxy to keep an API route private. RLS is the real security b
 | Monthly PDF reports — generation, storage, download | ✅ |
 | Monthly PDF reports — settings page + email delivery via Hostinger SMTP | ✅ |
 | Monthly PDF reports — Vercel cron job for end-of-month auto-send | ✅ |
-| WhatsApp overdue-bill alerts — opt-in, daily cron via Twilio sandbox | ✅ |
 | Drop `[id]` segment from URLs (routes collapsed to `/months/[y]/[m]`, `/bills`, `/reports`, `/settings`) | ✅ |
 | Recurring income templates (biweekly / monthly cadence) | ⏳ planned |
 | UI translated to pt-BR (single-language app) | ✅ |
