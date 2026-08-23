@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAvisoLedger } from "../aviso";
+import { buildAlertLedger } from "../alerts";
 import { summarizeOverdue } from "../month-summary";
 import type { ResolvedEntry } from "../types";
 import type { MortgageBillItem } from "../financing";
@@ -38,16 +38,16 @@ function parcela(over: Partial<MortgageBillItem> = {}): MortgageBillItem {
   };
 }
 
-describe("buildAvisoLedger", () => {
+describe("buildAlertLedger", () => {
   it("carries the cutoff through so the caller's boundary is the one used", () => {
-    expect(buildAvisoLedger([], [], CUTOFF).cutoff).toBe(CUTOFF);
+    expect(buildAlertLedger([], [], CUTOFF).cutoff).toBe(CUTOFF);
   });
 
   // An Aviso is about Obrigações. A Despesa records money already gone, so
   // it has no due date to miss and can never be Vencida — which in the
   // ledger means a one-off entry, the rows with no template behind them.
   it("keeps Contas and drops one-off Despesas", () => {
-    const ledger = buildAvisoLedger(
+    const ledger = buildAlertLedger(
       [
         entry({ name: "Claro", template_id: "t1" }),
         entry({ id: "e2", name: "Padaria", template_id: null }),
@@ -59,7 +59,7 @@ describe("buildAvisoLedger", () => {
   });
 
   it("keeps a Conta that is still only a virtual occurrence", () => {
-    const ledger = buildAvisoLedger(
+    const ledger = buildAlertLedger(
       [entry({ id: null, name: "Condomínio" })],
       [],
       CUTOFF
@@ -68,7 +68,7 @@ describe("buildAvisoLedger", () => {
   });
 
   it("carries a Conta's date, amount and paid state", () => {
-    const ledger = buildAvisoLedger(
+    const ledger = buildAlertLedger(
       [entry({ date: "2026-04-05", amount: 470, paid: true })],
       [],
       CUTOFF
@@ -84,7 +84,7 @@ describe("buildAvisoLedger", () => {
   // A parcela has no name of its own — it is the nth payment of a loan — so
   // the Aviso has to build one, or the email reads as an unexplained amount.
   it("names a parcela after its Financiamento and its position in the term", () => {
-    const ledger = buildAvisoLedger([], [parcela()], CUTOFF);
+    const ledger = buildAlertLedger([], [parcela()], CUTOFF);
     expect(ledger.financing.bills[0]).toEqual({
       name: "Apartamento — parcela 12/240",
       date: "2026-04-08",
@@ -97,7 +97,7 @@ describe("buildAvisoLedger", () => {
   // where summarizeOverdue will look for them.
   it("puts parcelas where summarizeOverdue counts them", () => {
     const summary = summarizeOverdue(
-      buildAvisoLedger([entry({})], [parcela()], CUTOFF)
+      buildAlertLedger([entry({})], [parcela()], CUTOFF)
     );
     expect(summary.count).toBe(2);
     expect(summary.total).toBe(3470);
@@ -109,7 +109,7 @@ describe("buildAvisoLedger", () => {
 
   it("leaves a paid parcela out of the summary", () => {
     const summary = summarizeOverdue(
-      buildAvisoLedger([], [parcela({ paid: true })], CUTOFF)
+      buildAlertLedger([], [parcela({ paid: true })], CUTOFF)
     );
     expect(summary.count).toBe(0);
   });
@@ -119,7 +119,7 @@ describe("buildAvisoLedger", () => {
   // finds nothing without needing a month-boundary special case.
   it("finds nothing on the first of the month", () => {
     const summary = summarizeOverdue(
-      buildAvisoLedger(
+      buildAlertLedger(
         [entry({ date: "2026-05-01" })],
         [parcela({ date: "2026-05-10" })],
         "2026-04-30"

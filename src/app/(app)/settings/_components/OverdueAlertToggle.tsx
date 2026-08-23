@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import Card from "@/components/Card";
-import { sendTestAviso, setOverdueAvisoEnabled } from "../actions";
-import type { TestAvisoResult } from "../_types";
+import { sendTestAlert, setOverdueAlertEnabled } from "../actions";
+import type { TestAlertResult } from "../_types";
 
 type Props = {
   initialEnabled: boolean;
@@ -22,7 +22,7 @@ const lastSentFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
 });
 
-export default function OverdueAvisoToggle({
+export default function OverdueAlertToggle({
   initialEnabled,
   lastSentAt,
 }: Props) {
@@ -31,7 +31,7 @@ export default function OverdueAvisoToggle({
   const [error, setError] = useState<string | null>(null);
 
   const [testPending, startTest] = useTransition();
-  const [testResult, setTestResult] = useState<TestAvisoResult | null>(null);
+  const [testResult, setTestResult] = useState<TestAlertResult | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.checked;
@@ -39,7 +39,7 @@ export default function OverdueAvisoToggle({
     setEnabled(newValue);
     startTransition(async () => {
       try {
-        await setOverdueAvisoEnabled(newValue);
+        await setOverdueAlertEnabled(newValue);
       } catch (err) {
         setEnabled(!newValue);
         setError(err instanceof Error ? err.message : "Falha ao atualizar");
@@ -50,7 +50,7 @@ export default function OverdueAvisoToggle({
   const handleTest = () => {
     setTestResult(null);
     startTest(async () => {
-      setTestResult(await sendTestAviso());
+      setTestResult(await sendTestAlert());
     });
   };
 
@@ -105,7 +105,7 @@ export default function OverdueAvisoToggle({
             Confira seu e-mail.
           </p>
         )}
-        {testResult?.kind === "nothing-vencida" && (
+        {testResult?.kind === "nothing-overdue" && (
           <p className="mt-2 text-xs text-muted">
             Nada vencido neste mês, então não há aviso para enviar. Está tudo em
             dia.

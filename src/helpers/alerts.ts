@@ -12,7 +12,7 @@ import type { ResolvedEntry } from "./types";
 // An Obrigação as the email needs it: the three fields Vencida is decided on,
 // plus the name to print. A Conta has a name already; a parcela does not, so
 // one gets built.
-export type AvisoRow = {
+export type AlertRow = {
   name: string;
   date: string;
   amount: number;
@@ -22,7 +22,7 @@ export type AvisoRow = {
 // A parcela is the nth payment of a loan and carries no name of its own.
 // Without the Financiamento and the position in the term, the email would
 // list an unexplained amount on an unexplained date.
-function parcelaName(p: MortgageBillItem): string {
+function installmentLabel(p: MortgageBillItem): string {
   return `${p.financingName} — parcela ${p.installmentNumber}/${p.installmentsTotal}`;
 }
 
@@ -30,16 +30,16 @@ function parcelaName(p: MortgageBillItem): string {
 //
 // `cutoff` is the caller's decision and is passed straight through. The cron
 // passes yesterday, so a Conta due today — which still has the whole day to
-// be paid — is not reported as late. See isVencida in month-summary.ts.
+// be paid — is not reported as late. See isOverdue in month-summary.ts.
 //
 // On the 1st, yesterday belongs to the month that just locked, and every
 // Obrigação in the current month is dated after it. The run finds nothing on
 // its own, which is why there is no month-boundary special case here.
-export function buildAvisoLedger(
+export function buildAlertLedger(
   entries: ResolvedEntry[],
   parcelas: MortgageBillItem[],
   cutoff: string
-): OverdueLedger<AvisoRow> {
+): OverdueLedger<AlertRow> {
   return {
     // Contas only. A one-off entry is a Despesa — money already gone, with no
     // due date to miss — so it is never an Obrigação and never Vencida. The
@@ -55,7 +55,7 @@ export function buildAvisoLedger(
       })),
     financing: {
       bills: parcelas.map((p) => ({
-        name: parcelaName(p),
+        name: installmentLabel(p),
         date: p.date,
         amount: p.amount,
         paid: p.paid,

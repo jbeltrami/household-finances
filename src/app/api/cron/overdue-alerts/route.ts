@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron";
-import { performOverdueAvisoSend } from "@/lib/email/send-overdue-aviso";
+import { performOverdueAlertSend } from "@/lib/email/send-overdue-alert";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayYmd } from "@/helpers/date";
 import { baseUrlFrom } from "@/helpers/paths";
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
   const { data: optedOut, error: optedOutError } = await admin
     .from("notification_settings")
     .select("space_id")
-    .eq("overdue_aviso_enabled", false);
+    .eq("overdue_alert_enabled", false);
 
   // Fail closed. An unchecked error here leaves the opt-out set empty, which
   // reads as "nobody opted out" and mails everyone who ever switched Avisos
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
   for (const space of optInSpaces) {
     // One space's failure must not cost every later space its Aviso.
     try {
-      const result = await performOverdueAvisoSend(
+      const result = await performOverdueAlertSend(
         admin,
         space.id,
         baseUrl,

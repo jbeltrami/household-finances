@@ -1,16 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildAvisoLedger } from "@/helpers/aviso";
+import { buildAlertLedger } from "@/helpers/alerts";
 import { parseYearMonthFromYmd, previousYmd } from "@/helpers/date";
 import { buildMonthItems, getFinancingLedger } from "@/helpers/financing";
 import { getEntriesForMonth } from "@/helpers/ledger";
 import { summarizeOverdue } from "@/helpers/month-summary";
 import { monthUrl, settingsUrl } from "@/helpers/paths";
-import { avisoSubject, renderOverdueAvisoEmail } from "./OverdueAvisoEmail";
+import { alertSubject, renderOverdueAlertEmail } from "./OverdueAlertEmail";
 import { getFromAddress, getTransport } from "./transport";
 
-export type AvisoSendResult =
+export type AlertSendResult =
   | { sent: true; count: number; total: number }
-  | { sent: false; reason: "nothing-vencida" };
+  | { sent: false; reason: "nothing-overdue" };
 
 // Send one space's daily Aviso.
 //
@@ -25,12 +25,12 @@ export type AvisoSendResult =
 // establishing that this space should be mailed at all — the cron filters on
 // the opt-out flag before calling, and the manual action resolves the space
 // from the session.
-export async function performOverdueAvisoSend(
+export async function performOverdueAlertSend(
   admin: SupabaseClient,
   spaceId: string,
   baseUrl: string,
   today: string
-): Promise<AvisoSendResult> {
+): Promise<AlertSendResult> {
   const parts = parseYearMonthFromYmd(today);
   if (!parts) throw new Error(`Could not parse today's date: ${today}`);
   const { year, month } = parts;
@@ -49,10 +49,10 @@ export async function performOverdueAvisoSend(
   const parcelas = buildMonthItems(financing, year, month).bills;
 
   const { rows, count, total } = summarizeOverdue(
-    buildAvisoLedger(entries, parcelas, cutoff)
+    buildAlertLedger(entries, parcelas, cutoff)
   );
 
-  if (count === 0) return { sent: false, reason: "nothing-vencida" };
+  if (count === 0) return { sent: false, reason: "nothing-overdue" };
 
   const { data: space } = await admin
     .from("spaces")
@@ -72,7 +72,7 @@ export async function performOverdueAvisoSend(
   const fullName = userResp.user.user_metadata?.full_name as string | undefined;
   const userName = fullName ?? userEmail.split("@")[0];
 
-  const { html, text } = await renderOverdueAvisoEmail({
+  const { html, text } = await renderOverdueAlertEmail({
     userName,
     rows,
     total,
@@ -84,7 +84,7 @@ export async function performOverdueAvisoSend(
   await transport.sendMail({
     from: getFromAddress(),
     to: userEmail,
-    subject: avisoSubject(count),
+    subject: alertSubject(count),
     html,
     text,
   });
@@ -98,7 +98,7 @@ export async function performOverdueAvisoSend(
   await admin
     .from("notification_settings")
     .upsert(
-      { space_id: spaceId, last_aviso_sent_at: new Date().toISOString() },
+      { space_id: spaceId, last_alert_sent_at: new Date().toISOString() },
       { onConflict: "space_id" }
     );
 

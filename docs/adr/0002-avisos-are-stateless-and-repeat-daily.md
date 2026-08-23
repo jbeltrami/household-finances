@@ -43,7 +43,7 @@ A Conta paid in real life but never ticked paid in the app generates a daily
 email until the ledger is corrected. This is a feature: the alternative designs
 notify once and then leave the wrong data sitting quietly forever.
 
-`notification_settings.last_aviso_sent_at` records when the last Aviso went out
+`notification_settings.last_alert_sent_at` records when the last Aviso went out
 and is displayed in Configurações. It is a receipt, not state: the send decision
 never reads it. Without it, silence would be ambiguous between "nothing is
 Vencida" and "the cron is broken". Anything that starts consulting it to decide

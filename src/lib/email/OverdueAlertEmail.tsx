@@ -15,11 +15,11 @@ import {
 } from "@react-email/components";
 import { render } from "@react-email/render";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
-import type { AvisoRow } from "@/helpers/aviso";
+import type { AlertRow } from "@/helpers/alerts";
 
 type Props = {
   userName: string;
-  rows: AvisoRow[];
+  rows: AlertRow[];
   total: number;
   monthUrl: string;
   settingsUrl: string;
@@ -129,11 +129,11 @@ function plural(count: number): string {
   return count === 1 ? "pagamento vencido" : "pagamentos vencidos";
 }
 
-export function avisoSubject(count: number): string {
+export function alertSubject(count: number): string {
   return `Você tem ${count} ${plural(count)}`;
 }
 
-export default function OverdueAvisoEmail({
+export default function OverdueAlertEmail({
   userName,
   rows,
   total,
@@ -197,10 +197,10 @@ export default function OverdueAvisoEmail({
 
 // Both bodies: nodemailer sends each, clients that block HTML fall back to
 // the text one, and so do most spam-filter heuristics.
-export async function renderOverdueAvisoEmail(
+export async function renderOverdueAlertEmail(
   props: Props
 ): Promise<{ html: string; text: string }> {
-  const element = <OverdueAvisoEmail {...props} />;
+  const element = <OverdueAlertEmail {...props} />;
   const html = await render(element);
   const text = await render(element, { plainText: true });
   return { html, text };

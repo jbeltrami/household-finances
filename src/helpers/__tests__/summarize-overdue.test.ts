@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  isVencida,
+  isOverdue,
   summarizeOverdue,
   type MonthBill,
 } from "../month-summary";
@@ -32,14 +32,14 @@ function ledger(overrides: {
   };
 }
 
-describe("isVencida", () => {
+describe("isOverdue", () => {
   it("is true for an unpaid Obrigação whose date has passed", () => {
-    expect(isVencida({ date: "2026-04-10", amount: 470, paid: false }, TODAY))
+    expect(isOverdue({ date: "2026-04-10", amount: 470, paid: false }, TODAY))
       .toBe(true);
   });
 
   it("is false once it is paid", () => {
-    expect(isVencida({ date: "2026-04-10", amount: 470, paid: true }, TODAY))
+    expect(isOverdue({ date: "2026-04-10", amount: 470, paid: true }, TODAY))
       .toBe(false);
   });
 
@@ -48,18 +48,18 @@ describe("isVencida", () => {
   // today. The Aviso asks "as of yesterday", because a Conta due today still
   // has the whole day to be paid and calling it late at 08:00 is a lie.
   it("counts an Obrigação due on the cutoff itself", () => {
-    expect(isVencida({ date: TODAY, amount: 470, paid: false }, TODAY))
+    expect(isOverdue({ date: TODAY, amount: 470, paid: false }, TODAY))
       .toBe(true);
   });
 
   it("excludes an Obrigação due today when the cutoff is yesterday", () => {
     expect(
-      isVencida({ date: TODAY, amount: 470, paid: false }, "2026-04-14")
+      isOverdue({ date: TODAY, amount: 470, paid: false }, "2026-04-14")
     ).toBe(false);
   });
 
   it("is false for an unpaid Obrigação still in the future", () => {
-    expect(isVencida({ date: "2026-04-20", amount: 470, paid: false }, TODAY))
+    expect(isOverdue({ date: "2026-04-20", amount: 470, paid: false }, TODAY))
       .toBe(false);
   });
 });

@@ -84,7 +84,7 @@ const amountOf = (row: { amount: number }) => row.amount;
 //
 // String comparison, not Date: Postgres hands back "YYYY-MM-DD" and that
 // format sorts lexicographically, so there is no timezone to get wrong.
-export function isVencida(bill: MonthBill, cutoff: string): boolean {
+export function isOverdue(bill: MonthBill, cutoff: string): boolean {
   return !bill.paid && bill.date <= cutoff;
 }
 
@@ -113,7 +113,7 @@ export function summarizeMonth(ledger: MonthLedger): MonthTotals {
   // is paid and dated in the future belongs to the first and not the second;
   // collapsing them into one pass is how it ends up subtracted twice.
   const overdueUnpaidBills = sum(
-    bills.filter((b) => isVencida(b, ledger.today)),
+    bills.filter((b) => isOverdue(b, ledger.today)),
     amountOf
   );
 
@@ -168,7 +168,7 @@ export function summarizeOverdue<T extends MonthBill>(
   ledger: OverdueLedger<T>
 ): OverdueSummary<T> {
   const rows = [...ledger.bills, ...ledger.financing.bills]
-    .filter((b) => isVencida(b, ledger.cutoff))
+    .filter((b) => isOverdue(b, ledger.cutoff))
     // Oldest first: whatever has been outstanding longest reads first.
     .sort((a, b) => a.date.localeCompare(b.date));
 
@@ -191,7 +191,7 @@ export function monthDayMarkers(ledger: MonthLedger): MonthDayMarkers {
     withBills.add(day);
     // The app's one urgency signal, and it belongs to Obrigações alone: a
     // Despesa records money that already went, so it can never be late.
-    if (isVencida(b, ledger.today)) overdue.add(day);
+    if (isOverdue(b, ledger.today)) overdue.add(day);
   }
 
   for (const e of [...ledger.expenses, ...ledger.financing.expenses]) {

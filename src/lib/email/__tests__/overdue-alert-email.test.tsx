@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  avisoSubject,
-  renderOverdueAvisoEmail,
-} from "../OverdueAvisoEmail";
-import type { AvisoRow } from "@/helpers/aviso";
+  alertSubject,
+  renderOverdueAlertEmail,
+} from "../OverdueAlertEmail";
+import type { AlertRow } from "@/helpers/alerts";
 
-const rows: AvisoRow[] = [
+const rows: AlertRow[] = [
   { name: "Claro", date: "2026-04-05", amount: 470, paid: false },
   {
     name: "Apartamento — parcela 12/240",
@@ -15,8 +15,8 @@ const rows: AvisoRow[] = [
   },
 ];
 
-function render(over: { rows?: AvisoRow[]; total?: number } = {}) {
-  return renderOverdueAvisoEmail({
+function render(over: { rows?: AlertRow[]; total?: number } = {}) {
+  return renderOverdueAlertEmail({
     userName: "Joao",
     rows: over.rows ?? rows,
     total: over.total ?? 3470,
@@ -25,17 +25,17 @@ function render(over: { rows?: AvisoRow[]; total?: number } = {}) {
   });
 }
 
-describe("avisoSubject", () => {
+describe("alertSubject", () => {
   it("says how many are Vencidas", () => {
-    expect(avisoSubject(3)).toBe("Você tem 3 pagamentos vencidos");
+    expect(alertSubject(3)).toBe("Você tem 3 pagamentos vencidos");
   });
 
   it("uses the singular for one", () => {
-    expect(avisoSubject(1)).toBe("Você tem 1 pagamento vencido");
+    expect(alertSubject(1)).toBe("Você tem 1 pagamento vencido");
   });
 });
 
-describe("renderOverdueAvisoEmail", () => {
+describe("renderOverdueAlertEmail", () => {
   it("names every Obrigação in both bodies", async () => {
     const { html, text } = await render();
     for (const body of [html, text]) {

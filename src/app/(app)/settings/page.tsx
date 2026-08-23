@@ -7,7 +7,7 @@ import Card from "@/components/Card";
 import { Tags, ChevronRight } from "lucide-react";
 import RenameSpaceForm from "./_components/RenameSpaceForm";
 import MonthlyReportEmailToggle from "./_components/MonthlyReportEmailToggle";
-import OverdueAvisoToggle from "./_components/OverdueAvisoToggle";
+import OverdueAlertToggle from "./_components/OverdueAlertToggle";
 
 export default async function SpaceSettingsPage() {
   const supabase = await createClient();
@@ -35,13 +35,13 @@ export default async function SpaceSettingsPage() {
   // creates the row on first interaction.
   const { data: settings } = await supabase
     .from("notification_settings")
-    .select("monthly_report_enabled, overdue_aviso_enabled, last_aviso_sent_at")
+    .select("monthly_report_enabled, overdue_alert_enabled, last_alert_sent_at")
     .eq("space_id", spaceId)
     .maybeSingle();
 
   const emailEnabled = settings?.monthly_report_enabled ?? true;
-  const avisoEnabled = settings?.overdue_aviso_enabled ?? true;
-  const lastAvisoSentAt = settings?.last_aviso_sent_at ?? null;
+  const alertEnabled = settings?.overdue_alert_enabled ?? true;
+  const lastAlertSentAt = settings?.last_alert_sent_at ?? null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
@@ -74,9 +74,9 @@ export default async function SpaceSettingsPage() {
           </Link>
         </Card>
         <MonthlyReportEmailToggle initialEnabled={emailEnabled} />
-        <OverdueAvisoToggle
-          initialEnabled={avisoEnabled}
-          lastSentAt={lastAvisoSentAt}
+        <OverdueAlertToggle
+          initialEnabled={alertEnabled}
+          lastSentAt={lastAlertSentAt}
         />
       </div>
     </div>

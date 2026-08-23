@@ -15,7 +15,7 @@ alter table public.notification_settings
   rename column enabled to monthly_report_enabled;
 
 alter table public.notification_settings
-  add column overdue_aviso_enabled boolean not null default true;
+  add column overdue_alert_enabled boolean not null default true;
 
 -- A receipt, not state. The daily Aviso is deliberately stateless —
 -- it re-reads what is Vencida each run and never consults this — so
@@ -25,7 +25,7 @@ alter table public.notification_settings
 -- Anything that reads this to decide whether to send has undone that
 -- decision.
 alter table public.notification_settings
-  add column last_aviso_sent_at timestamptz;
+  add column last_alert_sent_at timestamptz;
 
 -- The policies survive the table rename, but their names still say
 -- "report settings" and would misdescribe the Aviso flag.

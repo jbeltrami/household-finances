@@ -11,7 +11,7 @@ import { settingsUrl } from "@/helpers/paths";
 // Absence of a row means enabled, so switching Avisos on for a space that has
 // never touched settings is a no-op that still writes a row — harmless, and
 // simpler than deciding whether to.
-export async function setOverdueAvisoEnabled(enabled: boolean): Promise<void> {
+export async function setOverdueAlertEnabled(enabled: boolean): Promise<void> {
   const supabase = await createClient();
 
   const { spaceId } = await requireSession(supabase);
@@ -19,7 +19,7 @@ export async function setOverdueAvisoEnabled(enabled: boolean): Promise<void> {
   const { error } = await supabase
     .from("notification_settings")
     .upsert(
-      { space_id: spaceId, overdue_aviso_enabled: enabled },
+      { space_id: spaceId, overdue_alert_enabled: enabled },
       { onConflict: "space_id" }
     );
 
