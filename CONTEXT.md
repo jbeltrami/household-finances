@@ -27,8 +27,39 @@ Discretionary spending — money that went out without a recurring obligation
 behind it. A Despesa records money already gone, so it carries no paid state.
 _Avoid_: Gastos, compras, despesas avulsas, purchases
 
-Contas and Despesas are both outflows. The split is **obligation vs.
-discretionary**, not scheduled vs. unscheduled and not money vs. not-money.
+**Financiamento** (code: _financing_):
+A loan amortised over a fixed term. Each month it owes one **parcela**; paying
+ahead is an **amortização extraordinária**, which either shortens the term or
+lowers the parcela. A Financiamento is not a Conta — it has no recurrence rule
+to edit, only the schedule its own maths produces.
+_Avoid_: Empréstimo, dívida, mortgage, loan
+
+Contas, Despesas and Financiamentos are all outflows, and they divide on
+**obligation vs. discretionary** rather than scheduled vs. unscheduled: a Conta
+and a parcela must be paid, a Despesa and an amortização extraordinária are
+chosen.
+
+**Obrigação** (code: _obligation_):
+An outflow the user is committed to — a Conta or a parcela de Financiamento.
+Despesas and amortizações extraordinárias are not Obrigações: money already
+gone, or money chosen freely. Obrigação names the class that can be Vencida,
+and it is the only class the app ever chases the user about.
+_Avoid_: Compromisso, dívida, commitment, liability
+
+**Vencida** (code: _overdue_):
+An Obrigação whose date has passed while it is still unpaid. A Despesa can
+never be Vencida — it records money that already went, so it has no due date to
+miss. Being Vencida is the app's single urgency signal: it reddens the day's dot
+in the calendar, it is what _Saldo até o momento_ treats as already gone, and it
+is what an Aviso reports.
+_Avoid_: Atrasada, em atraso, late, past-due
+
+**Aviso** (code: _alert_):
+An email telling the user which Obrigações are Vencidas. It names each one
+rather than only counting them, and it repeats once a day for as long as any
+remain unpaid. On by default, and switching Avisos off leaves the monthly
+report untouched.
+_Avoid_: Notificação, lembrete, reminder, nudge
 
 **Categoria** (code: _category_):
 A user-defined bucket that groups money by kind. Each space manages its own
@@ -56,13 +87,13 @@ neither.
 What's left after everything. Scoped to all three flows: Receitas minus Contas
 minus Despesas. Appears in two forms — _Saldo esperado_ (the whole month as
 planned) and _Saldo até o momento_ (only what has actually moved, treating
-overdue unpaid Contas as already gone).
+Obrigações Vencidas as already gone).
 _Avoid_: Balanço, net, total
 
 **Resumo**:
 The running-total strip beneath the monthly view — the component figures of
 Saldo, broken out by flow and by settled-vs-pending. A Resumo is not a Saldo
-and does not sum to one: _Saldo até o momento_ subtracts overdue unpaid Contas,
+and does not sum to one: _Saldo até o momento_ subtracts Obrigações Vencidas,
 which are only a subset of _Falta pagar_.
 _Avoid_: Summary, overview, balance
 
@@ -72,6 +103,6 @@ Colour on aggregate figures encodes **direction of flow**, never good or bad
 news: money coming in is green, money going out is red. `Pago até o momento` is
 red because it is money that left, not green because paying bills is progress.
 
-Red at the level of an individual row means something different — **overdue and
-unpaid**, the app's one urgency signal (the CalendarStrip dot). Row amounts
+Red at the level of an individual row means something different — **Vencida**,
+the app's one urgency signal (the CalendarStrip dot). Row amounts
 stay neutral so that signal keeps its meaning.
