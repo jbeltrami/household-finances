@@ -12,14 +12,14 @@ whether the feature works than a fabricated one does.
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Avisos can be switched off and back on without affecting the monthly report
-- [ ] The switch reflects the default-on behaviour for a space that has never
+- [x] Avisos can be switched off and back on without affecting the monthly report
+- [x] The switch reflects the default-on behaviour for a space that has never
       touched it
-- [ ] The date of the last Aviso is visible, and its absence is distinguishable
+- [x] The date of the last Aviso is visible, and its absence is distinguishable
       from never having sent one
-- [ ] A test button sends a real Aviso to the signed-in owner from current data
-- [ ] With nothing Vencida, the test reports that plainly and sends nothing
-- [ ] Failures surface inline rather than through an error boundary
-- [ ] A user can only ever trigger a test for their own space
+- [x] A test button sends a real Aviso to the signed-in owner from current data
+- [x] With nothing Vencida, the test reports that plainly and sends nothing
+- [x] Failures surface inline rather than through an error boundary
+- [x] A user can only ever trigger a test for their own space
