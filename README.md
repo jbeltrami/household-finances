@@ -10,7 +10,8 @@ A personal finance planner. Each user manages their own monthly finances — inc
 - **Frontend**: Next.js 16 (App Router), TypeScript, Tailwind CSS
 - **PDF rendering**: `@react-pdf/renderer`
 - **Email**: Hostinger SMTP via `nodemailer`
-- **Cron**: Vercel Cron — monthly reports (`0 11 1 * *`), 08:00 São Paulo
+- **Avisos**: daily email naming every Obrigação Vencida — Contas and parcelas de Financiamento — on by default
+- **Cron**: Vercel Cron — monthly reports (`0 11 1 * *`) + daily overdue Avisos (`0 11 * * *`), both 08:00 São Paulo
 - **Hosting**: Vercel
 - **Auth**: Google OAuth only (no email/password)
 
@@ -104,7 +105,7 @@ Open [http://localhost:3000](http://localhost:3000). All routes are protected �
 | `/months/[y]/[m]` | Monthly view — income, recurring bills, one-off expenses, balance |
 | `/bills` | Recurring bill templates (create / edit / deactivate) |
 | `/reports` | Monthly PDF reports — per-month generate, bulk backfill, download |
-| `/settings` | Per-user settings — rename space, monthly-report email |
+| `/settings` | Per-user settings — rename space, monthly-report email, overdue Avisos |
 
 ## Architecture and conventions
 
@@ -131,6 +132,7 @@ Never rely on the proxy to keep an API route private. RLS is the real security b
 | Monthly PDF reports — generation, storage, download | ✅ |
 | Monthly PDF reports — settings page + email delivery via Hostinger SMTP | ✅ |
 | Monthly PDF reports — Vercel cron job for end-of-month auto-send | ✅ |
+| Overdue Avisos — daily email, stateless, Contas + parcelas | ✅ |
 | Drop `[id]` segment from URLs (routes collapsed to `/months/[y]/[m]`, `/bills`, `/reports`, `/settings`) | ✅ |
 | Recurring income templates (biweekly / monthly cadence) | ⏳ planned |
 | UI translated to pt-BR (single-language app) | ✅ |

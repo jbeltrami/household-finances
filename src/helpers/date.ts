@@ -133,3 +133,21 @@ export function dayOfMonthFromYmd(ymd: string): number | null {
   const day = parseInt(ymd.split("-")[2], 10);
   return Number.isInteger(day) ? day : null;
 }
+
+// The calendar day before `ymd`, as "YYYY-MM-DD".
+//
+// Goes through UTC deliberately: Date.UTC and getUTC* are symmetric, so
+// month ends, leap days and year boundaries fall out of the arithmetic
+// without a local-timezone offset ever entering it. Building a local Date
+// from parts and calling setDate would work too, but only until the process
+// runs somewhere the date arithmetic crosses a DST boundary.
+export function previousYmd(ymd: string): string {
+  const parts = parseYearMonthFromYmd(ymd);
+  if (!parts) return ymd;
+  const d = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  d.setUTCDate(d.getUTCDate() - 1);
+  const yyyy = String(d.getUTCFullYear()).padStart(4, "0");
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}

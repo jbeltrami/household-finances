@@ -17,24 +17,24 @@ one is not something the user can act on.
 
 **Blocked by:** 01, 02.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A daily run at 08:00 São Paulo emails every opted-in space that has
+- [x] A daily run at 08:00 São Paulo emails every opted-in space that has
       something Vencida
-- [ ] The email names each Obrigação with its due date and amount, shows the
+- [x] The email names each Obrigação with its due date and amount, shows the
       total, and links to the month
-- [ ] Parcelas are identified by their Financiamento and parcela number
-- [ ] The subject states how many are Vencidas
-- [ ] Spaces with nothing Vencida, and spaces that opted out, receive nothing
-- [ ] Only the current month is considered
-- [ ] Nothing is stored that the send decision reads; the run is reproducible from
+- [x] Parcelas are identified by their Financiamento and parcela number
+- [x] The subject states how many are Vencidas
+- [x] Spaces with nothing Vencida, and spaces that opted out, receive nothing
+- [x] Only the current month is considered
+- [x] Nothing is stored that the send decision reads; the run is reproducible from
       the month's data alone
-- [ ] The last-Aviso timestamp is written only after a send succeeds, so a failed
+- [x] The last-Aviso timestamp is written only after a send succeeds, so a failed
       send retries the next day
-- [ ] A failure for one space does not stop the others, and the run reports what
+- [x] A failure for one space does not stop the others, and the run reports what
       it sent, skipped and failed
-- [ ] The endpoint refuses unauthorized callers
-- [ ] README's stack table and cron schedule describe the daily Aviso
-- [ ] The code that writes the last-Aviso timestamp says in a comment that it is
+- [x] The endpoint refuses unauthorized callers
+- [x] README's stack table and cron schedule describe the daily Aviso
+- [x] The code that writes the last-Aviso timestamp says in a comment that it is
       a receipt, and points at ADR-0002 for why nothing may read it to decide
       whether to send

@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/monthly-reports",
       "schedule": "0 11 1 * *"
+    },
+    {
+      "path": "/api/cron/overdue-avisos",
+      "schedule": "0 11 * * *"
     }
   ]
 }
