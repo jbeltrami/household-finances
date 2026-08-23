@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAuthorizedCron } from "@/lib/cron";
 import { performReportGeneration } from "@/helpers/reports";
-import { performMonthlyReportSend } from "@/lib/email/send-monthly-report";
+import { sendMonthlyReportForId } from "@/lib/email/send-monthly-report";
 import { addMonthsYm, currentYearMonth } from "@/helpers/date";
 import { baseUrlFrom } from "@/helpers/paths";
 
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
         generated += 1;
       }
 
-      await performMonthlyReportSend(admin, reportId, baseUrl);
+      await sendMonthlyReportForId(admin, reportId, baseUrl);
       sent += 1;
     } catch (e) {
       console.error(`Cron failed for space ${space.id}:`, e);

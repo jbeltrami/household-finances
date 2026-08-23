@@ -27,30 +27,37 @@ value the caller chose.
 
 ## Consequences
 
-`performOverdueAlertSend` and `performMonthlyReportSend` both take a `spaceId`
-and both use the admin client. Neither can verify that the caller was entitled
-to that space, so both carry the obligation in their doc comment and both push
-it onto whoever calls them. Today every caller satisfies it: the two crons
-authenticate by Bearer token and legitimately act for all spaces, and the two
-server actions resolve the space from the session.
+Each mail helper has two entry points, and which one a caller may use is the
+whole point of the split.
 
-This is the sharp edge. A future action that accepts `spaceId` as a parameter
-from the client and forwards it to either helper reads exactly like the existing
-code, passes review and type-checks. Nothing in the type system distinguishes a
-`spaceId` that came from a session from one that came from a request body.
+The **cron-scoped** ones — `sendOverdueAlertForSpace` and
+`sendMonthlyReportForId` — take an id and use the admin client. They cannot
+verify anything about their caller, and they do not try to. They exist because
+the daily and monthly runs legitimately act for every space in turn, and they
+are gated by a Bearer token rather than by a session. Both are now reachable
+only from the two cron route handlers.
 
-What that costs depends on what the helper does with the space, and for these
-two it is worth being exact rather than alarming. Both derive their recipient
-from `spaces.created_by` and mail the space's **owner**. So a forged `spaceId`
-sends a stranger an email full of their own data: an unsolicited-mail and
-harassment vector, and a way to burn the SMTP budget, but not a disclosure —
-the caller never sees the contents.
+The **session-scoped** ones — `sendOverdueAlertForCurrentUser` and
+`sendMonthlyReportForCurrentUser` — are what anything a browser can reach must
+call. The first takes no id at all: it resolves the space from the session
+cookie itself, so there is no parameter for a form field to supply. The second
+must take a report id, because which month to re-send is genuinely the user's
+choice — so instead it performs the ownership proof internally, in the order
+that matters: the user-session client looks the report up so RLS decides whether
+it is visible, and only then is `created_by` checked against the caller.
 
-The disclosure version is the one that has not been written yet: any
-admin-backed helper that **returns** data to its caller rather than mailing it
-to a third party. `getSpaceSummary(admin, spaceId)` would leak outright. The
-invariant exists to make that helper safe on the day someone writes it, not
-because the two that exist today are dangerous in that way.
+That difference is worth stating plainly, because it is the general rule. When
+an id is not the user's choice, do not accept one. When it is, accept it but own
+the check rather than delegating it to every caller.
+
+What the old shape risked, for the record: both helpers derive their recipient
+from `spaces.created_by` and mail the space's **owner**, so a forged id would
+have sent a stranger an email full of their own data — unsolicited mail and a
+wasted SMTP budget, not a disclosure, since the caller never sees the contents.
+The disclosure version is the one nobody has written: an admin-backed helper
+that **returns** data to its caller. `getSpaceSummary(admin, spaceId)` would
+leak outright, and the invariant exists to make that function safe on the day
+someone writes it.
 
 `download-report` shows the shape to copy: it resolves the report through the
 **user-session** client, so RLS decides whether that row is visible at all, and
@@ -63,16 +70,17 @@ the user could see.
 is impossible: a cron has no session, and the write-policy-free log and report
 tables exist so that a compromised browser cannot forge rows into them.
 
-**Have the helpers resolve the space themselves** rather than accept it. This
-genuinely closes the hole — a helper that calls `getPersonalSpaceId` internally
-cannot be handed someone else's space. It is rejected only for the crons, which
-must act on every space in turn and so need the parameter. The right end state
-is probably a split: a session-scoped entry point that takes no `spaceId`, and a
-cron-scoped one that does. Worth doing before the second person touches this
-code.
+**Have every helper resolve the space itself,** with no id parameter anywhere.
+Rejected, because the crons must act on each space in turn and so genuinely need
+one. The split above is what this became instead: the id survives only where it
+is needed, on entry points a browser cannot reach.
 
 **Encode the provenance in the type** — a `SessionScopedSpaceId` branded type
-that only `requireSession` can produce. Correct in principle and the only
-mechanical enforcement available, but it threads a new type through every
-signature between the session and the query. Reconsider if this codebase ever
-grows past one contributor.
+that only `requireSession` can produce, making the bad call fail to compile.
+The only mechanical enforcement available, and it threads a new type through
+every signature between the session and the query. Rejected because the split
+above removes the parameter from the reachable path entirely, which gets most of
+the same protection for the cost of two wrapper functions and no new type. It
+becomes worth reconsidering the day an admin-backed helper **returns** space
+data to its caller, when the consequence stops being unwanted mail and starts
+being disclosure.

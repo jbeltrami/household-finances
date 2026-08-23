@@ -1,4 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/helpers/session";
 import { buildAlertLedger } from "@/helpers/alerts";
 import { parseYearMonthFromYmd, previousYmd } from "@/helpers/date";
 import { buildMonthItems, getFinancingLedger } from "@/helpers/financing";
@@ -12,7 +15,12 @@ export type AlertSendResult =
   | { sent: true; count: number; total: number }
   | { sent: false; reason: "nothing-overdue" };
 
-// Send one space's daily Aviso.
+// Send one space's daily Aviso, for a space the caller names.
+//
+// CRON-SCOPED. The daily run legitimately acts for every space in turn, so it
+// needs to name them — and it is gated by its Bearer token rather than by a
+// session. Nothing a browser can reach should call this: use
+// sendOverdueAlertForCurrentUser below, which has no id to hand it.
 //
 // Stateless by design: this reads what is Vencida right now and sends if the
 // list is non-empty. It does not know or ask what it said yesterday, so an
@@ -25,7 +33,7 @@ export type AlertSendResult =
 // establishing that this space should be mailed at all — the cron filters on
 // the opt-out flag before calling, and the manual action resolves the space
 // from the session.
-export async function performOverdueAlertSend(
+export async function sendOverdueAlertForSpace(
   admin: SupabaseClient,
   spaceId: string,
   baseUrl: string,
@@ -103,4 +111,23 @@ export async function performOverdueAlertSend(
     );
 
   return { sent: true, count, total };
+}
+
+// Send the signed-in user's own Aviso.
+//
+// SESSION-SCOPED, and it takes no space id on purpose. The space is resolved
+// from the session cookie here rather than accepted as an argument, so there
+// is no parameter for a form field or a URL to supply. The version of this
+// function that took an id was safe only because every caller happened to
+// resolve it from the session first — a property no type could express, and
+// one that the next caller would have had to rediscover from a comment.
+//
+// See docs/adr/0003-the-database-is-the-security-boundary.md.
+export async function sendOverdueAlertForCurrentUser(
+  baseUrl: string,
+  today: string
+): Promise<AlertSendResult> {
+  const supabase = await createClient();
+  const { spaceId } = await requireSession(supabase);
+  return sendOverdueAlertForSpace(createAdminClient(), spaceId, baseUrl, today);
 }

@@ -1,17 +1,21 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/helpers/session";
 import { reportsUrl, settingsUrl } from "@/helpers/paths";
 import { formatMonthLabel } from "@/helpers/date";
 import { getFromAddress, getTransport } from "./transport";
 import { renderMonthlyReportEmail } from "./MonthlyReportEmail";
 
-// Send (or re-send) a generated monthly report by email. Reused by
-// the manual server action and the Piece C cron handler.
+// Send (or re-send) a generated monthly report by email, for a report the
+// caller names.
 //
-// IMPORTANT: this function bypasses RLS via the admin client. The
-// caller is responsible for verifying that this report should be
-// sent (ownership, opt-in, idempotency). The cron handler does this
-// before calling; the manual action does an RLS-gated lookup first.
-export async function performMonthlyReportSend(
+// CRON-SCOPED. It bypasses RLS via the admin client and cannot check that the
+// caller was entitled to this report, so the caller must have established that
+// already. The cron has, by authenticating with its Bearer token and acting for
+// every space by design. A browser-reachable path should call
+// sendMonthlyReportForCurrentUser below, which establishes it for you.
+export async function sendMonthlyReportForId(
   admin: SupabaseClient,
   reportId: string,
   baseUrl: string
@@ -91,4 +95,42 @@ export async function performMonthlyReportSend(
 
 function capitalize(s: string): string {
   return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
+}
+
+// Send a report the signed-in user owns.
+//
+// SESSION-SCOPED. Unlike the Aviso, the id here is legitimately the user's
+// choice — they pick which month to re-send — so it cannot be removed from the
+// signature. What can be removed is the chance to forget the check: the
+// ownership proof lives in this function rather than in each caller, so a new
+// caller inherits it instead of having to remember it.
+//
+// Two steps, in this order: the user-session client looks the report up, so RLS
+// decides whether it is visible at all, and only then is ownership confirmed
+// against the space. See docs/adr/0003-the-database-is-the-security-boundary.md.
+export async function sendMonthlyReportForCurrentUser(
+  reportId: string,
+  baseUrl: string
+): Promise<void> {
+  const supabase = await createClient();
+  const { userId } = await requireSession(supabase);
+
+  const { data: report } = await supabase
+    .from("monthly_reports")
+    .select("id, space_id")
+    .eq("id", reportId)
+    .single();
+  if (!report) throw new Error("Relatório não encontrado");
+
+  const { data: space } = await supabase
+    .from("spaces")
+    .select("created_by")
+    .eq("id", report.space_id)
+    .single();
+  if (!space) throw new Error("Espaço não encontrado");
+  if (space.created_by !== userId) {
+    throw new Error("Apenas o dono do espaço pode enviar relatórios");
+  }
+
+  await sendMonthlyReportForId(createAdminClient(), reportId, baseUrl);
 }

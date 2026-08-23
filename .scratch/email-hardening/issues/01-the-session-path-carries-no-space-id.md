@@ -22,14 +22,14 @@ stops being expressible.
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The settings test button sends without any id crossing the boundary from
+- [x] The settings test button sends without any id crossing the boundary from
       the browser
-- [ ] The reports send button does the same
-- [ ] The id-taking helpers remain available to the crons, which need them
-- [ ] Sending a test Aviso and sending a monthly report both behave exactly as
+- [x] The reports send button does the same
+- [x] The id-taking helpers remain available to the crons, which need them
+- [x] Sending a test Aviso and sending a monthly report both behave exactly as
       before, including when there is nothing Vencida
-- [ ] A user still cannot cause mail to be sent for a space that is not theirs
-- [ ] ADR-0003 describes the split as done rather than as the right end state,
+- [x] A user still cannot cause mail to be sent for a space that is not theirs
+- [x] ADR-0003 describes the split as done rather than as the right end state,
       and says what is left holding the invariant for the cron-scoped helpers

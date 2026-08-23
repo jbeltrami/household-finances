@@ -2,12 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { requireSession } from "@/helpers/session";
 import { todayYmd } from "@/helpers/date";
 import { baseUrlFrom, settingsUrl } from "@/helpers/paths";
-import { performOverdueAlertSend } from "@/lib/email/send-overdue-alert";
+import { sendOverdueAlertForCurrentUser } from "@/lib/email/send-overdue-alert";
 import type { TestAlertResult } from "../_types";
 
 // Send a real Aviso, built from this space's current data, to the signed-in
@@ -19,12 +16,11 @@ import type { TestAlertResult } from "../_types";
 // is the honest answer — it tells the user the pipeline ran and found the
 // month clean, which is more information than a fabricated row would carry.
 //
-// The space comes from the session, so a user can only ever mail themselves.
+// No space id passes through this action. sendOverdueAlertForCurrentUser
+// resolves it from the session itself, so there is nothing here for a form
+// field to supply and nothing for a future caller to get wrong.
 export async function sendTestAlert(): Promise<TestAlertResult> {
   try {
-    const supabase = await createClient();
-    const { spaceId } = await requireSession(supabase);
-
     const headersList = await headers();
     const baseUrl = baseUrlFrom(
       headersList.get("host"),
@@ -32,13 +28,7 @@ export async function sendTestAlert(): Promise<TestAlertResult> {
     );
     if (!baseUrl) return { kind: "error", message: "Cabeçalho host ausente" };
 
-    const admin = createAdminClient();
-    const result = await performOverdueAlertSend(
-      admin,
-      spaceId,
-      baseUrl,
-      todayYmd()
-    );
+    const result = await sendOverdueAlertForCurrentUser(baseUrl, todayYmd());
 
     if (!result.sent) return { kind: "nothing-overdue" };
 

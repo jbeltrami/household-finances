@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron";
-import { performOverdueAlertSend } from "@/lib/email/send-overdue-alert";
+import { sendOverdueAlertForSpace } from "@/lib/email/send-overdue-alert";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayYmd } from "@/helpers/date";
 import { baseUrlFrom } from "@/helpers/paths";
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
   for (const space of optInSpaces) {
     // One space's failure must not cost every later space its Aviso.
     try {
-      const result = await performOverdueAlertSend(
+      const result = await sendOverdueAlertForSpace(
         admin,
         space.id,
         baseUrl,
