@@ -67,6 +67,27 @@ function sum<T>(rows: T[], amount: (row: T) => number): number {
 
 const amountOf = (row: { amount: number }) => row.amount;
 
+// Is this Obrigação Vencida as of `cutoff` — due by then and still unpaid?
+//
+// The one definition, with the boundary left to the caller, because the two
+// questions the app asks want different boundaries and both are right:
+//
+//   Saldo and the calendar dots pass today. A Conta due today is money
+//   leaving the account today, and its day is red on the day it is due.
+//
+//   The daily Aviso passes yesterday. At 08:00 a Conta due today still has
+//   the whole day to be paid, so reporting it as late would be false.
+//
+// Collapsing those into one hardcoded comparison is how the Aviso ends up
+// nagging about bills that are not late yet, or Saldo stops counting money
+// that is already gone. The predicate is shared; the cutoff is a decision.
+//
+// String comparison, not Date: Postgres hands back "YYYY-MM-DD" and that
+// format sorts lexicographically, so there is no timezone to get wrong.
+export function isVencida(bill: MonthBill, cutoff: string): boolean {
+  return !bill.paid && bill.date <= cutoff;
+}
+
 export function summarizeMonth(ledger: MonthLedger): MonthTotals {
   // A parcela behaves like a Conta for the month and an amortização
   // extraordinária like a Despesa, which is how the monthly view has always
@@ -88,11 +109,11 @@ export function summarizeMonth(ledger: MonthLedger): MonthTotals {
 
   const totalExpenses = sum(expenses, amountOf);
 
-  // Two separate filters on purpose — one by paid, one by date. A Conta that
+  // Two separate folds on purpose — one by paid, one by Vencida. A Conta that
   // is paid and dated in the future belongs to the first and not the second;
   // collapsing them into one pass is how it ends up subtracted twice.
   const overdueUnpaidBills = sum(
-    bills.filter((b) => !b.paid && b.date <= ledger.today),
+    bills.filter((b) => isVencida(b, ledger.today)),
     amountOf
   );
 
@@ -118,6 +139,42 @@ export function summarizeMonth(ledger: MonthLedger): MonthTotals {
   };
 }
 
+// What the daily Aviso reports. Same question as `netSoFar` asks, answered
+// with the rows themselves rather than one number, because the email names
+// each Obrigação instead of only counting them.
+//
+// Generic over the row so the caller keeps its own shape: a Conta arrives
+// from `entries` and a parcela is computed from loan parameters, and the two
+// only agree on the three fields here. Whatever extra a caller attaches —
+// a name, an id — comes back untouched.
+//
+// `financing` is required for the same reason it is on MonthLedger: a caller
+// that means to leave parcelas out has to say so with an empty list.
+export type OverdueLedger<T extends MonthBill> = {
+  bills: T[];
+  financing: { bills: T[] };
+  // Not `today`: the Aviso passes yesterday, and a field called `today`
+  // holding yesterday is how the boundary quietly goes wrong.
+  cutoff: string;
+};
+
+export type OverdueSummary<T extends MonthBill> = {
+  rows: T[];
+  count: number;
+  total: number;
+};
+
+export function summarizeOverdue<T extends MonthBill>(
+  ledger: OverdueLedger<T>
+): OverdueSummary<T> {
+  const rows = [...ledger.bills, ...ledger.financing.bills]
+    .filter((b) => isVencida(b, ledger.cutoff))
+    // Oldest first: whatever has been outstanding longest reads first.
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  return { rows, count: rows.length, total: sum(rows, amountOf) };
+}
+
 function sortedDays(days: Set<number>): number[] {
   return Array.from(days).sort((a, b) => a - b);
 }
@@ -132,9 +189,9 @@ export function monthDayMarkers(ledger: MonthLedger): MonthDayMarkers {
     const day = dayOfMonthFromYmd(b.date);
     if (day == null) continue;
     withBills.add(day);
-    // The app's one urgency signal, and it belongs to Contas alone: a
+    // The app's one urgency signal, and it belongs to Obrigações alone: a
     // Despesa records money that already went, so it can never be late.
-    if (!b.paid && b.date <= ledger.today) overdue.add(day);
+    if (isVencida(b, ledger.today)) overdue.add(day);
   }
 
   for (const e of [...ledger.expenses, ...ledger.financing.expenses]) {
