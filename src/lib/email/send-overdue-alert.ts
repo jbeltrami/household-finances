@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/helpers/session";
 import { recordEmailSend } from "@/helpers/email-log";
+import { formatRetryAt, manualSendVerdict } from "@/helpers/rate-limit";
 import { buildAlertLedger } from "@/helpers/alerts";
 import { parseYearMonthFromYmd, previousYmd } from "@/helpers/date";
 import { buildMonthItems, getFinancingLedger } from "@/helpers/financing";
@@ -15,6 +16,13 @@ import { getFromAddress, getTransport } from "./transport";
 export type AlertSendResult =
   | { sent: true; count: number; total: number }
   | { sent: false; reason: "nothing-overdue" };
+
+// Only a hand-driven send can be refused for sending too much, so only the
+// session-scoped entry point can return this. The cron-scoped sender's type
+// says it cannot, which is the point of keeping the two apart.
+export type ManualAlertSendResult =
+  | AlertSendResult
+  | { sent: false; reason: "rate-limited"; retryAt: string };
 
 // Send one space's daily Aviso, for a space the caller names.
 //
@@ -129,8 +137,21 @@ export async function sendOverdueAlertForSpace(
 export async function sendOverdueAlertForCurrentUser(
   baseUrl: string,
   today: string
-): Promise<AlertSendResult> {
+): Promise<ManualAlertSendResult> {
   const supabase = await createClient();
   const { spaceId } = await requireSession(supabase);
-  return sendOverdueAlertForSpace(createAdminClient(), spaceId, baseUrl, today);
+  const admin = createAdminClient();
+
+  // Checked before the month is hydrated: a refused send should cost nothing,
+  // and it must not consume allowance it was never granted.
+  const verdict = await manualSendVerdict(admin, spaceId, new Date());
+  if (!verdict.allowed) {
+    return {
+      sent: false,
+      reason: "rate-limited",
+      retryAt: formatRetryAt(verdict.retryAt),
+    };
+  }
+
+  return sendOverdueAlertForSpace(admin, spaceId, baseUrl, today);
 }

@@ -39,3 +39,26 @@ export async function recordEmailSend(
     );
   }
 }
+
+// Every send recorded for this space since a moment, newest first.
+//
+// Both kinds, deliberately: the manual allowance is one shared budget, because
+// what it protects is the mail account rather than either feature.
+export async function sendTimesSince(
+  admin: SupabaseClient,
+  spaceId: string,
+  since: Date
+): Promise<Date[]> {
+  const { data, error } = await admin
+    .from("email_sends")
+    .select("sent_at")
+    .eq("space_id", spaceId)
+    .gte("sent_at", since.toISOString())
+    .order("sent_at", { ascending: false });
+
+  // Fail closed. An unread count is an empty count, which reads as "nothing
+  // sent yet" and lifts the limit exactly when the database is unhappy.
+  if (error) throw new Error(`Failed to read send history: ${error.message}`);
+
+  return (data ?? []).map((r) => new Date(r.sent_at as string));
+}

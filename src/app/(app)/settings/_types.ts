@@ -4,4 +4,5 @@
 export type TestAlertResult =
   | { kind: "sent"; count: number }
   | { kind: "nothing-overdue" }
+  | { kind: "rate-limited"; retryAt: string }
   | { kind: "error"; message: string };

@@ -27,14 +27,14 @@ throttled by a limit meant for a button is a bug.
 
 **Blocked by:** 02.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A fourth manual send within a rolling hour is refused
-- [ ] The refusal names the time the user can try again, inline rather than as an
+- [x] A fourth manual send within a rolling hour is refused
+- [x] The refusal names the time the user can try again, inline rather than as an
       error page
-- [ ] The two buttons draw on one shared allowance
-- [ ] The window slides: sends drop out of the count as they age past an hour
-- [ ] A refused attempt sends no mail and consumes no allowance
-- [ ] The crons send regardless of how much manual sending has happened
-- [ ] The window arithmetic is covered by tests that need no database and no
+- [x] The two buttons draw on one shared allowance
+- [x] The window slides: sends drop out of the count as they age past an hour
+- [x] A refused attempt sends no mail and consumes no allowance
+- [x] The crons send regardless of how much manual sending has happened
+- [x] The window arithmetic is covered by tests that need no database and no
       clock, including the boundary where a send ages out

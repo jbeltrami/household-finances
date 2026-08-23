@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/helpers/session";
 import { recordEmailSend } from "@/helpers/email-log";
+import { formatRetryAt, manualSendVerdict } from "@/helpers/rate-limit";
 import { reportsUrl, settingsUrl } from "@/helpers/paths";
 import { formatMonthLabel } from "@/helpers/date";
 import { getFromAddress, getTransport } from "./transport";
@@ -135,5 +136,16 @@ export async function sendMonthlyReportForCurrentUser(
     throw new Error("Apenas o dono do espaço pode enviar relatórios");
   }
 
-  await sendMonthlyReportForId(createAdminClient(), reportId, baseUrl);
+  const admin = createAdminClient();
+
+  // The same shared allowance the Aviso button draws on: what is being
+  // protected is the mail account, not either feature.
+  const verdict = await manualSendVerdict(admin, report.space_id, new Date());
+  if (!verdict.allowed) {
+    throw new Error(
+      `Limite de envios atingido. Tente novamente às ${formatRetryAt(verdict.retryAt)}.`
+    );
+  }
+
+  await sendMonthlyReportForId(admin, reportId, baseUrl);
 }

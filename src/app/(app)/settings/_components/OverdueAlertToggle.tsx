@@ -111,6 +111,12 @@ export default function OverdueAlertToggle({
             dia.
           </p>
         )}
+        {testResult?.kind === "rate-limited" && (
+          <p className="mt-2 text-xs text-warn" role="alert">
+            Você já enviou avisos demais na última hora. Tente novamente às{" "}
+            {testResult.retryAt}.
+          </p>
+        )}
         {testResult?.kind === "error" && (
           <p className="mt-2 text-xs text-danger" role="alert">
             {testResult.message}

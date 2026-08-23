@@ -30,7 +30,11 @@ export async function sendTestAlert(): Promise<TestAlertResult> {
 
     const result = await sendOverdueAlertForCurrentUser(baseUrl, todayYmd());
 
-    if (!result.sent) return { kind: "nothing-overdue" };
+    if (!result.sent) {
+      return result.reason === "rate-limited"
+        ? { kind: "rate-limited", retryAt: result.retryAt }
+        : { kind: "nothing-overdue" };
+    }
 
     // A real send writes the receipt, so the page has to re-read it.
     revalidatePath(settingsUrl());
