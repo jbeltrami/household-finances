@@ -6,8 +6,8 @@ lesson.
 ## Workspace location
 
 This workspace lives at `docs/learning/`, not the repo root. The teach skill
-defaults to the current directory, but the root already holds `CLAUDE.md`,
-`CONTEXT.md`, `history.md`, `docs/` and `.scratch/`; adding seven more
+defaults to the current directory, but the root already holds `CONTEXT.md`,
+`history.md`, `docs/` and `.scratch/`; adding seven more
 top-level entries would bury them. Everything else follows the skill's
 structure — `MISSION.md`, `RESOURCES.md`, `lessons/`, `reference/`,
 `assets/`, `learning-records/` — just one level down.

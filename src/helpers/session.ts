@@ -55,7 +55,8 @@ export async function resolveSession(
 
 // For actions invoked through a transition, which have no state surface to
 // render an error against and so throw. Actions reached through useActionState
-// return state, don't throw" for which is which.
+// return state instead, because a throw there surfaces as an error boundary
+// rather than an inline message.
 export async function requireSession(
   supabase: SupabaseClient
 ): Promise<Session> {

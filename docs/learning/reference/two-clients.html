@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference — Which Supabase client?</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<p class="eyebrow">Reference card · Security</p>
+<h1>Which client?</h1>
+<p class="standfirst">The decision procedure, and the invariant that has to hold
+around it. From <a href="../lessons/0002-two-clients-one-boundary.html">Lesson
+02</a>.</p>
+
+<h2>The three clients</h2>
+
+<table>
+  <thead>
+    <tr><th>Import</th><th>Runs as</th><th>Use when</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>@/lib/supabase/client</code></td>
+      <td>Publishable key · RLS applies</td>
+      <td>Client Components, in the browser</td>
+    </tr>
+    <tr>
+      <td><code>@/lib/supabase/server</code></td>
+      <td>Publishable key · RLS applies, bound to the caller</td>
+      <td>Server Components, Route Handlers, server actions — <strong>the default</strong></td>
+    </tr>
+    <tr>
+      <td><code>@/lib/supabase/admin</code></td>
+      <td><code>service_role</code> · <strong>BYPASSRLS</strong></td>
+      <td>Only when there is no session to bind to, or no write policy exists</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Decision procedure</h2>
+
+<ol>
+  <li><strong>Is there a signed-in user?</strong> No → admin, and authenticate
+  the caller some other way (Bearer token). Yes → continue.</li>
+  <li><strong>Can RLS express what you need?</strong> Yes → session client. Stop
+  here; this is almost always the answer.</li>
+  <li><strong>No — because the table has no write policy, or you need storage,
+  or you must read across spaces?</strong> Then: resolve the space from the
+  session <em>first</em>, and only then reach for admin.</li>
+</ol>
+
+<div class="rule">
+  <p class="rule-label">The invariant</p>
+  <p>Any <code>spaceId</code> reaching admin-backed code must come from
+  <code>requireSession</code> / <code>resolveSession</code>. Never from a form
+  field, a URL parameter, or anything else the caller chose.</p>
+</div>
+
+<h2>The shape to copy</h2>
+
+<p><code>download-report</code>, in two steps that must stay in this order:</p>
+
+<ol>
+  <li><strong>User-session client</strong> looks the row up → RLS answers
+  <em>may they?</em></li>
+  <li><strong>Admin client</strong> mints the signed URL → does the thing they
+  may.</li>
+</ol>
+
+<p>Ask <em>may they?</em> with the client that can say no.</p>
+
+<h2>Route handler checklist</h2>
+
+<p><code>/api/*</code> is excluded from the proxy, so nothing gates a route but
+the route. Every new one needs one of these on its first lines:</p>
+
+<ul>
+  <li><strong>Machine caller</strong> — Bearer against <code>CRON_SECRET</code>,
+  compared with <code>timingSafeEqual</code>, <strong>failing closed</strong> if
+  the secret is unset.</li>
+  <li><strong>Browser caller</strong> — <code>auth.getUser()</code> and 401 on
+  null. Never <code>getSession()</code>: it does not revalidate the token.</li>
+</ul>
+
+<h2>Smells</h2>
+
+<ul>
+  <li>An admin client in a file that never calls <code>requireSession</code>.</li>
+  <li>A <code>spaceId</code> parameter on an exported action reachable from a
+  form.</li>
+  <li>A route handler whose first statement is not an auth check.</li>
+  <li><code>getSession()</code> anywhere on the server.</li>
+  <li>A new table with RLS enabled and no policy written yet — that denies
+  everything, which is safe but looks like a bug at runtime.</li>
+</ul>
+
+<div class="footer">
+  <h3>Sources</h3>
+  <ul>
+    <li><a href="https://supabase.com/docs/guides/api/api-keys">Supabase — API keys</a> (<code>BYPASSRLS</code>)</li>
+    <li><a href="https://supabase.com/docs/guides/auth/server-side/nextjs">Supabase — Server-side auth for Next.js</a> (<code>getSession()</code> warning)</li>
+    <li><code>docs/adr/0003</code>, <code>docs/adr/0004</code></li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>

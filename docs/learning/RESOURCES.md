@@ -2,6 +2,8 @@
 
 ## Knowledge
 
+### Data modelling
+
 - [Kimball Group — "Slowly Changing Dimensions" (Ralph Kimball, 2008)](https://www.kimballgroup.com/2008/08/slowly-changing-dimensions/)
   The canonical vocabulary for "does this attribute overwrite or preserve
   history": Type 1 through Type 7. Written for warehouses, but the naming is
@@ -21,6 +23,32 @@
 
 - [Wikipedia — Slowly changing dimension](https://en.wikipedia.org/wiki/Slowly_changing_dimension)
   Fast reference for the type numbers when you need to look one up mid-argument.
+
+### Security
+
+- [Supabase — Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
+  The policy model itself, from the people who built the Postgres integration
+  this app leans on. Use for: writing or reviewing any new policy, and for the
+  `SECURITY DEFINER` + pinned `search_path` pattern behind `is_active_member`.
+
+- [Supabase — API keys](https://supabase.com/docs/guides/api/api-keys)
+  States plainly that the secret key runs as `service_role` with `BYPASSRLS`
+  and will "skip any and all Row Level Security policies". Use for: settling
+  any argument about whether the admin client is safe *here*. It is never safe
+  by itself; it is safe because of what ran before it.
+
+- [Supabase — Server-side auth for Next.js](https://supabase.com/docs/guides/auth/server-side/nextjs)
+  Carries the warning that matters most in this stack: "Never trust
+  `supabase.auth.getSession()` inside server code" — it does not revalidate the
+  token. Note it now recommends `getClaims()` over `getUser()` as well, which
+  validates the JWT signature locally rather than round-tripping. Use for: any
+  change to `src/proxy.ts`.
+
+- [OWASP — Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)
+  "Deny by default" and "enforce authorization at a trusted layer", stated
+  generally rather than for one vendor. Use for: recognising that RLS is one
+  instance of a principle, so the reasoning survives leaving Supabase.
+
 
 ## Wisdom (Communities)
 

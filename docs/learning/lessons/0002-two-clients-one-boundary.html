@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 02 — Two Clients, One Boundary</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<div class="wrap">
+
+<p class="eyebrow">Lesson 02 · Security</p>
+<h1>Two Clients, One Boundary</h1>
+<p class="standfirst">Your app's security does not live in your app. Knowing
+exactly where it does live is the difference between a codebase that is safe and
+one that is merely untested.</p>
+
+<h2>Where the boundary actually is</h2>
+
+<p>Here is the question that decides everything: <em>if a page forgot its
+<code>.eq("space_id", …)</code> filter, whose rows would come back?</em></p>
+
+<p>In most apps, everyone's. The filter <em>is</em> the security. Forget it once,
+in one query, and you have a data breach that looks like a typo.</p>
+
+<p>Not here. Every table in this project has RLS enabled with a policy written
+in terms of <code>is_active_member(space_id)</code>, which collapses to
+<code>auth.uid() = spaces.created_by</code>. Postgres applies that policy to
+every query, so the unfiltered query returns your own rows and nothing else. The
+filter is an optimisation. <strong>The database is the boundary.</strong></p>
+
+<div class="rule">
+  <p class="rule-label">The mental model</p>
+  <p>Application code is not trusted to scope its own queries. It is trusted
+  only to say <em>who is asking</em>. The database decides what that person may
+  see. Every security question in this codebase reduces to: <em>does this code
+  path still tell the truth about who is asking?</em></p>
+</div>
+
+<h2>The key that ignores all of it</h2>
+
+<p>Supabase issues you two keys, and the difference is not "one is more secret."
+It is that they connect as different Postgres roles.</p>
+
+<p>The publishable key is RLS-bound — safe in the browser precisely because
+policies still apply to it. The secret key connects as <code>service_role</code>,
+which carries the <code>BYPASSRLS</code> attribute. Supabase's own words:</p>
+
+<blockquote>It will "skip any and all Row Level Security policies."</blockquote>
+
+<p>That is <code>src/lib/supabase/admin.ts</code>. Every query it makes sees
+every row belonging to every user. It is not a client with extra permissions; it
+is a client with <em>no boundary at all</em>.</p>
+
+<p>And you cannot delete it. A cron has no session for a policy to bind to.
+Storage uploads run without a user. Your log and report tables deliberately have
+<em>no write policies</em>, so that only server code can write them. The admin
+client is the price of all three.</p>
+
+<h2>So the whole thing rests on one rule</h2>
+
+<div class="rule">
+  <p class="rule-label">The invariant</p>
+  <p>The admin client may only be reached <strong>after</strong> a user-session
+  client has established who is calling and which space is theirs. Any
+  <code>spaceId</code> handed to admin-backed code must have come from
+  <code>requireSession</code> — never from a form field, a URL parameter, or any
+  other value the caller chose.</p>
+</div>
+
+<p>All seven admin-client call sites in this repo satisfy it today. The two
+crons authenticate by Bearer token and legitimately act for every space. The
+five server actions resolve the space from the session first.</p>
+
+<p><code>download-report</code> is the one to memorise, because it shows the
+shape rather than just obeying it:</p>
+
+<ol>
+  <li>Look the report up through the <strong>user-session</strong> client — RLS
+  decides whether that row is even visible.</li>
+  <li>Only then use the admin client, to mint a signed URL for the path you just
+  proved the user could see.</li>
+</ol>
+
+<p>The user client answers <em>may they?</em> The admin client does the thing
+they may. Never the other way round.</p>
+
+<h2>The sharp edge</h2>
+
+<p>Two helpers — <code>performOverdueAlertSend</code> and
+<code>performMonthlyReportSend</code> — accept a <code>spaceId</code> and use the
+admin client. Neither can check that the caller was entitled to that space. Both
+push the obligation onto their caller, in a comment.</p>
+
+<p>Now picture the change that breaks it. Someone adds an action that takes
+<code>spaceId</code> from the client and forwards it to one of those helpers. It
+reads exactly like the existing code. It type-checks. It passes review. And it
+hands any logged-in user the contents of any other user's space.</p>
+
+<p>Nothing in the type system distinguishes a <code>spaceId</code> that came from
+a session from one that came from a request body. <strong>That is the real
+lesson: the invariant is currently held by comments and habit, not by the
+compiler.</strong></p>
+
+<h2>Check your model</h2>
+
+<div class="quiz" data-answer="session">
+  <p class="quiz-q"><span class="n">01</span>You need to show a user their own reports list on a page. Which client reads the rows?</p>
+  <div class="quiz-choices">
+    <button data-choice="session">Session client</button>
+    <button data-choice="admin">The admin client</button>
+  </div>
+  <div class="quiz-fb" data-for="session"><p><strong>Right.</strong> RLS already scopes it to them, so the session client is both simpler and safe. Reaching for admin here would work identically in testing and leak everything the first time a filter was wrong.</p></div>
+  <div class="quiz-fb" data-for="admin"><p><strong>No.</strong> This is the most common way the boundary dies: admin works, so it gets used. But now correctness depends on your <code>.eq()</code> being right rather than on the policy — you have opted out of the protection for no gain.</p></div>
+</div>
+
+<div class="quiz" data-answer="admin">
+  <p class="quiz-q"><span class="n">02</span>A nightly cron must email every opted-in space's owner. Which client reads the spaces?</p>
+  <div class="quiz-choices">
+    <button data-choice="session">Session client</button>
+    <button data-choice="admin">The admin client</button>
+  </div>
+  <div class="quiz-fb" data-for="admin"><p><strong>Right</strong> — and note <em>why</em> it is safe: there is no user, so there is no user to impersonate. The cron legitimately acts for everyone. Its protection is the Bearer token at the top of the handler, not RLS.</p></div>
+  <div class="quiz-fb" data-for="session"><p><strong>Not possible.</strong> A cron has no session, so <code>auth.uid()</code> is null and every policy evaluates false. You would read zero rows and quietly send zero emails — a failure that looks exactly like "nobody owed anything."</p></div>
+</div>
+
+<div class="quiz" data-answer="rejectit">
+  <p class="quiz-q"><span class="n">03</span>A new server action receives <code>spaceId</code> from a hidden form field and passes it to an admin-backed send helper. Your review?</p>
+  <div class="quiz-choices">
+    <button data-choice="rejectit">Reject the change</button>
+    <button data-choice="acceptit">Accept the change</button>
+  </div>
+  <div class="quiz-fb" data-for="rejectit"><p><strong>Right.</strong> A hidden field is attacker-controlled — it is a value the caller chose. Change one character of it and you are mailing someone else's finances to yourself. The fix is one line: ignore the field, resolve the space from the session.</p></div>
+  <div class="quiz-fb" data-for="acceptit"><p><strong>This is the bug.</strong> It looks fine because every existing call site looks like this too — but theirs get <code>spaceId</code> from <code>requireSession</code>. Same variable name, same type, opposite trust. That is why the compiler cannot help you here.</p></div>
+</div>
+
+<div class="quiz" data-answer="unsetfail">
+  <p class="quiz-q"><span class="n">04</span><code>CRON_SECRET</code> is missing from the environment. What should the auth check do with a request?</p>
+  <div class="quiz-choices">
+    <button data-choice="unsetfail">Authorize nothing</button>
+    <button data-choice="unsetpass">Skip the check</button>
+  </div>
+  <div class="quiz-fb" data-for="unsetfail"><p><strong>Right</strong> — fail closed, which is what <code>isAuthorizedCron</code> does. A missing variable becomes a broken cron you notice, instead of an open endpoint you don't.</p></div>
+  <div class="quiz-fb" data-for="unsetpass"><p><strong>No — and this exact bug is common.</strong> If the secret is undefined, the expected header becomes the literal string <code>"Bearer undefined"</code>, which anyone can send. A config mistake silently becomes a public endpoint.</p></div>
+</div>
+
+<p class="quiz-score" data-quiz-score></p>
+
+<h2>What this codebase already gets right</h2>
+
+<p>Worth knowing, because these are the ones people usually get wrong:</p>
+
+<ul>
+  <li><strong>The proxy calls <code>getUser()</code>, not <code>getSession()</code>.</strong> This is the single most common Supabase/Next.js security mistake. Supabase says to "never trust <code>getSession()</code> inside server code" — it reads from storage without revalidating the token. You are on the right side of it.</li>
+  <li><strong><code>is_active_member</code> is <code>SECURITY DEFINER STABLE</code> with <code>search_path = public</code> pinned.</strong> Without that pin, a caller who controls their own <code>search_path</code> can point the function at a table they wrote.</li>
+  <li><strong>The cron check uses <code>timingSafeEqual</code>.</strong> A naive <code>===</code> returns faster on an early mismatch, which leaks the secret one byte at a time.</li>
+  <li><strong>Log and report tables have no write policies at all.</strong> A compromised browser cannot forge rows into them, because there is no policy under which a browser may write.</li>
+  <li><strong>The storage bucket is private with deny-all, read through 5-minute signed URLs.</strong> A leaked URL expires before it is worth anything.</li>
+  <li><strong>Google OAuth only.</strong> No password hashes to leak, no reset flow to attack. The whole category is absent by construction.</li>
+</ul>
+
+<h2>What could be better</h2>
+
+<ol>
+  <li><strong>Nothing rate-limits the email actions.</strong> An authenticated user can call the test-alert button in a loop and send unbounded mail through your Hostinger SMTP. The realistic damage is your sending reputation and possibly the account. This is the most concrete gap in the app today.</li>
+  <li><strong>No security headers.</strong> <code>next.config.ts</code> sets none — no CSP, no <code>X-Frame-Options</code>, no <code>Referrer-Policy</code>. A finance app that can be framed is a clickjacking target.</li>
+  <li><strong>The <code>spaceId</code> invariant is unenforced.</strong> Splitting the send helpers into a session-scoped entry point that takes no <code>spaceId</code> and a cron-scoped one that does would make the dangerous call impossible to write.</li>
+</ol>
+
+<div class="footer">
+  <h3>Read next</h3>
+  <ul>
+    <li><strong>Primary source:</strong> <a href="https://supabase.com/docs/guides/database/postgres/row-level-security">Supabase — Row Level Security</a> — the policy model itself, from the people who built this integration.</li>
+    <li><a href="https://supabase.com/docs/guides/api/api-keys">Supabase — API keys</a> — the <code>BYPASSRLS</code> warning, in their words.</li>
+    <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html">OWASP — Authorization Cheat Sheet</a> — "deny by default" and "enforce authorization at a trusted layer" are this lesson, stated generally.</li>
+  </ul>
+
+  <h3>In this workspace</h3>
+  <ul>
+    <li><a href="../reference/two-clients.html">Reference card: Which client?</a> — the decision procedure, prints on one page.</li>
+    <li><code>docs/adr/0003-the-database-is-the-security-boundary.md</code> — the invariant, and the three ways of enforcing it that were rejected.</li>
+    <li><code>docs/adr/0004-every-api-route-authenticates-itself.md</code> — why <code>/api</code> stands outside the proxy.</li>
+    <li><a href="0001-freeze-or-follow.html">Lesson 01 — Freeze or Follow</a></li>
+  </ul>
+
+  <div class="ask">
+    <p><strong>Stuck on something, or disagree?</strong> Ask me. I'm your teacher
+    here, not just the thing that generated the page. The argument worth having:
+    <em>is the branded-type idea in ADR-0003 worth the ceremony, or is a comment
+    genuinely enough for a one-person codebase?</em> I gave a position in the
+    ADR. Push on it.</p>
+  </div>
+</div>
+
+<script src="../assets/quiz.js"></script>
+</div>
+</body>
+</html>
