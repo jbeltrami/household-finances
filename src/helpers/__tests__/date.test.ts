@@ -25,7 +25,10 @@ describe("previousYmd", () => {
     expect(previousYmd("2026-03-01")).toBe("2026-02-28");
   });
 
-  it("returns the input unchanged when it is not a date", () => {
-    expect(previousYmd("nonsense")).toBe("nonsense");
+  // The cutoff is compared against every Obrigação's date, and digits sort
+  // before letters — so passing a non-date through would make "2026-12-31 <=
+  // nonsense" true and report the whole month as Vencida.
+  it("throws rather than pass a non-date through as a cutoff", () => {
+    expect(() => previousYmd("nonsense")).toThrow("Not a date");
   });
 });

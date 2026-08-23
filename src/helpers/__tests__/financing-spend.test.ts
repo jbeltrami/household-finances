@@ -66,7 +66,7 @@ describe("buildFinancingSpendRows", () => {
       // stays in string space rather than parsing Dates. It does not, and
       // mutation testing said so: both sides of a date-only comparison parse
       // to UTC midnight, so `new Date(a) <= new Date(b)` is symmetric with
-      // `a <= b`. The UTC trap CLAUDE.md warns about bites on *formatting* —
+      // `a <= b`. The UTC trap bites on *formatting* —
       // rendering "2026-06-08" as 07/06 in São Paulo — not on comparing.
       // String comparison is still what this code does, because it is
       // simpler and allocates nothing; it just is not load-bearing here.

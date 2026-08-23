@@ -1,6 +1,6 @@
 // Non-"use server" helpers for the monthly-view actions. A `"use server"`
 // file may only export async functions, so the type and the read that goes
-// with it live here. See CLAUDE.md → "`use server` files only export async
+// with it live here, because a `use server` file may only export async
 // functions".
 
 import type { SupabaseClient } from "@supabase/supabase-js";

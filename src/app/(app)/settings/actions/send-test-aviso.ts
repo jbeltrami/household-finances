@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/helpers/session";
 import { todayYmd } from "@/helpers/date";
-import { settingsUrl } from "@/helpers/paths";
+import { baseUrlFrom, settingsUrl } from "@/helpers/paths";
 import { performOverdueAvisoSend } from "@/lib/email/send-overdue-aviso";
 import type { TestAvisoResult } from "../_types";
 
@@ -26,17 +26,17 @@ export async function sendTestAviso(): Promise<TestAvisoResult> {
     const { spaceId } = await requireSession(supabase);
 
     const headersList = await headers();
-    const host = headersList.get("host");
-    if (!host) return { kind: "error", message: "Cabeçalho host ausente" };
-    const proto =
-      headersList.get("x-forwarded-proto") ??
-      (host.startsWith("localhost") ? "http" : "https");
+    const baseUrl = baseUrlFrom(
+      headersList.get("host"),
+      headersList.get("x-forwarded-proto")
+    );
+    if (!baseUrl) return { kind: "error", message: "Cabeçalho host ausente" };
 
     const admin = createAdminClient();
     const result = await performOverdueAvisoSend(
       admin,
       spaceId,
-      `${proto}://${host}`,
+      baseUrl,
       todayYmd()
     );
 

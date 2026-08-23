@@ -80,6 +80,14 @@ describe("renderOverdueAvisoEmail", () => {
 
   it("uses the singular phrasing for a single Obrigação", async () => {
     const { text } = await render({ rows: [rows[0]], total: 470 });
-    expect(text).toContain("uma conta vencida");
+    expect(text).toContain("um pagamento vencido");
+  });
+
+  // The list mixes Contas and parcelas, and CONTEXT.md is explicit that a
+  // Financiamento is not a Conta — so the lead sentence cannot call them all
+  // contas just because most of them usually are.
+  it("does not call the whole list Contas", async () => {
+    const { text } = await render();
+    expect(text).not.toContain("contas vencidas");
   });
 });

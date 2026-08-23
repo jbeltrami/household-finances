@@ -16,7 +16,7 @@ export async function createFinancing(
 
   // Generated client-side so we don't need a .select() after insert (which
   // RLS would evaluate against the SELECT policy) — see the chicken-and-egg
-  // gotcha in CLAUDE.md.
+  // gotcha: `redirect()` throws a sentinel, so catching it reads as failure.
   let newId = "";
 
   try {

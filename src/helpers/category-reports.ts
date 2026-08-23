@@ -2,7 +2,7 @@
 //
 // Kept in its own file (rather than added to `reports.ts`) so callers can
 // import without dragging the @react-pdf/renderer chain in via the
-// monthly-report machinery. See CLAUDE.md → "@react-pdf/renderer is
+// monthly-report machinery. @react-pdf/renderer is
 // server-only" for why that footgun matters.
 //
 // Split into a thin fetch and a pure fold. Everything worth protecting is in

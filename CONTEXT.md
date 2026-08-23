@@ -3,7 +3,7 @@
 A personal monthly finance planner. Each user tracks what comes in, what goes
 out, and what's left — one month at a time. This file defines the shared
 vocabulary; it is a glossary and nothing else. Implementation lives in
-`CLAUDE.md`.
+the code, the ADRs under `docs/adr/`, and `README.md`.
 
 The user interface is Portuguese; the code is English. Several concepts
 therefore carry two names, and the pairing is not always obvious. Both are

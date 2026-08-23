@@ -143,7 +143,11 @@ export function dayOfMonthFromYmd(ymd: string): number | null {
 // runs somewhere the date arithmetic crosses a DST boundary.
 export function previousYmd(ymd: string): string {
   const parts = parseYearMonthFromYmd(ymd);
-  if (!parts) return ymd;
+  // Throw rather than pass the input through. This value becomes the cutoff
+  // every Obrigação is compared against, and digits sort before letters, so
+  // a returned "nonsense" would satisfy `date <= cutoff` for every row in the
+  // month — future ones included. A silent fallback here is an alert storm.
+  if (!parts) throw new Error(`Not a date: ${ymd}`);
   const d = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
   d.setUTCDate(d.getUTCDate() - 1);
   const yyyy = String(d.getUTCFullYear()).padStart(4, "0");

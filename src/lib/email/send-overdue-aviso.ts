@@ -90,9 +90,11 @@ export async function performOverdueAvisoSend(
   });
 
   // A receipt, written only after the send succeeded. Configurações shows it
-  // so that silence can be told apart from breakage; nothing above reads it.
-  // A failed send therefore leaves it untouched and tomorrow simply tries
-  // again, which is the whole retry story.
+  // so that silence can be told apart from breakage; nothing above reads it,
+  // and per docs/adr/0002-avisos-are-stateless-and-repeat-daily.md nothing
+  // ever may — consulting it to decide whether to send is the design that ADR
+  // rejects. A failed send therefore leaves it untouched and tomorrow simply
+  // tries again, which is the whole retry story.
   await admin
     .from("notification_settings")
     .upsert(

@@ -149,9 +149,11 @@ export default function OverdueAvisoEmail({
           <Heading style={headingStyle}>Pagamentos vencidos</Heading>
           <Text style={textStyle}>Olá {userName},</Text>
           <Text style={textStyle}>
+            {/* Not "contas": the list mixes Contas and parcelas de
+                Financiamento, and a parcela is not a Conta. */}
             {rows.length === 1
-              ? "Você tem uma conta vencida ainda em aberto:"
-              : `Você tem ${rows.length} contas vencidas ainda em aberto:`}
+              ? "Você tem um pagamento vencido ainda em aberto:"
+              : `Você tem ${rows.length} pagamentos vencidos ainda em aberto:`}
           </Text>
 
           <Section style={listStyle}>

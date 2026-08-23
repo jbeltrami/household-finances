@@ -109,7 +109,7 @@ Open [http://localhost:3000](http://localhost:3000). All routes are protected �
 
 ## Architecture and conventions
 
-Developer-facing details — the ledger data model, virtual template expansion, the Supabase client split (browser / server / admin), RLS patterns, route layout conventions, common gotchas — live in [`CLAUDE.md`](./CLAUDE.md).
+Developer-facing details live in the code itself. `CONTEXT.md` defines the domain vocabulary, `docs/adr/` records the decisions that would otherwise look arbitrary, and `history.md` covers how the schema got here.
 
 ### Adding a new API route
 

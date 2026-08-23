@@ -44,3 +44,21 @@ export function financingNewUrl(): string {
 export function financingDetailUrl(id: string): string {
   return `/financing/${id}`;
 }
+
+// The absolute origin to build links against, from an inbound request's
+// headers. Emails carry absolute URLs, so every sender needs this and each
+// one was deriving it again — with the copies already disagreeing about the
+// fallback protocol.
+//
+// Returns null rather than throwing on a missing host: a cron answers that
+// with a 400 and a server action with an inline error, and the difference
+// belongs to them.
+export function baseUrlFrom(
+  host: string | null,
+  forwardedProto: string | null
+): string | null {
+  if (!host) return null;
+  const proto =
+    forwardedProto ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}

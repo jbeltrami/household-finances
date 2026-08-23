@@ -4,6 +4,7 @@ import { isAuthorizedCron } from "@/lib/cron";
 import { performReportGeneration } from "@/helpers/reports";
 import { performMonthlyReportSend } from "@/lib/email/send-monthly-report";
 import { addMonthsYm, currentYearMonth } from "@/helpers/date";
+import { baseUrlFrom } from "@/helpers/paths";
 
 // Vercel Cron entry point — fires at 11:00 UTC on the 1st of each
 // month (08:00 São Paulo). Generates and emails the previous month's
@@ -42,15 +43,13 @@ export async function GET(request: NextRequest) {
   );
   const optInSpaces = (allSpaces ?? []).filter((s) => !optedOutSet.has(s.id));
 
-  const host = request.headers.get("host");
-  if (!host) {
-    return Response.json(
-      { error: "Missing host header" },
-      { status: 400 }
-    );
+  const baseUrl = baseUrlFrom(
+    request.headers.get("host"),
+    request.headers.get("x-forwarded-proto")
+  );
+  if (!baseUrl) {
+    return Response.json({ error: "Missing host header" }, { status: 400 });
   }
-  const proto = request.headers.get("x-forwarded-proto") ?? "https";
-  const baseUrl = `${proto}://${host}`;
 
   let generated = 0;
   let sent = 0;

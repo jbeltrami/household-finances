@@ -12,7 +12,7 @@ type Props = {
 
 // "YYYY-MM-DD" formatted without ever constructing a Date. Parsing one would
 // read the string as UTC midnight, which in São Paulo renders as the previous
-// day — the trap CLAUDE.md calls out for every date-only column.
+// day — the trap that bites every date-only column in this app.
 const MONTHS = [
   "jan", "fev", "mar", "abr", "mai", "jun",
   "jul", "ago", "set", "out", "nov", "dez",

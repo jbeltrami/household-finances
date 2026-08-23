@@ -2,7 +2,7 @@
 //
 // Kept out of `reports.ts` so callers — and tests — can reach it without
 // dragging the @react-pdf/renderer chain in behind it. Same reason
-// `category-reports.ts` sits apart. See CLAUDE.md → "@react-pdf/renderer
+// `category-reports.ts` sits apart. @react-pdf/renderer
 // is server-only".
 
 import { addMonthsYm } from "./date";

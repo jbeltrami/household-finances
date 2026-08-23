@@ -26,8 +26,9 @@ template.
 
 **Copy at materialization, then cascade on template edit.** Keeps aggregation a
 single-table read, but reintroduces exactly the cascade step the ledger model
-was built to eliminate (see CLAUDE.md → "Template edits flow through virtual
-occurrences for free"), and a cascade that misses a row corrupts history
+was built to eliminate — a template edit already reaches every unpaid,
+non-overridden occurrence for free, because those are computed from the
+template at query time — and a cascade that misses a row corrupts history
 silently.
 
 **Snapshot the category name as text, as the pre-migration schema did.** History

@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/helpers/session";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { reportsUrl } from "@/helpers/paths";
+import { baseUrlFrom, reportsUrl } from "@/helpers/paths";
 import { performMonthlyReportSend } from "@/lib/email/send-monthly-report";
 
 // Manual "Send by email" button on the reports page. Validates the
@@ -37,12 +37,11 @@ export async function sendMonthlyReportEmail(reportId: string) {
 
   // Derive absolute URLs from the inbound request's host header.
   const headersList = await headers();
-  const host = headersList.get("host");
-  if (!host) throw new Error("Cabeçalho host ausente");
-  const proto =
-    headersList.get("x-forwarded-proto") ??
-    (host.startsWith("localhost") ? "http" : "https");
-  const baseUrl = `${proto}://${host}`;
+  const baseUrl = baseUrlFrom(
+    headersList.get("host"),
+    headersList.get("x-forwarded-proto")
+  );
+  if (!baseUrl) throw new Error("Cabeçalho host ausente");
 
   const admin = createAdminClient();
   await performMonthlyReportSend(admin, reportId, baseUrl);

@@ -14,7 +14,8 @@
 //
 // That the row is proof matters beyond tidiness: several actions go on to
 // use the admin client, which bypasses RLS entirely, and this check is what
-// stands in front of them. See CLAUDE.md → "Admin client bypasses RLS".
+// stands in front of them. The admin client bypasses RLS entirely, so it is
+// only safe once a user-session client has established ownership.
 
 import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -53,7 +54,7 @@ export async function resolveSession(
 }
 
 // For actions invoked through a transition, which have no state surface to
-// render an error against and so throw. See CLAUDE.md → "Server actions
+// render an error against and so throw. Actions reached through useActionState
 // return state, don't throw" for which is which.
 export async function requireSession(
   supabase: SupabaseClient

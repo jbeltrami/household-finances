@@ -3,6 +3,7 @@ import { isAuthorizedCron } from "@/lib/cron";
 import { performOverdueAvisoSend } from "@/lib/email/send-overdue-aviso";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { todayYmd } from "@/helpers/date";
+import { baseUrlFrom } from "@/helpers/paths";
 
 // Vercel Cron entry point — fires at 11:00 UTC daily (08:00 São Paulo).
 // Emails every opted-in space's owner the Obrigações that are Vencida:
@@ -20,12 +21,13 @@ export async function GET(request: NextRequest) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const host = request.headers.get("host");
-  if (!host) {
+  const baseUrl = baseUrlFrom(
+    request.headers.get("host"),
+    request.headers.get("x-forwarded-proto")
+  );
+  if (!baseUrl) {
     return Response.json({ error: "Missing host header" }, { status: 400 });
   }
-  const proto = request.headers.get("x-forwarded-proto") ?? "https";
-  const baseUrl = `${proto}://${host}`;
 
   // One clock reading for the whole run, so a run spanning midnight can't
   // summarise one space as of today and the next as of tomorrow.
@@ -45,10 +47,20 @@ export async function GET(request: NextRequest) {
 
   // Absence of a settings row means enabled, so the filter is every space
   // minus the ones that explicitly opted out.
-  const { data: optedOut } = await admin
+  const { data: optedOut, error: optedOutError } = await admin
     .from("notification_settings")
     .select("space_id")
     .eq("overdue_aviso_enabled", false);
+
+  // Fail closed. An unchecked error here leaves the opt-out set empty, which
+  // reads as "nobody opted out" and mails everyone who ever switched Avisos
+  // off — every day, since this run has no idempotency to stop it repeating.
+  if (optedOutError) {
+    return Response.json(
+      { error: `Failed to read opt-outs: ${optedOutError.message}` },
+      { status: 500 }
+    );
+  }
 
   const optedOutSet = new Set((optedOut ?? []).map((r) => r.space_id as string));
   const optInSpaces = (allSpaces ?? []).filter((s) => !optedOutSet.has(s.id));
@@ -77,6 +89,9 @@ export async function GET(request: NextRequest) {
   return Response.json({
     runDate: today,
     spaces: optInSpaces.length,
+    // Two different silences, reported separately: opted out never enters the
+    // loop, empty went through it and found the month clean.
+    optedOut: optedOutSet.size,
     sent,
     empty,
     failed,
