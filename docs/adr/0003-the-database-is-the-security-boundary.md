@@ -36,9 +36,21 @@ server actions resolve the space from the session.
 
 This is the sharp edge. A future action that accepts `spaceId` as a parameter
 from the client and forwards it to either helper reads exactly like the existing
-code, passes review, type-checks, and hands any authenticated user the contents
-of any other user's space. Nothing in the type system distinguishes a `spaceId`
-that came from a session from one that came from a request body.
+code, passes review and type-checks. Nothing in the type system distinguishes a
+`spaceId` that came from a session from one that came from a request body.
+
+What that costs depends on what the helper does with the space, and for these
+two it is worth being exact rather than alarming. Both derive their recipient
+from `spaces.created_by` and mail the space's **owner**. So a forged `spaceId`
+sends a stranger an email full of their own data: an unsolicited-mail and
+harassment vector, and a way to burn the SMTP budget, but not a disclosure —
+the caller never sees the contents.
+
+The disclosure version is the one that has not been written yet: any
+admin-backed helper that **returns** data to its caller rather than mailing it
+to a third party. `getSpaceSummary(admin, spaceId)` would leak outright. The
+invariant exists to make that helper safe on the day someone writes it, not
+because the two that exist today are dangerous in that way.
 
 `download-report` shows the shape to copy: it resolves the report through the
 **user-session** client, so RLS decides whether that row is visible at all, and

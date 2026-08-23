@@ -94,8 +94,15 @@ push the obligation onto their caller, in a comment.</p>
 
 <p>Now picture the change that breaks it. Someone adds an action that takes
 <code>spaceId</code> from the client and forwards it to one of those helpers. It
-reads exactly like the existing code. It type-checks. It passes review. And it
-hands any logged-in user the contents of any other user's space.</p>
+reads exactly like the existing code. It type-checks. It passes review.</p>
+
+<p>Be exact about the damage, though. Both helpers mail the space's
+<strong>owner</strong>, so a forged <code>spaceId</code> sends a stranger their
+own data — unsolicited mail and a wasted SMTP budget, not a disclosure. The
+caller never sees anything. The version that would leak outright is the one
+nobody has written yet: an admin-backed helper that <em>returns</em> data to its
+caller. The invariant is there to make <em>that</em> function safe on the day it
+is written.</p>
 
 <p>Nothing in the type system distinguishes a <code>spaceId</code> that came from
 a session from one that came from a request body. <strong>That is the real
@@ -130,7 +137,7 @@ compiler.</strong></p>
     <button data-choice="rejectit">Reject the change</button>
     <button data-choice="acceptit">Accept the change</button>
   </div>
-  <div class="quiz-fb" data-for="rejectit"><p><strong>Right.</strong> A hidden field is attacker-controlled — it is a value the caller chose. Change one character of it and you are mailing someone else's finances to yourself. The fix is one line: ignore the field, resolve the space from the session.</p></div>
+  <div class="quiz-fb" data-for="rejectit"><p><strong>Right.</strong> A hidden field is attacker-controlled — it is a value the caller chose. Change one character of it and you are mailing a stranger unsolicited email on your schedule. The fix is one line: ignore the field, resolve the space from the session.</p></div>
   <div class="quiz-fb" data-for="acceptit"><p><strong>This is the bug.</strong> It looks fine because every existing call site looks like this too — but theirs get <code>spaceId</code> from <code>requireSession</code>. Same variable name, same type, opposite trust. That is why the compiler cannot help you here.</p></div>
 </div>
 
