@@ -83,6 +83,40 @@ is Categoria, while the word is equally reachable for the institution, which is
 Pagador. It cannot name one without being misread as the other, so it names
 neither.
 
+**Projeto** (code: _project_):
+A finite, named effort that money is spent toward — Reforma da casa, Viagem
+à Espanha — planned before it is paid for and meant to end. A Categoria is
+permanent and answers what kind of money it was; a Projeto is temporary and
+answers what the money was for, so one flow can carry both.
+_Avoid_: Obra, meta, objetivo, iniciativa
+
+**Item** (code: _budget line_):
+A division of a Projeto's Orçamento, scoped to that Projeto and meaningless
+outside it — Mão de obra, Materiais, Passagens. An Item may carry a Categoria
+that its spending inherits, so money inside a Projeto is never classified
+twice.
+_Avoid_: Rubrica, etapa, frente, linha
+
+**Orçamento** (code: _project budget_):
+What a Projeto plans to spend, as the sum of its Items. It is revisable, and
+every change to the total is recorded with its date, so a Projeto can always
+report what it first expected to cost alongside what it expects now.
+_Avoid_: Budget, meta, previsão, estimativa
+
+**Comprometido**:
+Money a Projeto can no longer spend: what it has already paid, plus the
+Obrigações it still owes whether or not they have left the account. An
+Orçamento is consumed by Comprometido and not by what was paid, because a sofa
+bought em 10x is spent on the day it is bought.
+_Avoid_: Alocado, reservado, committed, gasto previsto
+
+**Arquivado**:
+The state of a Projeto the user has finished with. Arquivado is a visibility
+state and never a money state: it drops the Projeto from the pickers and
+changes no figure anywhere, so a Projeto archived with budget left unspent
+keeps reporting it as unspent.
+_Avoid_: Concluído, encerrado, fechado, closed
+
 **Saldo**:
 What's left after everything. Scoped to all three flows: Receitas minus Contas
 minus Despesas. Appears in two forms — _Saldo esperado_ (the whole month as
