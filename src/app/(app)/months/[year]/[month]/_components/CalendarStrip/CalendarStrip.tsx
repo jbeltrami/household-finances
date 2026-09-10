@@ -139,6 +139,23 @@ export default function CalendarStrip({
           const isHighlighted =
             cell.inCurrentMonth && highlightedDay === cell.day;
 
+          // The dots are decoration, and what they mean has to reach the
+          // button's accessible name as real text. `aria-label` could not do
+          // that job where it used to sit: naming is prohibited on the
+          // generic role a bare <span> has, so those labels were not reliably
+          // exposed and each day announced nothing but its own number —
+          // losing Vencida, the app's one urgency signal, entirely.
+          const marks = [
+            hasOutflow
+              ? hasOverdue
+                ? "tem contas vencidas em aberto"
+                : "tem contas ou despesas"
+              : null,
+            hasIncome ? "tem receita esperada" : null,
+          ]
+            .filter(Boolean)
+            .join(", ");
+
           if (!cell.inCurrentMonth) {
             return (
               <div
@@ -170,25 +187,21 @@ export default function CalendarStrip({
               >
                 {cell.day}
               </span>
-              <div className="mt-0.5 flex h-1.5 items-center justify-center gap-0.5">
+              {marks && <span className="sr-only">{marks}</span>}
+              <div
+                aria-hidden="true"
+                className="mt-0.5 flex h-1.5 items-center justify-center gap-0.5"
+              >
                 {hasOutflow && (
                   <span
                     className={
                       "h-1 w-1 rounded-full " +
                       (hasOverdue ? "bg-danger" : "bg-accent")
                     }
-                    aria-label={
-                      hasOverdue
-                        ? "Tem contas vencidas em aberto"
-                        : "Tem contas ou despesas"
-                    }
                   />
                 )}
                 {hasIncome && (
-                  <span
-                    className="h-1 w-1 rounded-full bg-accent"
-                    aria-label="Tem receita esperada"
-                  />
+                  <span className="h-1 w-1 rounded-full bg-accent" />
                 )}
               </div>
             </button>
