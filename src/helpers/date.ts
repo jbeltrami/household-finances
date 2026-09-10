@@ -1,3 +1,5 @@
+import type { DayRange } from "./day-range";
+
 // Today's date as a "YYYY-MM-DD" string in the server's local timezone.
 // Used for string-comparison against Postgres `date` columns (which come
 // back as "YYYY-MM-DD") without going through Date parsing and its
@@ -112,6 +114,24 @@ export function formatDayLabel(
     day: "numeric",
     month: "long",
   }).format(new Date(year, month - 1, day));
+}
+
+// A Período within a month as a human-readable Brazilian Portuguese label,
+// e.g. (2026, 9, { from: 10, to: 15 }) -> "10 a 15 de setembro". A Período
+// never spans two months, so the month is named once, at the end, where it
+// reads as belonging to the whole span.
+//
+// Collapses to the single-day form when the ends coincide, which is not a
+// special case so much as the same sentence with nothing to join: a Período
+// of one day is the degenerate one, not a separate mode.
+export function formatRangeLabel(
+  year: number,
+  month: number,
+  range: DayRange
+): string {
+  const end = formatDayLabel(year, month, range.to);
+  if (range.from === range.to) return end;
+  return `${range.from} a ${end}`;
 }
 
 // Default "YYYY-MM-DD" date for a create-form whose page is viewing the

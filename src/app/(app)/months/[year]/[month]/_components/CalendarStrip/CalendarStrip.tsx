@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { monthUrl } from "@/helpers/paths";
 import { formatMonthLabel } from "@/helpers/date";
+import { isInRange, type DayRange } from "@/helpers/day-range";
 import Card from "@/components/Card";
 import {
   capitalize,
@@ -12,7 +13,7 @@ import {
   prevMonth,
   type YearMonth,
 } from "../../_helpers";
-import { buildCalendarGrid } from "./_helpers";
+import { buildCalendarGrid, CALENDAR_DAY_ATTR } from "./_helpers";
 
 // Monday-first to match the mockup. Brazilian-Portuguese 3-letter labels.
 const DAY_HEADERS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -25,7 +26,7 @@ type Props = {
   daysWithOverdueBills: number[];
   daysWithIncome: number[];
   daysWithExpenses: number[];
-  highlightedDay: number | null;
+  highlightedRange: DayRange | null;
   onSelectDay: (day: number) => void;
 };
 
@@ -37,7 +38,7 @@ export default function CalendarStrip({
   daysWithOverdueBills,
   daysWithIncome,
   daysWithExpenses,
-  highlightedDay,
+  highlightedRange,
   onSelectDay,
 }: Props) {
   const router = useRouter();
@@ -136,8 +137,20 @@ export default function CalendarStrip({
             cell.inCurrentMonth && daysWithOverdueBillsSet.has(cell.day);
           const hasIncome =
             cell.inCurrentMonth && daysWithIncomeSet.has(cell.day);
-          const isHighlighted =
-            cell.inCurrentMonth && highlightedDay === cell.day;
+          // Three states, not two: inside the Período, and — within that —
+          // one of its ends. A span has to read as a span rather than as a
+          // row of unrelated marks, so every day in it is tinted and the two
+          // ends carry a ring on top of that. All of it in the accent the
+          // selected day already used; this spends no red, because red on an
+          // aggregate means outflow and red on a row means Vencida, and a
+          // selection is neither.
+          const inRange =
+            cell.inCurrentMonth && isInRange(highlightedRange, cell.day);
+          const isRangeEnd =
+            inRange &&
+            highlightedRange !== null &&
+            (cell.day === highlightedRange.from ||
+              cell.day === highlightedRange.to);
 
           // The dots are decoration, and what they mean has to reach the
           // button's accessible name as real text. `aria-label` could not do
@@ -172,17 +185,42 @@ export default function CalendarStrip({
               key={i}
               type="button"
               onClick={() => onSelectDay(cell.day)}
-              aria-pressed={isHighlighted}
-              className="group flex h-12 flex-col items-center justify-center rounded-lg transition-colors hover:bg-surface-2"
+              {...{ [CALENDAR_DAY_ATTR]: cell.day }}
+              /*
+                No `aria-pressed`. ARIA defines it for a toggle button, where
+                activating it once sets it and activating it again unsets it —
+                and a day in the middle of a Período is neither independent of
+                the other days nor un-pressable on its own, so the attribute
+                would assert something false. Saying it properly means
+                `aria-selected` on a `gridcell`, which is a grid this calendar
+                does not have; adopting grid semantics is out of scope by
+                decision, and asserting nothing beats asserting wrongly.
+              */
+              className={
+                "group flex h-12 flex-col items-center justify-center rounded-lg transition-colors " +
+                // The hover tint is conditional rather than unconditional
+                // because `hover:bg-surface-2` outranks a plain `bg-*` on
+                // specificity whatever order they sit in the string — so an
+                // unconditional one repaints a day in the Período as though it
+                // were outside for as long as the cursor is on it.
+                (inRange
+                  ? "bg-accent-soft " +
+                    (isRangeEnd ? "ring-2 ring-inset ring-accent" : "")
+                  : "hover:bg-surface-2")
+              }
             >
+              {/*
+                The circle says only whether the day is today, exactly as it
+                did before. The selection is drawn on the cell around it — the
+                tint for membership, the ring for an end — so the two never
+                compete for the same pixels: a day that is both today and an
+                end of the Período used to render as plain today, because
+                whichever branch won the cascade erased the other.
+              */}
               <span
                 className={
                   "flex h-8 w-8 items-center justify-center rounded-full text-sm transition-colors " +
-                  (isToday
-                    ? "bg-accent text-white font-semibold"
-                    : isHighlighted
-                    ? "ring-2 ring-accent text-fg"
-                    : "text-fg")
+                  (isToday ? "bg-accent text-white font-semibold" : "text-fg")
                 }
               >
                 {cell.day}

@@ -21,6 +21,85 @@ Destination below as history, not as the current plan.
 tests), `formatDayLabel` in `src/helpers/date.ts`, and
 `_components/DayTotalCard/DayTotalCard.tsx` mounted under `SaldoCard`.
 
+## Redrawn again — 2026-09-10: the Período
+
+The day became a **Período**: a stretch of consecutive days inside one month,
+selected by clicking two days on the calendar. A single day is a Período whose
+ends coincide, so nothing about today's behaviour is lost — it is the degenerate
+case, not a separate mode.
+
+Settled in a second grilling session and broken into three build tickets in
+`tickets/` (distinct from `issues/`, which holds the resolved decision tickets
+from the first session):
+
+1. [The Período in the domain](tickets/01-the-periodo-in-the-domain.md) — the
+   glossary entry, the fold narrowed to a Período, the click rules as a tested
+   reducer. No visible change.
+2. [Selecting two days scopes the view](tickets/02-selecting-two-days-scopes-the-view.md)
+   — the feature, end to end.
+3. [Clearing a Período from the widget](tickets/03-clearing-a-periodo-from-the-widget.md)
+   — an X, and where focus goes when the widget it sits in disappears.
+
+**Built — 2026-09-10.** All three tickets are implemented; typecheck, lint, the
+full suite (277 tests) and `next build` pass.
+
+- `src/helpers/day-range.ts` — the `DayRange` type, `isInRange`, and the
+  `selectDay` reducer carrying all four click rules (+ 12 tests).
+- `summarizeDayObligations` → `summarizeRangeObligations`, its ledger taking
+  `range` rather than `day` (`month-summary.ts`); its tests moved to
+  `range-obligations.test.ts` and grew to 19.
+- `formatRangeLabel` beside `formatDayLabel` in `date.ts` (+ 4 tests).
+- `DayTotalCard/` → `RangeTotalCard/`, now heading with the Período, carrying
+  the X, and widening its `sr-only` sentence.
+- `CalendarStrip` tints every day of the Período with `bg-accent-soft` and gives
+  its two ends an inset accent ring — both on the cell, leaving the inner circle
+  to say only whether the day is today, so today-and-an-end renders as both.
+  The hover tint is conditional, because `hover:bg-surface-2` outranks a plain
+  `bg-*` and would otherwise erase the span under the cursor. `aria-pressed` is
+  gone.
+- The four row components and their three sections take `highlightedRange` and
+  test membership via `isYmdInRange`, which replaced four hand-rolled date
+  parses that returned NaN on a malformed date.
+- `CONTEXT.md` carries the Período entry.
+
+**What the redraw settled** (do not re-litigate):
+
+1. One selection drives both readouts — the widget and the row highlighting.
+   Two independent day-selections on one page would be worse than either.
+2. The figures stay **Obrigações only**. Widening to Despesas would fuse two
+   classes the glossary keeps apart on obligation-vs-discretionary grounds; it
+   remains a separate destination.
+3. A Período is **month-bounded**. Cross-month is the server-side fold from
+   ticket 01 arriving through the back door, and that ticket was settled by the
+   "front-end only" instruction. Revisit that instruction first if wanted.
+4. Clicks: first sets a one-day Período, a second on a different day extends
+   (normalised, so order does not matter), any third restarts from that day, and
+   a lone selected day clears. One rule for the third click, no exceptions.
+5. The copy is unchanged — "*N contas vencem*", no disclaimer. *Vencer* is
+   definitionally inapplicable to a Despesa, so the sentence already excludes
+   what the highlight might otherwise invite a user to read in.
+6. A Período covering the whole month restates the Contas card's own figure, and
+   is left to. Suppressing a correct answer needs a rule that explains itself.
+
+**Accessibility was scoped down by the user** — this app is not publicly
+distributed. What the docs research established, and what was done with it:
+
+- The APG documents **no date-range pattern**, and no date *picker* pattern
+  either — date pickers exist only as examples under Dialog and Combobox, and
+  the W3C issue proposing a pattern was closed without one. There is no
+  conformance target here; the agreement among react-aria, MUI and friends is
+  convention, not correctness.
+- `aria-pressed` **cannot** express membership of a Período. ARIA 1.2 defines it
+  for toggle buttons, where "activating it once changes the value to `true`, and
+  activating it another time changes the value back to `false`" — neither is
+  true of a day in the middle of a span. It comes **off** the day buttons rather
+  than being left to assert something false.
+- Expressing it properly means `aria-selected` on `gridcell`, which the calendar
+  cannot carry: it has no `role="grid"` at all, only a CSS grid of buttons.
+  Adopting grid semantics is **out of scope by decision**, not by oversight.
+- WCAG is **silent** on announcing a half-built range; the reducer produces no
+  half-built state anyway, since every click yields a complete Período.
+
 ## Destination (as originally charted)
 
 Selecting a day in the CalendarStrip scopes the **Contas card** to that day: it

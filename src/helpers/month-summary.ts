@@ -1,4 +1,5 @@
 import { dayOfMonthFromYmd } from "./date";
+import { isYmdInRange, type DayRange } from "./day-range";
 
 // The month's figures: Saldo and the Resumo strip.
 //
@@ -212,44 +213,50 @@ export function monthDayMarkers(ledger: MonthLedger): MonthDayMarkers {
   };
 }
 
-// What one day of the month owes.
+// What a Período of the month owes.
 //
-// The same question `summarizeMonth` asks about Contas, narrowed to a single
-// day and asked the same way, so the two can never disagree about what counts:
-// a parcela de Financiamento is an Obrigação here exactly as it is there, and
-// the day is read off the "YYYY-MM-DD" string rather than parsed into a Date
-// for the reason `dayOfMonthFromYmd` explains.
+// The same question `summarizeMonth` asks about Contas, narrowed to a stretch
+// of days and asked the same way, so the two can never disagree about what
+// counts: a parcela de Financiamento is an Obrigação here exactly as it is
+// there, and the day is read off the "YYYY-MM-DD" string rather than parsed
+// into a Date for the reason `dayOfMonthFromYmd` explains.
 //
-// Deliberately unrecorded. This feeds a widget that appears while a day is
+// Deliberately unrecorded. This feeds a widget that appears while a Período is
 // selected and vanishes when it is not; nothing persists it, no report reads
 // it, and no request is made to produce it.
-export type DayLedger = {
+export type RangeLedger = {
   bills: MonthBill[];
   // Required rather than optional for the same reason it is on MonthLedger:
   // a caller that means to leave parcelas out has to say so with an empty
   // list, which is the difference between a decision and an omission.
   financing: { bills: MonthBill[] };
-  // Day of the month, 1-31. A day the month does not have simply owes
-  // nothing, which is what an out-of-range number returns.
-  day: number;
+  // The two ends of the Período, days of the month, inclusive. Two numbers
+  // rather than a list of days: the selection can only ever be contiguous,
+  // and `from <= to` is an invariant a list could not carry. Days the month
+  // does not have simply owe nothing, which is what an out-of-range end
+  // returns.
+  range: DayRange;
 };
 
 // `total`, `paid` and `remaining` are spelled the same way as the bills figures
-// in MonthTotals, and mean the same thing narrowed to one day, so the widget
+// in MonthTotals, and mean the same thing narrowed to a Período, so the widget
 // and the Resumo strip can be read against each other without translation.
-export type DayObligations = {
+export type RangeObligations = {
   count: number;
   total: number;
   paid: number;
   remaining: number;
 };
 
-export function summarizeDayObligations(ledger: DayLedger): DayObligations {
-  // Everything that falls due on the day, settled or not: the day is a date on
-  // the calendar, not a list of outstanding work, so a Conta already paid still
-  // came due on it. The paid/remaining split below is what separates the two.
-  const due = [...ledger.bills, ...ledger.financing.bills].filter(
-    (b) => dayOfMonthFromYmd(b.date) === ledger.day
+export function summarizeRangeObligations(
+  ledger: RangeLedger
+): RangeObligations {
+  // Everything that falls due in the Período, settled or not: a Período is a
+  // stretch of the calendar, not a list of outstanding work, so a Conta
+  // already paid still came due in it. The paid/remaining split below is what
+  // separates the two.
+  const due = [...ledger.bills, ...ledger.financing.bills].filter((b) =>
+    isYmdInRange(ledger.range, b.date)
   );
 
   const total = sum(due, amountOf);

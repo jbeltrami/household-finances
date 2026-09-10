@@ -11,6 +11,7 @@ import CurrencyInput from "@/components/CurrencyInput/CurrencyInput";
 import { brlFormatter, dateFormatter } from "@/helpers/format";
 import { deleteEntry, updateEntry } from "../../actions";
 import type { EntryRow } from "../../_types";
+import { isYmdInRange, type DayRange } from "@/helpers/day-range";
 
 type Props = {
   expense: EntryRow;                 // template_id is guaranteed null here
@@ -18,7 +19,7 @@ type Props = {
   year: number;
   month: number;
   locked: boolean;
-  highlightedDay: number | null;
+  highlightedRange: DayRange | null;
 };
 
 export default function ExpenseEntryRow({
@@ -27,7 +28,7 @@ export default function ExpenseEntryRow({
   year,
   month,
   locked,
-  highlightedDay,
+  highlightedRange,
 }: Props) {
   void year;
   void month;
@@ -36,9 +37,7 @@ export default function ExpenseEntryRow({
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
-  const expenseDay = parseInt(expense.date.split("-")[2], 10);
-  const isHighlighted =
-    highlightedDay !== null && expenseDay === highlightedDay;
+  const isHighlighted = isYmdInRange(highlightedRange, expense.date);
 
   const [isUpdating, startUpdate] = useTransition();
   const handleUpdate = (formData: FormData) => {

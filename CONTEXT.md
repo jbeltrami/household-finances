@@ -106,6 +106,13 @@ and does not sum to one: _Saldo até o momento_ subtracts Obrigações Vencidas,
 which are only a subset of _Falta pagar_.
 _Avoid_: Summary, overview, balance
 
+**Período** (code: _range_):
+A stretch of consecutive days the user has picked out within one month. A
+Período never spans two months, and a single day is a Período whose ends
+coincide. The month a Período sits in is a *mês*, and is never itself called a
+Período however many days it covers.
+_Avoid_: Intervalo, faixa, janela, period, window, timespan
+
 ## Colour
 
 Colour on aggregate figures encodes **direction of flow**, never good or bad

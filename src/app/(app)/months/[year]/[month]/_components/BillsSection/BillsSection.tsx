@@ -7,13 +7,14 @@ import MortgageBillRow from "../MortgageBillRow/MortgageBillRow";
 import { brlFormatter } from "@/helpers/format";
 import { billsUrl } from "@/helpers/paths";
 import type { BillsGroup, EntryRow, MortgageBillItem } from "../../_types";
+import type { DayRange } from "@/helpers/day-range";
 
 type Props = {
   bills: BillsGroup;
   year: number;
   month: number;
   locked: boolean;
-  highlightedDay: number | null;
+  highlightedRange: DayRange | null;
 };
 
 // Materialized entries use their id; virtual entries have no id so we
@@ -34,7 +35,7 @@ function BillsSubsection({
   year,
   month,
   locked,
-  highlightedDay,
+  highlightedRange,
 }: {
   label: string;
   entries: EntryRow[];
@@ -43,7 +44,7 @@ function BillsSubsection({
   year: number;
   month: number;
   locked: boolean;
-  highlightedDay: number | null;
+  highlightedRange: DayRange | null;
 }) {
   if (entries.length === 0 && mortgages.length === 0) return null;
   return (
@@ -57,7 +58,7 @@ function BillsSubsection({
             key={`fin-${m.financingId}-${m.installmentNumber}`}
             item={m}
             locked={locked}
-            highlightedDay={highlightedDay}
+            highlightedRange={highlightedRange}
           />
         ))}
         {entries.map((e) => (
@@ -67,7 +68,7 @@ function BillsSubsection({
             year={year}
             month={month}
             locked={locked}
-            highlightedDay={highlightedDay}
+            highlightedRange={highlightedRange}
           />
         ))}
         <li className="mt-2 flex items-center justify-between rounded-lg bg-surface-2 px-3 py-2.5 text-sm font-semibold text-fg">
@@ -84,7 +85,7 @@ export default function BillsSection({
   year,
   month,
   locked,
-  highlightedDay,
+  highlightedRange,
 }: Props) {
   const pendingEntries = bills.entries.filter((e) => !e.paid);
   const paidEntries = bills.entries.filter((e) => e.paid);
@@ -118,7 +119,7 @@ export default function BillsSection({
             year={year}
             month={month}
             locked={locked}
-            highlightedDay={highlightedDay}
+            highlightedRange={highlightedRange}
           />
           <BillsSubsection
             label="Pago"
@@ -128,7 +129,7 @@ export default function BillsSection({
             year={year}
             month={month}
             locked={locked}
-            highlightedDay={highlightedDay}
+            highlightedRange={highlightedRange}
           />
         </>
       )}

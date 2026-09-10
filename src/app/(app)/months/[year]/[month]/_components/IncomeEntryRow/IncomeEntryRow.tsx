@@ -15,6 +15,7 @@ import PayerSelect from "@/components/PayerSelect/PayerSelect";
 import PayerChip from "@/components/PayerChip";
 import type { CategoryRow, PayerRow } from "@/helpers/taxonomy";
 import { incomeDisplayLabel } from "@/helpers/format";
+import { isYmdInRange, type DayRange } from "@/helpers/day-range";
 
 type Props = {
   categories: CategoryRow[];
@@ -23,7 +24,7 @@ type Props = {
   year: number;
   month: number;
   locked: boolean;
-  highlightedDay: number | null;
+  highlightedRange: DayRange | null;
 };
 
 export default function IncomeEntryRow({
@@ -33,7 +34,7 @@ export default function IncomeEntryRow({
   year,
   month,
   locked,
-  highlightedDay,
+  highlightedRange,
 }: Props) {
   void year;
   void month;
@@ -42,9 +43,7 @@ export default function IncomeEntryRow({
   const [editing, setEditing] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
 
-  const expectedDay = parseInt(entry.expected_date.split("-")[2], 10);
-  const isHighlighted =
-    highlightedDay !== null && expectedDay === highlightedDay;
+  const isHighlighted = isYmdInRange(highlightedRange, entry.expected_date);
 
   const [isToggling, startToggle] = useTransition();
   const handleToggleReceived = () => {

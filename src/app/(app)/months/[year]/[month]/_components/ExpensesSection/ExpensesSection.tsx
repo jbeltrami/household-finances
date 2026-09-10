@@ -9,6 +9,7 @@ import MortgageExpenseRow from "../MortgageExpenseRow/MortgageExpenseRow";
 import { brlFormatter } from "@/helpers/format";
 import type { ExpensesGroup } from "../../_types";
 import type { CategoryRow } from "@/helpers/taxonomy";
+import type { DayRange } from "@/helpers/day-range";
 
 type Props = {
   expenses: ExpensesGroup;
@@ -16,7 +17,7 @@ type Props = {
   year: number;
   month: number;
   locked: boolean;
-  highlightedDay: number | null;
+  highlightedRange: DayRange | null;
 };
 
 export default function ExpensesSection({
@@ -25,7 +26,7 @@ export default function ExpensesSection({
   year,
   month,
   locked,
-  highlightedDay,
+  highlightedRange,
 }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -86,7 +87,7 @@ export default function ExpensesSection({
               year={year}
               month={month}
               locked={locked}
-              highlightedDay={highlightedDay}
+              highlightedRange={highlightedRange}
             />
           ))}
         </ul>

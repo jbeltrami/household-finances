@@ -7,11 +7,12 @@ import { brlFormatter } from "@/helpers/format";
 import { financingDetailUrl } from "@/helpers/paths";
 import { toggleInstallmentPaid } from "@/app/(app)/financing/actions";
 import type { MortgageBillItem } from "../../_types";
+import { isYmdInRange, type DayRange } from "@/helpers/day-range";
 
 type Props = {
   item: MortgageBillItem;
   locked: boolean;
-  highlightedDay: number | null;
+  highlightedRange: DayRange | null;
 };
 
 function formatShortDate(ymd: string): string {
@@ -25,10 +26,9 @@ function formatShortDate(ymd: string): string {
 export default function MortgageBillRow({
   item,
   locked,
-  highlightedDay,
+  highlightedRange,
 }: Props) {
-  const dueDay = parseInt(item.date.split("-")[2], 10);
-  const isHighlighted = highlightedDay !== null && dueDay === highlightedDay;
+  const isHighlighted = isYmdInRange(highlightedRange, item.date);
 
   const [isToggling, startToggle] = useTransition();
   const handleToggle = () => {

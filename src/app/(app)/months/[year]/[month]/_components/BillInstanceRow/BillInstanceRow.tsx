@@ -6,6 +6,7 @@ import CurrencyInput from '@/components/CurrencyInput/CurrencyInput';
 import { brlFormatter } from '@/helpers/format';
 import { Pencil, RotateCcw, SkipForward } from 'lucide-react';
 import { useState, useTransition } from 'react';
+import { isYmdInRange, type DayRange } from '@/helpers/day-range';
 import type { EntryMutationTarget, EntryRow } from '../../_types';
 import {
   deleteEntry,
@@ -19,7 +20,7 @@ type Props = {
   year: number;
   month: number;
   locked: boolean;
-  highlightedDay: number | null;
+  highlightedRange: DayRange | null;
 };
 
 function targetFor(entry: EntryRow): EntryMutationTarget {
@@ -43,7 +44,7 @@ export default function BillInstanceRow({
   year,
   month,
   locked,
-  highlightedDay,
+  highlightedRange,
 }: Props) {
   void year;
   void month;
@@ -56,8 +57,7 @@ export default function BillInstanceRow({
   const isInstallment = progress != null;
   const [coverInput, setCoverInput] = useState(1);
 
-  const dueDay = parseInt(entry.date.split('-')[2], 10);
-  const isHighlighted = highlightedDay !== null && dueDay === highlightedDay;
+  const isHighlighted = isYmdInRange(highlightedRange, entry.date);
 
   const [isToggling, startToggle] = useTransition();
   const handleTogglePaid = (coveredOverride?: number) => {

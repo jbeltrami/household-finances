@@ -8,6 +8,7 @@ import IncomeEntryRow from "../IncomeEntryRow/IncomeEntryRow";
 import { brlFormatter } from "@/helpers/format";
 import type { IncomeGroup } from "../../_types";
 import type { CategoryRow, PayerRow } from "@/helpers/taxonomy";
+import type { DayRange } from "@/helpers/day-range";
 
 type Props = {
   categories: CategoryRow[];
@@ -16,7 +17,7 @@ type Props = {
   year: number;
   month: number;
   locked: boolean;
-  highlightedDay: number | null;
+  highlightedRange: DayRange | null;
 };
 
 export default function IncomeSection({
@@ -26,7 +27,7 @@ export default function IncomeSection({
   year,
   month,
   locked,
-  highlightedDay,
+  highlightedRange,
 }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -86,7 +87,7 @@ export default function IncomeSection({
               year={year}
               month={month}
               locked={locked}
-              highlightedDay={highlightedDay}
+              highlightedRange={highlightedRange}
             />
           ))}
         </ul>

@@ -61,3 +61,17 @@ export function buildCalendarGrid(
 
   return cells;
 }
+
+// How a day button in the grid is found from outside the calendar.
+//
+// Both ends of that contract live here rather than one in the calendar and
+// one in whoever is looking: `MonthlyViewClient` hands focus back to a day
+// button when the Período is cleared, and an attribute renamed in the JSX
+// without the selector following would break that silently — focus would
+// simply fall to the top of the document again, which is the bug the focus
+// move exists to prevent, and nothing would fail.
+export const CALENDAR_DAY_ATTR = "data-calendar-day";
+
+export function calendarDaySelector(day: number): string {
+  return `[${CALENDAR_DAY_ATTR}="${day}"]`;
+}
