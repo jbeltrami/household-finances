@@ -11,7 +11,7 @@ export type CalendarCell = {
   inCurrentMonth: boolean;
 };
 
-// Build a 6×7 = 42-cell calendar grid for the given year/month, Monday-first.
+// Build a 6×7 = 42-cell calendar grid for the given year/month, Sunday-first.
 // Always returns 42 cells so the grid height is stable across months. Cells
 // from the previous and next month are marked `inCurrentMonth: false` so the
 // UI can fade them.
@@ -20,9 +20,12 @@ export function buildCalendarGrid(
   month: number
 ): CalendarCell[] {
   const firstOfMonth = new Date(year, month - 1, 1);
-  // JS Date.getDay(): 0=Sunday..6=Saturday. Convert to 0=Monday..6=Sunday so
-  // Monday lands in column 1.
-  const startDay = (firstOfMonth.getDay() + 6) % 7;
+  // JS Date.getDay() is already 0=Sunday..6=Saturday, which is the column
+  // order the grid wants — so there is nothing to convert. This used to
+  // rotate by one to push Monday into column 1; see DAY_HEADERS in
+  // CalendarStrip.tsx for why the calendar no longer disagrees with the
+  // rest of the app about where a week starts.
+  const startDay = firstOfMonth.getDay();
 
   // Last day of THIS month: new Date(year, month, 0) gives the last day of
   // (month - 1) in 1-indexed terms. Since `month` is 1-indexed, passing it

@@ -15,8 +15,12 @@ import {
 } from "../../_helpers";
 import { buildCalendarGrid, CALENDAR_DAY_ATTR } from "./_helpers";
 
-// Monday-first to match the mockup. Brazilian-Portuguese 3-letter labels.
-const DAY_HEADERS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+// Sunday-first, in the order JS Date.getDay() already numbers the days.
+// Every other weekday list in the app runs Dom→Sáb straight off getDay() —
+// the picker in BillTemplateFields, the labels in ActiveTemplatesSection —
+// and this calendar was the only surface rotating away from it, which is
+// also the order pt-BR reads a week in. Brazilian-Portuguese 3-letter labels.
+const DAY_HEADERS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 type Props = {
   year: number;
