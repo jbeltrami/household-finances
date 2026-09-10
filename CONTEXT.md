@@ -22,6 +22,15 @@ likes it or not. Every Conta traces back to a template that defines its
 recurrence.
 _Avoid_: Boletos, faturas, obligations, recurring expenses
 
+The word has a strict sense and a colloquial one, and both are correct in their
+place. **In code, Conta is strict**: a row whose template defines a recurrence,
+which a parcela de Financiamento is not. **In the interface it is loose**, the
+way a Brazilian talking about paying the month's contas means everything falling
+due, the parcela included. So user-facing copy may count a parcela as a "conta"
+— "2 contas vencem" over a day holding one Conta and one parcela — where a type,
+a fold or this glossary never would. Where the interface needs the precise
+class, the word is Obrigação; where it does not, "conta" is what people say.
+
 **Despesas** (code: _expenses_, or _one-off entries_):
 Discretionary spending — money that went out without a recurring obligation
 behind it. A Despesa records money already gone, so it carries no paid state.
@@ -30,8 +39,8 @@ _Avoid_: Gastos, compras, despesas avulsas, purchases
 **Financiamento** (code: _financing_):
 A loan amortised over a fixed term. Each month it owes one **parcela**; paying
 ahead is an **amortização extraordinária**, which either shortens the term or
-lowers the parcela. A Financiamento is not a Conta — it has no recurrence rule
-to edit, only the schedule its own maths produces.
+lowers the parcela. A Financiamento is not a Conta in the strict sense above —
+it has no recurrence rule to edit, only the schedule its own maths produces.
 _Avoid_: Empréstimo, dívida, mortgage, loan
 
 Contas, Despesas and Financiamentos are all outflows, and they divide on
