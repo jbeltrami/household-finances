@@ -211,3 +211,52 @@ export function monthDayMarkers(ledger: MonthLedger): MonthDayMarkers {
     daysWithExpenses: sortedDays(withExpenses),
   };
 }
+
+// What one day of the month owes.
+//
+// The same question `summarizeMonth` asks about Contas, narrowed to a single
+// day and asked the same way, so the two can never disagree about what counts:
+// a parcela de Financiamento is an Obrigação here exactly as it is there, and
+// the day is read off the "YYYY-MM-DD" string rather than parsed into a Date
+// for the reason `dayOfMonthFromYmd` explains.
+//
+// Deliberately unrecorded. This feeds a widget that appears while a day is
+// selected and vanishes when it is not; nothing persists it, no report reads
+// it, and no request is made to produce it.
+export type DayLedger = {
+  bills: MonthBill[];
+  // Required rather than optional for the same reason it is on MonthLedger:
+  // a caller that means to leave parcelas out has to say so with an empty
+  // list, which is the difference between a decision and an omission.
+  financing: { bills: MonthBill[] };
+  // Day of the month, 1-31. A day the month does not have simply owes
+  // nothing, which is what an out-of-range number returns.
+  day: number;
+};
+
+// `total`, `paid` and `remaining` are spelled the same way as the bills figures
+// in MonthTotals, and mean the same thing narrowed to one day, so the widget
+// and the Resumo strip can be read against each other without translation.
+export type DayObligations = {
+  count: number;
+  total: number;
+  paid: number;
+  remaining: number;
+};
+
+export function summarizeDayObligations(ledger: DayLedger): DayObligations {
+  // Everything that falls due on the day, settled or not: the day is a date on
+  // the calendar, not a list of outstanding work, so a Conta already paid still
+  // came due on it. The paid/remaining split below is what separates the two.
+  const due = [...ledger.bills, ...ledger.financing.bills].filter(
+    (b) => dayOfMonthFromYmd(b.date) === ledger.day
+  );
+
+  const total = sum(due, amountOf);
+  const paid = sum(
+    due.filter((b) => b.paid),
+    amountOf
+  );
+
+  return { count: due.length, total, paid, remaining: total - paid };
+}

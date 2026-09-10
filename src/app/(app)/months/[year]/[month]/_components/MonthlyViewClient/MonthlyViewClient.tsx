@@ -3,6 +3,7 @@
 import { useState } from "react";
 import BillsSection from "../BillsSection/BillsSection";
 import CalendarStrip from "../CalendarStrip/CalendarStrip";
+import DayTotalCard from "../DayTotalCard/DayTotalCard";
 import ExpensesSection from "../ExpensesSection/ExpensesSection";
 import IncomeSection from "../IncomeSection/IncomeSection";
 import ResumoCard from "../ResumoCard/ResumoCard";
@@ -54,8 +55,14 @@ export default function MonthlyViewClient({
             onSelectDay={handleSelectDay}
           />
         </div>
-        <div className="md:col-span-2">
+        <div className="flex flex-col gap-5 md:col-span-2">
           <SaldoCard balance={balance} />
+          <DayTotalCard
+            year={year}
+            month={month}
+            day={highlightedDay}
+            bills={bills}
+          />
         </div>
       </div>
 

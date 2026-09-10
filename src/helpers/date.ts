@@ -97,6 +97,23 @@ export function formatMonthLabel(year: number, month: number): string {
   }).format(new Date(year, month - 1, 1));
 }
 
+// A day within a month as a human-readable Brazilian Portuguese label,
+// e.g. (2026, 9, 10) -> "10 de setembro". The year is left off because every
+// caller so far is already inside a month whose year is on screen.
+//
+// Built from the year/month/day the caller already holds rather than from a
+// "YYYY-MM-DD" string, so there is no UTC-midnight shift to correct for.
+export function formatDayLabel(
+  year: number,
+  month: number,
+  day: number
+): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "numeric",
+    month: "long",
+  }).format(new Date(year, month - 1, day));
+}
+
 // Default "YYYY-MM-DD" date for a create-form whose page is viewing the
 // given year/month. When that's the current month we want today's date so
 // new entries land on the present day; for any other month today wouldn't
