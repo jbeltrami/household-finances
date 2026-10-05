@@ -99,6 +99,22 @@ export function formatMonthLabel(year: number, month: number): string {
   }).format(new Date(year, month - 1, 1));
 }
 
+// Spelled out rather than taken from Intl, whose pt-BR short month carries a
+// trailing dot ("mar.") and can differ between the server's ICU and the
+// browser's.
+const SHORT_MONTHS = [
+  "jan", "fev", "mar", "abr", "mai", "jun",
+  "jul", "ago", "set", "out", "nov", "dez",
+];
+
+// A "YYYY-MM" as an abbreviated Brazilian Portuguese month and four-digit
+// year, e.g. "2041-03" -> "mar/2041". Compact enough for a card figure or a
+// chart tooltip.
+export function formatShortMonthYear(ym: string): string {
+  const [year, month] = ym.split("-");
+  return `${SHORT_MONTHS[Number(month) - 1]}/${year}`;
+}
+
 // A day within a month as a human-readable Brazilian Portuguese label,
 // e.g. (2026, 9, 10) -> "10 de setembro". The year is left off because every
 // caller so far is already inside a month whose year is on screen.

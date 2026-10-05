@@ -8,7 +8,7 @@ import {
   type RatePeriod,
   type Schedule,
 } from "./amortization";
-import { getMonthRange, todayYmd, yearMonthKey } from "./date";
+import { addMonthsYm, getMonthRange, todayYmd, yearMonthKey } from "./date";
 
 // Stored financing parameters (the durable inputs — see
 // supabase/migrations/0011_financing.sql). Everything else (payment,
@@ -469,6 +469,168 @@ export async function getFinancingMonthItems(
   month: number
 ): Promise<{ bills: MortgageBillItem[]; expenses: MortgageExpenseItem[] }> {
   return buildMonthItems(await getFinancingLedger(supabase, spaceId), year, month);
+}
+
+// --- Projection: the overview of every loan ------------------
+
+// What the Financiamentos page shows above its list of loans: every active
+// Financiamento added together, as figures for the cards.
+export type FinancingOverview = {
+  // The sum of each loan card's Saldo devedor.
+  outstandingBalance: number;
+  // What the loans will still cost under the plan as recorded.
+  totalToPay: number;
+  // The interest inside Total a pagar ("dos quais R$ Y em juros").
+  interestToPay: number;
+  // Every parcela due in the given month, paid or not: the month's cash, as
+  // the monthly view lists it among its contas.
+  installmentsThisMonth: number;
+  // Quitação: the "YYYY-MM" of the last parcela of the last loan, or null
+  // once every parcela of every loan is marked paid. Keyed off the paid
+  // marks rather than Saldo devedor reaching zero, which rounding can miss
+  // by a few centavos.
+  payoffMonth: string | null;
+  // Economia com amortizações: what the amortizações extraordinárias saved,
+  // against the same loans without any. A future-dated one counts, so
+  // recording a plan shows what it would do before it is paid.
+  savings: {
+    // False before any amortização exists: the card invites a simulation
+    // instead of showing a zero.
+    hasExtras: boolean;
+    interestSaved: number;
+    // Parcelas rather than months: with several loans, "months earlier" is
+    // ambiguous, since a shortened loan that does not end last leaves the
+    // Quitação where it was. Parcelas add up cleanly.
+    installmentsRemoved: number;
+  };
+  series: FinancingOverviewSeries;
+};
+
+// The months both overview charts draw, shared so a month sits at the same
+// place in each. It is the plan: the schedule as recorded, future-dated
+// amortizações included, not a reconstruction of when parcelas were paid.
+export type FinancingOverviewSeries = {
+  // In ledger order, which is also the order of the chart's colours.
+  financings: { id: string; name: string }[];
+  // Every month from the earliest first parcela to the latest last one.
+  months: {
+    month: string; // "YYYY-MM"
+    // Keyed by loan id. A loan has no entry before its first parcela or
+    // after its last.
+    byFinancing: Record<string, { balance: number; payment: number }>;
+  }[];
+};
+
+function buildOverviewSeries(
+  ledger: HydratedFinancing[]
+): FinancingOverviewSeries {
+  let first: string | null = null;
+  let last: string | null = null;
+  for (const { schedule } of ledger) {
+    if (schedule.rows.length === 0) continue;
+    const from = schedule.rows[0].date.slice(0, 7);
+    const to = schedule.rows[schedule.rows.length - 1].date.slice(0, 7);
+    if (first === null || from < first) first = from;
+    if (last === null || to > last) last = to;
+  }
+
+  const months: FinancingOverviewSeries["months"] = [];
+  if (first !== null && last !== null) {
+    for (let ym = first; ym <= last; ym = addMonthsYm(ym, 1)) {
+      months.push({ month: ym, byFinancing: {} });
+    }
+  }
+
+  // A monthly schedule has at most one row a month.
+  const indexOf = new Map(months.map((m, i) => [m.month, i]));
+  for (const { financing, schedule } of ledger) {
+    for (const row of schedule.rows) {
+      const i = indexOf.get(row.date.slice(0, 7));
+      if (i === undefined) continue;
+      months[i].byFinancing[financing.id] = {
+        balance: row.balanceAfter,
+        payment: row.payment,
+      };
+    }
+  }
+
+  return {
+    financings: ledger.map(({ financing }) => ({
+      id: financing.id,
+      name: financing.name,
+    })),
+    months,
+  };
+}
+
+export function buildFinancingOverview(
+  ledger: HydratedFinancing[],
+  year: number,
+  month: number
+): FinancingOverview {
+  const ym = yearMonthKey(year, month);
+  // Read the way `summarizeFinancing` reads it, so both agree on which
+  // amortizações have already happened.
+  const today = todayYmd();
+
+  let outstandingBalance = 0;
+  let totalToPay = 0;
+  let interestToPay = 0;
+  let installmentsThisMonth = 0;
+  let payoffMonth: string | null = null;
+  let settled = true;
+  let hasExtras = false;
+  let interestSaved = 0;
+  let installmentsRemoved = 0;
+  for (const h of ledger) {
+    // Reusing the card's own figure is what keeps the two from disagreeing.
+    outstandingBalance += buildSummary(h).outstandingBalance;
+
+    for (const row of h.schedule.rows) {
+      // Paid or not, so the figure does not shrink as the month is paid. A
+      // Vencida from an earlier month is not this month's.
+      if (row.date.slice(0, 7) === ym) installmentsThisMonth += row.payment;
+
+      // Unpaid, not merely future: a Vencida is still owed, and leaving it
+      // out would make being late look cheaper.
+      if (h.paidNumbers.has(row.number)) continue;
+      settled = false;
+      totalToPay += row.payment;
+      interestToPay += row.interest;
+    }
+    const last = h.schedule.rows.at(-1);
+    if (last && (payoffMonth === null || last.date.slice(0, 7) > payoffMonth)) {
+      payoffMonth = last.date.slice(0, 7);
+    }
+
+    // A planned amortização is money committed. The schedule already
+    // shrank by it, so leaving it out would make planning ahead look free.
+    for (const e of h.extras) {
+      if (e.date > today) totalToPay += e.amount;
+    }
+
+    // The hydrated schedule holds every recorded amortização; the same loan
+    // without them is a rebuild, which is pure and cheap.
+    if (h.extras.length > 0) {
+      hasExtras = true;
+      const without = buildFinancingSchedule(h.financing, []);
+      interestSaved += without.totals.interest - h.schedule.totals.interest;
+      installmentsRemoved += without.rows.length - h.schedule.rows.length;
+    }
+  }
+  return {
+    outstandingBalance: round2(outstandingBalance),
+    totalToPay: round2(totalToPay),
+    interestToPay: round2(interestToPay),
+    installmentsThisMonth: round2(installmentsThisMonth),
+    payoffMonth: settled ? null : payoffMonth,
+    savings: {
+      hasExtras,
+      interestSaved: round2(interestSaved),
+      installmentsRemoved,
+    },
+    series: buildOverviewSeries(ledger),
+  };
 }
 
 // --- Spend reporting -----------------------------------------

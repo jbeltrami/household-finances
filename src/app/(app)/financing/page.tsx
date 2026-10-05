@@ -5,8 +5,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getPersonalSpaceId } from "@/helpers/spaces";
 import { getCategories } from "@/helpers/taxonomy";
 import { financingNewUrl } from "@/helpers/paths";
-import { getFinancingLedger, buildSummary } from "@/helpers/financing";
+import { currentYearMonth } from "@/helpers/date";
+import {
+  getFinancingLedger,
+  buildFinancingOverview,
+  buildSummary,
+} from "@/helpers/financing";
 import FinancingCard from "./_components/FinancingCard/FinancingCard";
+import FinancingOverviewCards from "./_components/FinancingOverviewCards/FinancingOverviewCards";
+import FinancingOverviewCharts from "./_components/FinancingOverviewCharts/FinancingOverviewCharts";
 
 export default async function FinancingPage() {
   const supabase = await createClient();
@@ -28,6 +35,11 @@ export default async function FinancingPage() {
     financing: h.financing,
     summary: buildSummary(h),
   }));
+
+  // Every loan added together, for the cards and charts above the list.
+  const currentMonth = currentYearMonth();
+  const [year, month] = currentMonth.split("-").map(Number);
+  const overview = buildFinancingOverview(ledger, year, month);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 md:px-6 md:py-8">
@@ -64,20 +76,30 @@ export default async function FinancingPage() {
           </Link>
         </div>
       ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {withSummary.map(({ financing, summary }) => (
-            <FinancingCard
-              key={financing.id}
-              financing={financing}
-              summary={summary}
-              categoryName={
-                financing.category_id
-                  ? categoryNameById.get(financing.category_id) ?? null
-                  : null
-              }
-            />
-          ))}
-        </div>
+        <>
+          <FinancingOverviewCards
+            overview={overview}
+            onlyFinancingId={ledger.length === 1 ? ledger[0].financing.id : null}
+          />
+          <FinancingOverviewCharts
+            series={overview.series}
+            currentMonth={currentMonth}
+          />
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {withSummary.map(({ financing, summary }) => (
+              <FinancingCard
+                key={financing.id}
+                financing={financing}
+                summary={summary}
+                categoryName={
+                  financing.category_id
+                    ? categoryNameById.get(financing.category_id) ?? null
+                    : null
+                }
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -16,6 +16,15 @@
   --color-danger-soft: rgba(220, 38, 38, 0.10);
   --color-warn: #d97706;
   --color-warn-soft: rgba(217, 119, 6, 0.12);
+  /* Chart series, in the order loans take them. A series colour says which
+     Financiamento a band is and nothing else, so the slots avoid the green
+     and red that mean direction of flow. Validated for colour-blind
+     separation as an ordered set, light and dark each against its own
+     surface. */
+  --color-chart-1: #2a78d6;
+  --color-chart-2: #d55181;
+  --color-chart-3: #4a3aa7;
+  --color-chart-4: #eda100;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -32,6 +41,10 @@
     --color-danger-soft: rgba(248, 113, 113, 0.14);
     --color-warn: #fbbf24;
     --color-warn-soft: rgba(251, 191, 36, 0.14);
+    --color-chart-1: #3987e5;
+    --color-chart-2: #d55181;
+    --color-chart-3: #9085e9;
+    --color-chart-4: #c98500;
   }
 }
 
@@ -48,6 +61,10 @@
   --color-danger-soft: var(--color-danger-soft);
   --color-warn: var(--color-warn);
   --color-warn-soft: var(--color-warn-soft);
+  --color-chart-1: var(--color-chart-1);
+  --color-chart-2: var(--color-chart-2);
+  --color-chart-3: var(--color-chart-3);
+  --color-chart-4: var(--color-chart-4);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

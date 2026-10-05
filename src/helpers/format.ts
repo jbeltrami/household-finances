@@ -3,6 +3,15 @@ export const brlFormatter = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
+// Reais as a short label, e.g. "R$ 450 mil", for a chart axis where a full
+// figure would not fit. Exact values stay with `brlFormatter`.
+export const brlCompactFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 // Format dates in UTC so the stored `YYYY-MM-DD` calendar date is shown
 // verbatim. Without `timeZone: "UTC"`, `new Date("2026-04-01")` parses
 // as UTC midnight and, when formatted in a negative-offset timezone like

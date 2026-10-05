@@ -58,6 +58,29 @@ the interest still to come. It is what the loan will still cost if the plan as
 recorded runs to term.
 _Avoid_: Custo restante, total devido, remaining cost
 
+**Parcelas deste mês** (code: _installments this month_):
+Every parcela falling due in the current calendar month, across all
+Financiamentos, paid or not — the month's cash, as the monthly view lists it.
+A Vencida parcela from an earlier month is not part of it; the Vencida signal
+already chases that one.
+_Avoid_: Parcelas do mês, monthly payment
+
+**Quitação** (code: _payoff_):
+The month in which the last parcela of the last Financiamento falls due — the
+point at which the household owes nothing. Once every parcela is marked paid
+there is no such month, and the interface says "Quitado" instead. It keys off
+the paid marks, not off a Saldo devedor reaching zero.
+_Avoid_: Fim, término, data final, payoff date, end date
+
+**Economia com amortizações** (code: _savings_):
+The interest that amortizações extraordinárias have removed, measured against
+the same Financiamentos with none recorded, plus how many parcelas they
+removed. Counted in parcelas rather than months, since with several
+Financiamentos a shortened one that does not end last leaves the Quitação
+where it was. A future-dated amortização counts, so a recorded plan shows what
+it would save.
+_Avoid_: Desconto, juros economizados, interest saved
+
 Contas, Despesas and Financiamentos are all outflows, and they divide on
 **obligation vs. discretionary** rather than scheduled vs. unscheduled: a Conta
 and a parcela must be paid, a Despesa and an amortização extraordinária are
