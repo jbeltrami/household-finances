@@ -43,6 +43,21 @@ lowers the parcela. A Financiamento is not a Conta in the strict sense above —
 it has no recurrence rule to edit, only the schedule its own maths produces.
 _Avoid_: Empréstimo, dívida, mortgage, loan
 
+**Saldo devedor** (code: _outstanding balance_):
+The principal of a Financiamento not yet paid back: what was borrowed, less the
+amortização inside every parcela paid and every amortização extraordinária
+already made. It holds no interest still to come, so it is less than the sum of
+the parcelas left. Despite the word it is unrelated to **Saldo**, and it is
+never shortened to it.
+_Avoid_: Dívida, total devido, debt, balance
+
+**Total a pagar**:
+Every parcela of a Financiamento not yet paid, Vencidas included, plus every
+amortização extraordinária recorded for a future date: the Saldo devedor plus
+the interest still to come. It is what the loan will still cost if the plan as
+recorded runs to term.
+_Avoid_: Custo restante, total devido, remaining cost
+
 Contas, Despesas and Financiamentos are all outflows, and they divide on
 **obligation vs. discretionary** rather than scheduled vs. unscheduled: a Conta
 and a parcela must be paid, a Despesa and an amortização extraordinária are
@@ -96,7 +111,8 @@ neither.
 What's left after everything. Scoped to all three flows: Receitas minus Contas
 minus Despesas. Appears in two forms — _Saldo esperado_ (the whole month as
 planned) and _Saldo até o momento_ (only what has actually moved, treating
-Obrigações Vencidas as already gone).
+Obrigações Vencidas as already gone). A bare "Saldo" always means this, never
+a Saldo devedor.
 _Avoid_: Balanço, net, total
 
 **Resumo**:
@@ -122,3 +138,7 @@ red because it is money that left, not green because paying bills is progress.
 Red at the level of an individual row means something different — **Vencida**,
 the app's one urgency signal (the CalendarStrip dot). Row amounts
 stay neutral so that signal keeps its meaning.
+
+A Saldo devedor or a Total a pagar is a stock, not a flow, so it stays neutral
+too. In a chart, a series colour only says which Financiamento it is, never
+direction or urgency.
